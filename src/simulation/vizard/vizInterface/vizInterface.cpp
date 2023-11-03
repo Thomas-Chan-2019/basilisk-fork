@@ -1138,6 +1138,35 @@ void VizInterface::WriteProtobuffer(uint64_t CurrentSimNanos)
                         return;
                     }
                 }
+
+                /*! - Retrieve protobuffer from socket */
+                receive_status = zmq_msg_recv(&viz_response, this->requester_socket, 0);
+
+                if (receive_status != -1) {
+                    /*! - Extract message size and data pointer from socket */
+                    int vizPointSize = zmq_msg_size(&viz_response);
+                    void* vizPoint = zmq_msg_data(&viz_response);
+
+                    /*! - Set up and fill VizInput message */
+                    vizProtobufferMessage::VizInput* msgRecv = new vizProtobufferMessage::VizInput;
+                    msgRecv->ParseFromArray(vizPoint, vizPointSize);
+
+                    /*! - Set up output VizUserInputMsgPayload message */
+                    VizUserInputMsgPayload outMsgBuffer;
+                    outMsgBuffer = this->userInputMsg.zeroMsgPayload;
+
+                    /*! - Iterate through VizInput_KeyboardInput objects */
+                    if (msgRecv->has_keyinputs()) {
+                        const vizProtobufferMessage::VizInput_KeyboardInput* viki = &(msgRecv->keyinputs());
+                        google::protobuf::int64 frameNumber = msgRecv->framenumber();
+                        const std::string& keys = viki->keys();
+
+                        outMsgBuffer.keyboardInput = keys;
+                    }
+                    this->userInputMsg.write(&outMsgBuffer, this->moduleID, CurrentSimNanos);
+
+                    delete msgRecv;
+                }
                 else {
                     bskLogger.bskLog(BSK_ERROR, "Vizard 2-way [2]: Did not return a user input message.");   
                 }
