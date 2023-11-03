@@ -719,9 +719,13 @@ void VizInterface::WriteProtobuffer(uint64_t CurrentSimNanos)
         vizProtobufferMessage::VizMessage::EventDialog* panel = message->add_eventdialogs();
         panel->set_eventhandlerid(this->eventDialogs.at(k)->eventHandlerID);
         panel->set_displaystring(this->eventDialogs.at(k)->displayString);
+        std::cout << this->eventDialogs.at(k)->eventHandlerID << std::endl;
+        std::cout << this->eventDialogs.at(k)->displayString << std::endl;
         for (size_t idx=0; idx<this->eventDialogs.at(k)->userOptions.size(); idx++) {
             panel->add_useroptions(this->eventDialogs.at(k)->userOptions[idx]);
+            std::cout << this->eventDialogs.at(k)->userOptions[idx] << std::endl;
         }
+        std::cout << std::endl;
         panel->set_simelapsedtimetostartdisplay(this->eventDialogs.at(k)->simElapsedTimeToStartDisplay);
         panel->set_durationofdisplay(this->eventDialogs.at(k)->durationOfDisplay);
         panel->set_usesimelapsedtimeforduration(this->eventDialogs.at(k)->useSimElapsedTimeForDuration);
