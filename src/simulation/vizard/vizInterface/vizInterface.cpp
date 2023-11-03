@@ -1097,6 +1097,14 @@ void VizInterface::WriteProtobuffer(uint64_t CurrentSimNanos)
             zmq_msg_send(&empty_frame1, this->requester_socket, ZMQ_SNDMORE);
             zmq_msg_send(&empty_frame2, this->requester_socket, ZMQ_SNDMORE);
             zmq_msg_send(&request_buffer, this->requester_socket, 0);
+            
+            /*! - Receive status message from Vizard after SIM_UPDATE */
+            zmq_msg_t receiveOK;
+            zmq_msg_init(&receiveOK);
+            int receive_status = zmq_msg_recv(&receiveOK, this->requester_socket, 0);
+            if (receive_status == -1) {
+                bskLogger.bskLog(BSK_ERROR, "Vizard: Did not return a status (OK) message during SIM_UPDATE.");
+            }
 
 
             for (size_t camCounter =0; camCounter<this->cameraConfInMsgs.size(); camCounter++) {
