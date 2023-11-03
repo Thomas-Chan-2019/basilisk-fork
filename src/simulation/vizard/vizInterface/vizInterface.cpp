@@ -18,6 +18,7 @@
 #include <fstream>
 #include <iostream>
 #include <cstdio>
+#include <string>
 
 #include "vizInterface.h"
 #include "architecture/utilities/macroDefinitions.h"
@@ -1106,6 +1107,44 @@ void VizInterface::WriteProtobuffer(uint64_t CurrentSimNanos)
                 bskLogger.bskLog(BSK_ERROR, "Vizard: Did not return a status (OK) message during SIM_UPDATE.");
             }
 
+            /*! - Check if live user input is enabled, if so, start 2-way comm */
+            if (this->liveUserInput) {
+                /*! - Send "REQUEST_INPUT" to elicit a response from Vizard */
+                void* request_input_str = malloc(13 * sizeof(char));
+                memcpy(request_input_str, "REQUEST_INPUT", 13);
+                zmq_msg_t request_input_msg;
+                zmq_msg_init_data(&request_input_msg, request_input_str, 13, message_buffer_deallocate, NULL);
+                zmq_msg_send(&request_input_msg, this->requester_socket, 0);
+
+                /*! - Expect Vizard to send a status string on the socket, then the protobuffer. 
+                      Status string can be: "VIZARD_INPUT" or "ERROR" */
+                zmq_msg_t viz_response;
+                zmq_msg_init(&viz_response);
+                receive_status = zmq_msg_recv(&viz_response, this->requester_socket, 0);
+
+                /*! - If socket was empty, throw an error and exit */
+                if (receive_status == -1) {
+                    bskLogger.bskLog(BSK_ERROR, "Vizard 2-way [0]: Communication error. No data on socket.");
+                    return;
+                }
+                /*! - Else, parse the status string and ensure Vizard did not send "ERROR" */
+                else {
+                    void* msgData = zmq_msg_data(&viz_response);
+                    size_t msgSize = zmq_msg_size(&viz_response);
+                    std::string receive_status_str (static_cast<char*>(msgData), msgSize);
+                    std::string err_status_str = "ERROR";
+                    if (receive_status_str.compare(err_status_str) == 0) {
+                        bskLogger.bskLog(BSK_ERROR, "Vizard 2-way [1]: Invalid request string.");
+                        return;
+                    }
+                }
+                else {
+                    bskLogger.bskLog(BSK_ERROR, "Vizard 2-way [2]: Did not return a user input message.");   
+                }
+
+                zmq_msg_close(&viz_response);
+
+            }
 
             for (size_t camCounter =0; camCounter<this->cameraConfInMsgs.size(); camCounter++) {
                 /*! - If the camera is requesting periodic images, request them */
