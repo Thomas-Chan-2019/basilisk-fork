@@ -33,6 +33,7 @@
 #include "architecture/msgPayloadDefC/SpicePlanetStateMsgPayload.h"
 #include "architecture/msgPayloadDefC/RWSpeedMsgPayload.h"
 #include "architecture/msgPayloadDefC/EpochMsgPayload.h"
+#include "architecture/msgPayloadDefCpp/VizUserInputMsgPayload.h"
 #include "architecture/messaging/messaging.h"
 
 #include "architecture/utilities/bskLogging.h"
@@ -64,6 +65,7 @@ public:
                                                  communication. (1 - regular opNav, 2 - performance opNav) */
     bool saveFile;                              //!< [Bool] Set True if Vizard should save a file of the data.
     bool liveStream;                            //!< [Bool] Set True if Vizard should receive a live stream of BSK data.
+    bool liveUserInput;                         //!< [Bool] Set True if live user inputs are being used (in live stream mode only).
     std::vector<void* >bskImagePtrs;            /*!< [RUN] vector of permanent pointers for the images to be used in BSK
                                                      without relying on ZMQ because ZMQ will free it (whenever, who knows) */
 
@@ -83,6 +85,8 @@ public:
     ReadFunctor<EpochMsgPayload> epochInMsg;    //!< [-] simulation epoch date/time input msg
     MsgCurrStatus epochMsgStatus;                   //!< [-] ID of the epoch msg
     EpochMsgPayload epochMsgBuffer;                   //!< [-] epoch msg data
+
+    Message<VizUserInputMsgPayload> userInputMsg; //!< [-] User input from Vizard
 
     BSKLogger bskLogger;                        //!< [-] BSK Logging object
 

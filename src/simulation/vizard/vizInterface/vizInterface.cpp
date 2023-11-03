@@ -36,6 +36,7 @@ VizInterface::VizInterface()
     this->opNavMode = 0;
     this->saveFile = false;
     this->liveStream = false;
+    this->liveUserInput = false;
     this->FrameNumber= -1;
 
     this->firstPass = 0;

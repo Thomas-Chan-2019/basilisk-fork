@@ -20,8 +20,8 @@
 #
 # Basilisk Scenario Script and Integrated Test
 #
-# Purpose:  Integrated test of the spacecraft() and gravity modules with live Vizard streaming.  Illustrates
-#           a 3-DOV spacecraft on a range of orbit types.
+# Purpose:  Integrated test of the spacecraft() and gravity modules with live Vizard streaming and live
+#           user input.  Illustrates a 3-DOV spacecraft on a range of orbit types.
 # Author:   Hanspeter Schaub
 # Creation Date:  Sept. 29, 2019
 #
@@ -66,7 +66,7 @@ def test_scenarioBasicOrbitStream(show_plots, orbitCase, useSphericalHarmonics, 
     testFailCount = 0                       # zero unit test result counter
     testMessages = []                       # create empty array to store test log messages
 
-    scenarioBasicOrbitStream.run(show_plots, False, 10., orbitCase, useSphericalHarmonics, planetCase)
+    scenarioBasicOrbitStream.run(show_plots, False, False, 10., orbitCase, useSphericalHarmonics, planetCase)
 
     #   print out success message if no error were found
     if testFailCount == 0:

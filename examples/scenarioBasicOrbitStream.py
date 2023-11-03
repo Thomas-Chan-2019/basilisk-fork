@@ -22,17 +22,19 @@ Overview
 
 This script duplicates the basic orbit simulation in the scenario :ref:`scenarioBasicOrbit`.
 The difference is that this version allows for the Basilisk simulation data to be live streamed to the
-:ref:`vizard` visualization program.
+:ref:`vizard` visualization program, with optional 2-way communication with Vizard (live user inputs to 
+the simulation).
 
 The script is found in the folder ``basilisk/examples`` and executed by using::
 
     python3 scenarioBasicOrbitStream.py
 
-To enable live data streaming, the ``enableUnityVisualization()`` method is provided with ``liveStream``
-argument using::
+To enable live data streaming and live user input, the ``enableUnityVisualization()`` method is provided 
+with ``liveStream`` and ``liveUserInput`` argument using::
 
     vizSupport.enableUnityVisualization(scSim, simTaskName, scObject
-                                        , liveStream=True)
+                                        , liveStream=True
+                                        , liveUserInput=True)
 
 When starting Basilisk simulation it prints now to the terminal that it is trying to connect to Vizard::
 
@@ -65,7 +67,8 @@ This way a 10s simulation time step will take 0.2 seconds with the 50x speed up 
 # Basilisk Scenario Script and Integrated Test
 #
 # Purpose:  Integrated test of the spacecraft() and gravity modules.  Illustrates
-#           a 3-DOV spacecraft on a range of orbit types with live Vizard data streaming.
+#           a 3-DOV spacecraft on a range of orbit types with live Vizard data streaming
+#           and 2-way communication with Vizard.
 # Author:   Hanspeter Schaub
 # Creation Date:  Sept. 29, 2019
 #
@@ -90,13 +93,15 @@ from Basilisk.utilities import (SimulationBaseClass, macros, orbitalMotion,
 from Basilisk.simulation import simSynch
 from Basilisk.simulation import vizInterface
 
-def run(show_plots, liveStream, timeStep, orbitCase, useSphericalHarmonics, planetCase):
+
+def run(show_plots, liveStream, liveUserInput, timeStep, orbitCase, useSphericalHarmonics, planetCase):
     """
     At the end of the python script you can specify the following example parameters.
 
     Args:
         show_plots (bool): Determines if the script should display plots
         liveStream (bool): Determines if the script should use live data streaming
+        liveUserInput (bool): Determines if the script should enable 2-way comm with Vizard
         timeStep (double): Integration update time in seconds
         orbitCase (str):
 
@@ -216,9 +221,14 @@ def run(show_plots, liveStream, timeStep, orbitCase, useSphericalHarmonics, plan
 
         # if this scenario is to interface with the BSK Viz, uncomment the following line
         viz = vizSupport.enableUnityVisualization(scSim, simTaskName, scObject
-                                                  , liveStream=True
-                                                  )
+                                            , liveStream=True
+                                            , liveUserInput=True
+                                            )
 
+        # set up recorder for user inputs
+        if liveUserInput:
+            userRec = viz.userInputMsg.recorder(macros.sec2nano(10.))
+            scSim.AddModelToTask(simTaskName, userRec)
         panel1 = vizInterface.EventDialog()
         panel1.eventHandlerID = "Panel Name 1"
         panel1.displayString = "this is a test panel"
@@ -252,6 +262,13 @@ def run(show_plots, liveStream, timeStep, orbitCase, useSphericalHarmonics, plan
     #
     scSim.ConfigureStopTime(simulationTime)
     scSim.ExecuteSimulation()
+
+    # live user inputs do not affect sim states in this example, but they
+    # are recorded and can be printed out by uncommenting the line below.
+    if liveUserInput:
+        populatedInputs = [x for x in userRec.keyboardInput if x]
+    #    print(*populatedInputs, sep = "\n")
+
 
     #
     #   retrieve the logged data
@@ -349,6 +366,7 @@ if __name__ == "__main__":
     run(
         True,        # show_plots
         True,        # liveStream
+        True,        # liveUserInput
         1.0,         # time step (s)
         'LEO',       # orbit Case (LEO, GTO, GEO)
         False,       # useSphericalHarmonics

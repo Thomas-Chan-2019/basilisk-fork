@@ -1115,6 +1115,8 @@ def enableUnityVisualization(scSim, simTaskName, scList, **kwargs):
         flag if opNaveMode should be used
     liveStream: bool
         flag if live data streaming to Vizard should be used
+    liveUserInput: bool
+        flag to enable live user input
     genericStorageList:
         list of lists of ``GenericStorage`` structures.  The outer list length must match ``scList``.
     lightList:
@@ -1154,8 +1156,8 @@ def enableUnityVisualization(scSim, simTaskName, scList, **kwargs):
     global firstSpacecraftName
 
     unitTestSupport.checkMethodKeyword(
-        ['saveFile', 'opNavMode', 'rwEffectorList', 'thrEffectorList', 'thrColors', 'liveStream', 'cssList',
-         'genericSensorList', 'transceiverList', 'genericStorageList', 'lightList', 'spriteList',
+        ['saveFile', 'opNavMode', 'rwEffectorList', 'thrEffectorList', 'thrColors', 'liveStream', 'liveUserInput',
+         'cssList', 'genericSensorList', 'transceiverList', 'genericStorageList', 'lightList', 'spriteList',
          'modelDictionaryKeyList', 'oscOrbitColorList', 'trueOrbitColorList', 'logoTextureList',
          'msmInfoList', 'ellipsoidList', 'trueOrbitColorInMsgList'],
         kwargs)
@@ -1536,13 +1538,24 @@ def enableUnityVisualization(scSim, simTaskName, scList, **kwargs):
     if 'liveStream' in kwargs:
         val = kwargs['liveStream']
         if not isinstance(val, bool):
-            print('ERROR: vizSupport: liveStream must True or False')
+            print('ERROR: vizSupport: liveStream must be True or False')
             exit(1)
         vizMessenger.liveStream = val
+
         if 'opNavMode' in kwargs:
             if kwargs['opNavMode'] > 0:
                 print('ERROR: vizSupport: do not use liveStream and opNavMode flags at the same time.')
                 exit(1)
+
+    if 'liveUserInput' in kwargs:
+        val = kwargs['liveUserInput']
+        if not isinstance(val, bool):
+            print('ERROR: vizSupport: liveUserInput must be True or False.')
+            exit(1)
+        if not vizMessenger.liveStream and val:
+            print('ERROR: vizSupport: liveUserInput can only be enabled if liveStream is enabled.')
+            exit(1)
+        vizMessenger.liveUserInput = val
 
     vizMessenger.opNavMode = 0
     if 'opNavMode' in kwargs:
