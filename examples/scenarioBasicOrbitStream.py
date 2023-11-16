@@ -224,10 +224,11 @@ def run(show_plots, liveStream, liveUserInput, timeStep, orbitCase, useSpherical
                                             , liveStream=True
                                             , liveUserInput=True
                                             )
+        viz.settings.keyboardLiveInput = "asdfghjkl"
 
         # set up recorder for user inputs
         if liveUserInput:
-            userRec = viz.userInputMsg.recorder(macros.sec2nano(10.))
+            userRec = viz.userInputMsg.recorder(macros.sec2nano(0.5))
             scSim.AddModelToTask(simTaskName, userRec)
         panel1 = vizInterface.EventDialog()
         panel1.eventHandlerID = "Panel Name 1"
@@ -266,7 +267,7 @@ def run(show_plots, liveStream, liveUserInput, timeStep, orbitCase, useSpherical
     # live user inputs do not affect sim states in this example, but they
     # are recorded and can be printed out by uncommenting the line below.
     if liveUserInput:
-        populatedInputs = [x for x in userRec.keyboardInput if x]
+        populatedKeyboardInputs = [x for x in userRec.keyboardInput if x]
     #    print(*populatedInputs, sep = "\n")
 
 
