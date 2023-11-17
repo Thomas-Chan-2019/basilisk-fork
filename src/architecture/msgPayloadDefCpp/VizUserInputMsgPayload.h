@@ -18,10 +18,21 @@
  */
 
 #include <string>
+#include <vector>
 
 #ifndef VIZ_USER_INPUT_H
 #define VIZ_USER_INPUT_H
 
+typedef struct
+//@cond DOXYGEN_IGNORE
+EventReply
+//@endcond
+{
+    std::string eventHandlerID;    //!< Name provided when setting up the EventDialog object
+    std::string reply;             //!< Option selection
+    bool eventHandlerDestroyed;    //!< Was the panel closed and destroyed?
+
+}EventReply;
 
 /*! @brief Structure used to define the individual RW configuration data message*/
 typedef struct
@@ -29,10 +40,10 @@ typedef struct
 VizUserInputMsgPayload
 //@endcond
 {
+    int frameNumber;               //!< Vizard frame number
     std::string keyboardInput;     //!< String containing all keyboard inputs since last update.
+    std::vector<EventReply> eventReplies;  //!< Contains all panel inputs since last update
 
 }VizUserInputMsgPayload;
-
-
 
 #endif

@@ -1163,12 +1163,27 @@ void VizInterface::WriteProtobuffer(uint64_t CurrentSimNanos)
                     VizUserInputMsgPayload outMsgBuffer;
                     outMsgBuffer = this->userInputMsg.zeroMsgPayload;
 
+                    outMsgBuffer.frameNumber = static_cast<int>(msgRecv->framenumber());
 
                     /*! - Parse keyboard inputs */
                     const std::string& keys = msgRecv->keyinputs().keys();
                     if (keys.length() > 0) {
                         outMsgBuffer.keyboardInput = keys;
                     }
+
+                    /*! - Iterate through VizInput_EventReply objects */
+                    for (int i=0; i<msgRecv->replies_size(); i++) {
+                        const vizProtobufferMessage::VizInput_EventReply* vier = &(msgRecv->replies(i));
+                        // remove "const"ness for compatibility with protobuffer access methods
+                        vizProtobufferMessage::VizInput_EventReply* vier_nc = const_cast<vizProtobufferMessage::VizInput_EventReply*>(vier);
+                        
+                        EventReply* er = new EventReply();
+                        er->eventHandlerID = *(vier_nc->mutable_eventhandlerid());
+                        er->reply = *(vier_nc->mutable_reply());
+                        er->eventHandlerDestroyed = vier_nc->eventhandlerdestroyed();
+                        outMsgBuffer.eventReplies.push_back(*er);
+                    }
+
                     this->userInputMsg.write(&outMsgBuffer, this->moduleID, CurrentSimNanos);
 
                     delete msgRecv;

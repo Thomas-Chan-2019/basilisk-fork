@@ -201,7 +201,7 @@ def run(show_plots, liveStream, liveUserInput, timeStep, orbitCase, useSpherical
     if useSphericalHarmonics:
         simulationTime = macros.sec2nano(3. * P)
     else:
-        simulationTime = macros.sec2nano(0.05 * P)
+        simulationTime = macros.sec2nano(0.15 * P)
 
     #
     #   Setup data logging before the simulation is initialized
@@ -230,19 +230,29 @@ def run(show_plots, liveStream, liveUserInput, timeStep, orbitCase, useSpherical
         if liveUserInput:
             userRec = viz.userInputMsg.recorder(macros.sec2nano(0.5))
             scSim.AddModelToTask(simTaskName, userRec)
+            
         panel1 = vizInterface.EventDialog()
         panel1.eventHandlerID = "Panel Name 1"
         panel1.displayString = "this is a test panel"
+        panel1.durationOfDisplay = macros.sec2nano(10.)
+        panel1.simElapsedTimeToStartDisplay = macros.sec2nano(2.)
+        panel1.hideOnSelection = True
         panel1.userOptions.append("Option A")
         panel1.userOptions.append("Option B")
+        panel1.userOptions.append("Option C")
+        panel1.useConfirmationPanel = True
 
         panel2 = vizInterface.EventDialog()
         panel2.eventHandlerID = "Panel Name 2"
         panel2.displayString = "this is a second test panel"
+        panel2.durationOfDisplay = macros.sec2nano(10.)
+        panel2.simElapsedTimeToStartDisplay = macros.sec2nano(2.)
+        panel2.hideOnSelection = True
         panel2.userOptions.append("Option A")
         panel2.userOptions.append("Option B")
         panel2.userOptions.append("Option C")
         panel2.userOptions.append("Option D")
+        panel2.useConfirmationPanel = True
 
         # del viz.eventDialogs[:]
         viz.eventDialogs.clear()
@@ -269,6 +279,11 @@ def run(show_plots, liveStream, liveUserInput, timeStep, orbitCase, useSpherical
     if liveUserInput:
         populatedKeyboardInputs = [x for x in userRec.keyboardInput if x]
     #    print(*populatedInputs, sep = "\n")
+
+    # EventReply objects currently cannot be observed using a recorder
+    # (due to Swig / numpy array issues when elements are variable-length
+    # vectors), but the instantaneous EventReplys can be read using 
+    # msg.read()
 
 
     #
