@@ -26,6 +26,10 @@
 #include "architecture/utilities/avsEigenMRP.h"
 #include "architecture/utilities/bskLogging.h"
 
+#include "architecture/msgPayloadDefC/SCStatesMsgPayload.h"
+#include "architecture/msgPayloadDefC/TranslatingRigidBodyMsgPayload.h"
+#include "architecture/messaging/messaging.h"
+
 /*! @brief linear spring mass damper state effector class */
 class linearTranslationOneDOFStateEffector :
 	public StateEffector, public SysModel
