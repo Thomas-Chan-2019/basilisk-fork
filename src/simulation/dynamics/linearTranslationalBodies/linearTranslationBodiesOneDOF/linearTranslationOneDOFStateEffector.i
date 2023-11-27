@@ -1,7 +1,7 @@
 /*
  ISC License
 
- Copyright (c) 2022, Autonomous Vehicle Systems Lab, University of Colorado at Boulder
+ Copyright (c) 2023, Autonomous Vehicle Systems Lab, University of Colorado at Boulder
 
  Permission to use, copy, modify, and/or distribute this software for any
  purpose with or without fee is hereby granted, provided that the above
@@ -18,9 +18,9 @@
  */
 
 
-%module spinningBodyOneDOFStateEffector
+%module linearTranslationOneDOFStateEffector
 %{
-   #include "spinningBodyOneDOFStateEffector.h"
+   #include "linearTranslationOneDOFStateEffector.h"
 %}
 
 %pythoncode %{
@@ -36,16 +36,12 @@ from Basilisk.architecture.swig_common_model import *
 %include "simulation/dynamics/_GeneralModuleFiles/stateData.h"
 %include "simulation/dynamics/_GeneralModuleFiles/stateEffector.h"
 %include "simulation/dynamics/_GeneralModuleFiles/dynParamManager.h"
-%include "spinningBodyOneDOFStateEffector.h"
+%include "linearTranslationOneDOFStateEffector.h"
 
 %include "architecture/msgPayloadDefC/SCStatesMsgPayload.h"
 struct SCStatesMsg_C;
-%include "architecture/msgPayloadDefC/ArrayMotorTorqueMsgPayload.h"
-struct ArrayMotorTorqueMsg_C;
-%include "architecture/msgPayloadDefC/ArrayEffectorLockMsgPayload.h"
-struct ArrayEffectorLockMsg_C;
-%include "architecture/msgPayloadDefC/HingedRigidBodyMsgPayload.h"
-struct HingedRigidBodyMsg_C;
+%include "architecture/msgPayloadDefC/TranslatingRigidBodyMsgPayload.h"
+struct TranslatingRigidBodyMsg_C;
 
 %pythoncode %{
 import sys
