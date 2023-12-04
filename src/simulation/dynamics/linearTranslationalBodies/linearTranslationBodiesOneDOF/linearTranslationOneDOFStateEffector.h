@@ -1,7 +1,7 @@
 /*
  ISC License
 
- Copyright (c) 2016, Autonomous Vehicle Systems Lab, University of Colorado at Boulder
+ Copyright (c) 2023, Autonomous Vehicle Systems Lab, University of Colorado at Boulder
 
  Permission to use, copy, modify, and/or distribute this software for any
  purpose with or without fee is hereby granted, provided that the above
@@ -35,50 +35,49 @@ class linearTranslationOneDOFStateEffector :
 	public StateEffector, public SysModel
 {
 public:
-    double mass = 1.0;                    //!< [kg] mass of fuel
-    double k = 0;                      //!< [N/m] linear spring constant for spring mass damper
-    double c = 0;                      //!< [N-s/m] linear damping term for spring mass damper
-    double rhoInit = 0;                //!< [m] Initial value for spring mass damper particle offset
-    double rhoDotInit = 0;             //!< [m/s] Initial value for spring mass damper particle offset derivative
+    double mass = 1.0;              //!< [kg] mass of effector
+    double k = 0;                   //!< [N/m] linear spring constant
+    double c = 0;                   //!< [N-s/m] linear damping term
+    double rhoInit = 0;             //!< [m] Initial value for particle offset
+    double rhoDotInit = 0;          //!< [m/s] Initial value for particle offset derivative
 
-    std::string nameOfRhoState;    //!< [-] Identifier for the rho state data container
-    std::string nameOfRhoDotState; //!< [-] Identifier for the rhoDot state data container
+    std::string nameOfRhoState;     //!< [-] Identifier for the rho state data container
+    std::string nameOfRhoDotState;  //!< [-] Identifier for the rhoDot state data container
 
-	BSKLogger bskLogger;                      //!< -- BSK Logging
+	BSKLogger bskLogger;            //!< -- BSK Logging
 
-	Eigen::Vector3d pHat_B;                                          //!< -- spinning axis in p frame components.
-    Eigen::Vector3d r_pcp0_p;                                          //!< [m] vector pointing from location P along pHat to P_C in p frame components
-    Eigen::Vector3d r_p0B_B;                                         //!< [m] vector pointing from body frame B origin to point p0 origin of p frame in B frame components
-    Eigen::Matrix3d IPntpc_p;                                        //!< [kg-m^2] Inertia of pc about point p in p frame component
-    Eigen::Matrix3d dcm_pB;                                         //!< -- DCM from the p frame to the body frame
+	Eigen::Vector3d pHat_B;         //!< -- spinning axis in B frame components.
+    Eigen::Vector3d r_PcP_P;       //!< [m] vector pointing from location P0 along pHat to P_C in p frame components
+    Eigen::Vector3d r_P0B_B;        //!< [m] vector pointing from body frame B origin to point p0 origin of p frame in B frame components
+    Eigen::Matrix3d IPntPc_P;       //!< [kg-m^2] Inertia of pc about point p in p frame component
+    Eigen::Matrix3d dcm_PB;         //!< -- DCM from the p frame to the body frame
 
-    Message<TranslatingRigidBodyMsgPayload> translatingBodyOutMsg;           //!< state output message
+    Message<TranslatingRigidBodyMsgPayload> translatingBodyOutMsg;      //!< state output message
     Message<SCStatesMsgPayload> translatingBodyConfigLogOutMsg;         //!< translating body state config log message
 
-// note: i am using dcm pb instead of just giving pHat_B
 private:
-    double cRho;                   //!< -- Term needed for back-sub method
+    double cRho;                        //!< -- Term needed for back-sub method
 
-    double rho;                    //!< [m] spring mass damper displacement from equilibrium
-    double rhoDot;                 //!< [m/s] time derivative of displacement from equilibrium
-    Eigen::Vector3d r_pcB_B;       //!< [m] position vector form B to center of mass location of particle
-    Eigen::Vector3d r_pcp0_B;           //!< [m] vector pointing from body frame B origin to point p0 origin of p frame in B frame components
-    Eigen::Matrix3d rTilde_pcp_B;  //!< [m] tilde matrix of r_Pc_B
-	Eigen::Vector3d rPrime_pcp_B;  //!< [m/s] Body time derivative of r_Pc_B
-	Eigen::Matrix3d rPrimeTilde_pcp_B;  //!< [m/s] Tilde matrix of rPrime_PcB_B
-	Eigen::Matrix3d rTilde_pcB_B;  //!< [m] tilde matrix of r_Pc_B
-	Eigen::Vector3d rPrime_pcB_B;  //!< [m/s] Body time derivative of r_Pc_B
-	Eigen::Matrix3d rPrimeTilde_pcB_B;  //!< [m/s] Tilde matrix of rPrime_PcB_B
-	Eigen::Matrix3d IPntpc_B;        //!< [kg-m^2] Inertia of pc about point B in B frame component
-	Eigen::Matrix3d dcm_BN;                                         //!< -- DCM from the B frame to the N frame
+    double rho;                         //!< [m] displacement from equilibrium
+    double rhoDot;                      //!< [m/s] time derivative of displacement from equilibrium
+    Eigen::Vector3d r_PcB_B;            //!< [m] position vector form B to center of mass location of effector
+    Eigen::Vector3d r_PcP0_B;           //!< [m] vector pointing from body frame B origin to point p0 origin of p frame in B frame components
+    Eigen::Matrix3d rTilde_PcP_B;       //!< [m] tilde matrix of r_PcP_B
+	Eigen::Vector3d rPrime_PcP_B;       //!< [m/s] Body time derivative of r_PcP_B
+	Eigen::Matrix3d rPrimeTilde_PcP_B;  //!< [m/s] Tilde matrix of rPrime_PcP_B
+	Eigen::Matrix3d rTilde_PcB_B;       //!< [m] tilde matrix of r_PcB_B
+	Eigen::Vector3d rPrime_PcB_B;       //!< [m/s] Body time derivative of r_PcB_B
+	Eigen::Matrix3d rPrimeTilde_PcB_B;  //!< [m/s] Tilde matrix of rPrime_PcB_B
+	Eigen::Matrix3d IPntPc_B;           //!< [kg-m^2] Inertia of Pc about point B in B frame component
+	Eigen::Matrix3d dcm_BN;             //!< -- DCM from the B frame to the N frame
 
     Eigen::Vector3d aRho;          //!< -- Term needed for back-sub method
     Eigen::Vector3d bRho;          //!< -- Term needed for back-sub method
 
     Eigen::MatrixXd *g_N;          //!< [m/s^2] Gravitational acceleration in N frame components
 	StateData *rhoState;		   //!< -- state data for spring mass damper displacement from equilibrium
-    Eigen::MatrixXd *c_B;            //!< [m] Vector from point B to CoM of s/c in B frame components
-    Eigen::MatrixXd *cPrime_B;       //!< [m/s] Body time derivative of vector c_B in B frame components
+    Eigen::MatrixXd *c_B;          //!< [m] Vector from point B to CoM of s/c in B frame components
+    Eigen::MatrixXd *cPrime_B;     //!< [m/s] Body time derivative of vector c_B in B frame components
 	StateData *rhoDotState;		   //!< -- state data for time derivative of rho;
 	StateData *omegaState;         //!< -- state data for the hubs omega_BN_B
 	StateData *sigmaState;         //!< -- state data for the hubs sigma_BN
@@ -88,10 +87,9 @@ private:
 public:
 	linearTranslationOneDOFStateEffector();           //!< -- Contructor
 	~linearTranslationOneDOFStateEffector();          //!< -- Destructor
-	void registerStates(DynParamManager& states);  //!< -- Method for SMD to register its states
-	void linkInStates(DynParamManager& states);  //!< -- Method for SMD to get access of other states
-    void retrieveMassValue(double integTime);
-    void calcForceTorqueOnBody(double integTime, Eigen::Vector3d omega_BN_B);  //!< -- Force and torque on s/c due to linear spring mass damper
+	void registerStates(DynParamManager& states);     //!< -- Method for SMD to register its states
+	void linkInStates(DynParamManager& states);       //!< -- Method for SMD to get access of other states
+    void calcForceTorqueOnBody(double integTime, Eigen::Vector3d omega_BN_B);  //!< -- Force and torque on s/c due to translating body
     void updateEffectorMassProps(double integTime);  //!< -- Method for stateEffector to give mass contributions
     void updateContributions(double integTime, BackSubMatrices & backSubContr, Eigen::Vector3d sigma_BN, Eigen::Vector3d omega_BN_B, Eigen::Vector3d g_N);  //!< -- Back-sub contributions
     void updateEnergyMomContributions(double integTime, Eigen::Vector3d & rotAngMomPntCContr_B,
