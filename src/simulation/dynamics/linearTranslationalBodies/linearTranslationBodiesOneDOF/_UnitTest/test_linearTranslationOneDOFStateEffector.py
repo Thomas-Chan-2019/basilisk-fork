@@ -1,3 +1,4 @@
+
 # ISC License
 #
 # Copyright (c) 2022, Autonomous Vehicle Systems Lab, University of Colorado at Boulder
@@ -34,7 +35,7 @@ path = os.path.dirname(os.path.abspath(filename))
 splitPath = path.split('simulation')
 
 from Basilisk.utilities import SimulationBaseClass, unitTestSupport, macros
-from Basilisk.simulation import spacecraft, spinningBodyOneDOFStateEffector, gravityEffector
+from Basilisk.simulation import spacecraft, linearTranslationOneDOFStateEffector, gravityEffector
 from Basilisk.architecture import messaging
 
 
@@ -43,13 +44,13 @@ from Basilisk.architecture import messaging
 # uncomment this line if this test has an expected failure, adjust message as needed
 # @pytest.mark.xfail() # need to update how the RW states are defined
 # provide a unique test method name, starting with test_
-@pytest.mark.parametrize("cmdTorque, lock, thetaRef", [
-    (0.0, False, 0.0)
-    , (0.0, True, 0.0)
-    , (1.0, False, 0.0)
-    , (0.0, False, 20.0 * macros.D2R)
-])
-def test_spinningBody(show_plots, cmdTorque, lock, thetaRef):
+
+# runs 4 tests, each time changing the input
+# rhoref, command force?
+@pytest.mark.parametrize("rhoRef", [(0.0),
+                                    (2.0),
+                                    (5.0)])
+def test_translatingBody(show_plots, rhoRef):
     r"""
     **Validation Test Description**
 
@@ -70,11 +71,11 @@ def test_spinningBody(show_plots, cmdTorque, lock, thetaRef):
 
     against their initial values.
     """
-    [testResults, testMessage] = spinningBody(show_plots, cmdTorque, lock, thetaRef)
+    [testResults, testMessage] = translatingBody(show_plots, rhoRef)
     assert testResults < 1, testMessage
 
 
-def spinningBody(show_plots, cmdTorque, lock, thetaRef):
+def translatingBody(show_plots, rhoRef):
     __tracebackhide__ = True
 
     testFailCount = 0  # zero unit test result counter
@@ -107,49 +108,37 @@ def spinningBody(show_plots, cmdTorque, lock, thetaRef):
     scObject.hub.omega_BN_BInit = [[0.1], [-0.1], [0.1]]
 
     # Create two hinged rigid bodies
-    spinningBody = spinningBodyOneDOFStateEffector.SpinningBodyOneDOFStateEffector()
+    translatingBody = linearTranslationOneDOFStateEffector.linearTranslationOneDOFStateEffector()
 
     # Define properties of spinning body
-    spinningBody.mass = 50.0
-    spinningBody.IPntSc_S = [[50.0, 0.0, 0.0], [0.0, 30.0, 0.0], [0.0, 0.0, 40.0]]
-    spinningBody.dcm_S0B = [[0.0, -1.0, 0.0], [0.0, .0, -1.0], [1.0, 0.0, 0.0]]
-    spinningBody.r_ScS_S = [[1.0], [0.0], [-1.0]]
-    spinningBody.r_SB_B = [[0.5], [-1.5], [-0.5]]
-    spinningBody.sHat_S = [[0], [-1], [0]]
-    spinningBody.thetaInit = 5.0 * macros.D2R
-    spinningBody.thetaDotInit = -1.0 * macros.D2R
-    spinningBody.k = 100.0
-    if thetaRef != 0.0:
-        spinningBody.c = 50
-    if lock:
-        spinningBody.thetaDotInit = 0.0
-    spinningBody.ModelTag = "SpinningBody"
+    translatingBody.mass = 50.0
+    translatingBody.rhoInit = 20.0
+    translatingBody.rhoDotInit = 2.0
+    # how do we actually define phat in the B frame? seems hard
+    translatingBody.pHat_B = [[3.0/5.0], [4.0/5.0], [0.0]]
+    translatingBody.r_PcP_P = [[-1.0], [1.0], [0.0]]
+    translatingBody.r_P0B_B = [[-5.0], [4.0], [3.0]]
+    translatingBody.IPntPc_P = [[50.0, 0.0, 0.0],
+                                [0.0, 80.0, 0.0],
+                                [0.0, 0.0, 60.0]]
+    translatingBody.dcm_PB = [[0.0, -1.0, 0.0],
+                              [0.0, 0.0, -1.0],
+                              [1.0, 0.0, 0.0]]
+    translatingBody.k = 1.0
+    translatingBody.ModelTag = "translatingBody"
 
     # Add spinning body to spacecraft
-    scObject.addStateEffector(spinningBody)
+    scObject.addStateEffector(translatingBody)
 
-    # Create the torque message
-    cmdArray = messaging.ArrayMotorTorqueMsgPayload()
-    cmdArray.motorTorque = [cmdTorque]  # [Nm]
-    cmdMsg = messaging.ArrayMotorTorqueMsg().write(cmdArray)
-    spinningBody.motorTorqueInMsg.subscribeTo(cmdMsg)
-
-    # Create the locking message
-    if lock:
-        lockArray = messaging.ArrayEffectorLockMsgPayload()
-        lockArray.effectorLockFlag = [1]
-        lockMsg = messaging.ArrayEffectorLockMsg().write(lockArray)
-        spinningBody.motorLockInMsg.subscribeTo(lockMsg)
-
-    # Create the reference message
-    angleRef = messaging.HingedRigidBodyMsgPayload()
-    angleRef.theta = thetaRef
-    angleRef.thetaDot = 0.0
-    angleRefMsg = messaging.HingedRigidBodyMsg().write(angleRef)
-    spinningBody.spinningBodyRefInMsg.subscribeTo(angleRefMsg)
+    # # Create the reference message
+    # translationRef = messaging.TranslatingRigidBodyMsgPayload()
+    # translationRef.rho = rhoRef
+    # translationRef.rhoDot = 0.0
+    # translationRefMsg = messaging.HingedRigidBodyMsg().write(translationRef)
+    # translatingBody.translatingBodyRefInMsg.subscribeTo(translationRefMsg)
 
     # Add test module to runtime call list
-    unitTestSim.AddModelToTask(unitTaskName, spinningBody)
+    unitTestSim.AddModelToTask(unitTaskName, translatingBody)
     unitTestSim.AddModelToTask(unitTaskName, scObject)
 
     # Add Earth gravity to the simulation
@@ -172,8 +161,8 @@ def spinningBody(show_plots, cmdTorque, lock, thetaRef):
     unitTestSim.InitializeSimulation()
 
     # Add states to log
-    thetaData = spinningBody.spinningBodyOutMsg.recorder()
-    unitTestSim.AddModelToTask(unitTaskName, thetaData)
+    rhoData = translatingBody.translatingBodyOutMsg.recorder()
+    unitTestSim.AddModelToTask(unitTaskName, rhoData)
 
     # Setup and run the simulation
     stopTime = 25000 * testProcessRate
@@ -185,10 +174,11 @@ def spinningBody(show_plots, cmdTorque, lock, thetaRef):
     rotAngMom_N = unitTestSupport.addTimeColumn(scObjectLog.times(), scObjectLog.totRotAngMomPntC_N)
     rotEnergy = unitTestSupport.addTimeColumn(scObjectLog.times(), scObjectLog.totRotEnergy)
     orbEnergy = unitTestSupport.addTimeColumn(scObjectLog.times(), scObjectLog.totOrbEnergy)
-    theta = thetaData.theta
-    thetaDot = thetaData.thetaDot
+    rho = rhoData.rho
+    rhoDot = rhoData.rhoDot
 
     # Setup the conservation quantities
+    # to compare with previous quantities (ensure the conservation of mom and energy are fulfilled at each timestep
     initialOrbAngMom_N = [[orbAngMom_N[0, 1], orbAngMom_N[0, 2], orbAngMom_N[0, 3]]]
     finalOrbAngMom = [orbAngMom_N[-1]]
     initialRotAngMom_N = [[rotAngMom_N[0, 1], rotAngMom_N[0, 2], rotAngMom_N[0, 3]]]
@@ -234,13 +224,13 @@ def spinningBody(show_plots, cmdTorque, lock, thetaRef):
 
     plt.figure()
     plt.clf()
-    plt.plot(thetaData.times() * 1e-9, theta)
+    plt.plot(rhoData.times() * 1e-9, rho)
     plt.xlabel('time (s)')
     plt.ylabel('theta')
 
     plt.figure()
     plt.clf()
-    plt.plot(thetaData.times() * 1e-9, thetaDot)
+    plt.plot(rhoData.times() * 1e-9, rhoDot)
     plt.xlabel('time (s)')
     plt.ylabel('thetaDot')
 
@@ -260,36 +250,37 @@ def spinningBody(show_plots, cmdTorque, lock, thetaRef):
         if not unitTestSupport.isArrayEqualRelative(finalOrbAngMom[i], initialOrbAngMom_N[i], 3, accuracy):
             testFailCount += 1
             testMessages.append(
-                "FAILED: Spinning Body integrated test failed orbital angular momentum unit test")
+                "FAILED: Translating Body integrated test failed orbital angular momentum unit test")
 
     for i in range(0, len(initialRotAngMom_N)):
         # check a vector values
         if not unitTestSupport.isArrayEqualRelative(finalRotAngMom[i], initialRotAngMom_N[i], 3, accuracy):
             testFailCount += 1
             testMessages.append(
-                "FAILED: Spinning Body integrated test failed rotational angular momentum unit test")
+                "FAILED: Translating Body integrated test failed rotational angular momentum unit test")
 
-    # Only check rotational energy if no torques and no damping are applied
-    if cmdTorque == 0.0 and thetaRef == 0.0:
-        for i in range(0, len(initialRotEnergy)):
-            # check a vector values
-            if not unitTestSupport.isArrayEqualRelative(finalRotEnergy[i], initialRotEnergy[i], 1, accuracy):
-                testFailCount += 1
-                testMessages.append("FAILED: Spinning Body integrated test failed rotational energy unit test")
+    # # Only check rotational energy if no torques and no damping are applied
+    # if cmdTorque == 0.0 and thetaRef == 0.0:
+    for i in range(0, len(initialRotEnergy)):
+        # check a vector values
+        if not unitTestSupport.isArrayEqualRelative(finalRotEnergy[i], initialRotEnergy[i], 1, accuracy):
+            testFailCount += 1
+            testMessages.append("FAILED: Translating Body integrated test failed rotational energy unit test")
 
     for i in range(0, len(initialOrbEnergy)):
         # check a vector values
         if not unitTestSupport.isArrayEqualRelative(finalOrbEnergy[i], initialOrbEnergy[i], 1, accuracy):
             testFailCount += 1
-            testMessages.append("FAILED: Spinning Body integrated test failed orbital energy unit test")
+            testMessages.append("FAILED: Translating Body integrated test failed orbital energy unit test")
 
-    if thetaRef != 0.0:
-        if not unitTestSupport.isDoubleEqual(theta[-1], thetaRef, 0.01):
-            testFailCount += 1
-            testMessages.append("FAILED: Spinning Body integrated test failed angle convergence unit test")
+# if damper given
+    # if thetaRef != 0.0:
+    #     if not unitTestSupport.isDoubleEqual(theta[-1], thetaRef, 0.01):
+    #         testFailCount += 1
+    #         testMessages.append("FAILED: Spinning Body integrated test failed angle convergence unit test")
 
     if testFailCount == 0:
-        print("PASSED: " + " Spinning Body gravity integrated test")
+        print("PASSED: " + " Translating Body gravity integrated test")
 
     assert testFailCount < 1, testMessages
     # return fail count and join into a single string all messages in the list
@@ -298,4 +289,4 @@ def spinningBody(show_plots, cmdTorque, lock, thetaRef):
 
 
 if __name__ == "__main__":
-    spinningBody(True, 0.0, False, 0.0 * macros.D2R)
+    translatingBody(True, 0.0)

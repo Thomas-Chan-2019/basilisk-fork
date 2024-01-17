@@ -37,7 +37,7 @@ linearTranslationOneDOFStateEffector::linearTranslationOneDOFStateEffector()
 	this->r_P0B_B.setIdentity();
 	this->IPntPc_P.setIdentity();
 	this->dcm_PB.setIdentity();
-	this->nameOfRhoState = "linearTrsanslationRho" + std::to_string(this->effectorID);
+	this->nameOfRhoState = "linearTranslationRho" + std::to_string(this->effectorID);
 	this->nameOfRhoDotState = "linearTranslationRhoDot" + std::to_string(this->effectorID);
     this->effectorID++;
 
@@ -59,7 +59,10 @@ void linearTranslationOneDOFStateEffector::linkInStates(DynParamManager& statesI
     // - Grab access to the hub states
 	this->omegaState = statesIn.getStateObject("hubOmega");
 	this->sigmaState = statesIn.getStateObject("hubSigma");
-	this->velocityState = statesIn.getStateObject("hubVelocity");
+
+    // - Get access to the hub's states needed for dynamic coupling
+    this->inertialPositionProperty = statesIn.getPropertyReference(this->nameOfSpacecraftAttachedTo + "r_BN_N");
+    this->inertialVelocityProperty = statesIn.getPropertyReference(this->nameOfSpacecraftAttachedTo + "v_BN_N");
 
     // - Grab access to gravity
     this->g_N = statesIn.getPropertyReference("g_N");
@@ -67,6 +70,7 @@ void linearTranslationOneDOFStateEffector::linkInStates(DynParamManager& statesI
     // - Grab access to c_B and cPrime_B
     this->c_B = statesIn.getPropertyReference("centerOfMassSC");
     this->cPrime_B = statesIn.getPropertyReference("centerOfMassPrimeSC");
+
 
     return;
 }
@@ -87,11 +91,36 @@ void linearTranslationOneDOFStateEffector::registerStates(DynParamManager& state
 	return;
 }
 
+void linearTranslationOneDOFStateEffector::writeOutputStateMessages(uint64_t CurrentSimNanos)
+{
+    // Write out the spinning body output messages
+    if (this->translatingBodyOutMsg.isLinked()) {
+        TranslatingRigidBodyMsgPayload translatingBodyBuffer;
+        translatingBodyBuffer = this->translatingBodyOutMsg.zeroMsgPayload;
+        translatingBodyBuffer.rho = this->rho;
+        translatingBodyBuffer.rhoDot = this->rhoDot;
+        this->translatingBodyOutMsg.write(&translatingBodyBuffer, this->moduleID, CurrentSimNanos);
+    }
+
+    // Write out the spinning body state config log message
+    if (this->translatingBodyConfigLogOutMsg.isLinked()) {
+        SCStatesMsgPayload configLogMsg;
+        configLogMsg = this->translatingBodyConfigLogOutMsg.zeroMsgPayload;
+
+        // Logging the P frame is the body frame B of that object
+        eigenVector3d2CArray(this->r_PcN_N, configLogMsg.r_BN_N);
+        eigenVector3d2CArray(this->v_PcN_N, configLogMsg.v_BN_N);
+        eigenVector3d2CArray(this->sigma_PN, configLogMsg.sigma_BN);
+        eigenVector3d2CArray(this->omega_PN_P, configLogMsg.omega_BN_B);
+        this->translatingBodyConfigLogOutMsg.write(&configLogMsg, this->moduleID, CurrentSimNanos);
+    }
+}
 
 
 /*! This is the method for the translating body to add its contributions to the mass props and mass prop rates of the vehicle */
 void linearTranslationOneDOFStateEffector::updateEffectorMassProps(double integTime)
 {
+
 	// - Grab rho from state manager and define r_PcB_B
 	this->rho = this->rhoState->getState()(0,0);
     this->r_PcP0_B = this->dcm_PB.transpose() * this->r_PcP_P;
@@ -130,6 +159,8 @@ void linearTranslationOneDOFStateEffector::updateContributions(double integTime,
     sigmaLocal_BN = (Eigen::Vector3d ) this->sigmaState->getState();
     dcm_NB = sigmaLocal_BN.toRotationMatrix();
     dcm_BN = dcm_NB.transpose();
+    this->omega_BN_B = omega_BN_B;
+    this->omegaTilde_BN_B = eigenTilde(omega_BN_B);
 
     // - Map gravity to body frame
     Eigen::Vector3d gLocal_N;
@@ -181,8 +212,8 @@ void linearTranslationOneDOFStateEffector::computeDerivatives(double integTime, 
 
 	// - Compute rhoDDot
 	Eigen::MatrixXd rhoDDot(1,1);
-    Eigen::Vector3d omegaDot_BN_B_local = this->omegaState->getStateDeriv();
-    Eigen::Vector3d rDDot_BN_N_local = this->velocityState->getStateDeriv();
+    Eigen::Vector3d omegaDot_BN_B_local = omegaDot_BN_B;
+    Eigen::Vector3d rDDot_BN_N_local = rDDot_BN_N;
 	Eigen::Vector3d rDDot_BN_B_local = dcm_BN*rDDot_BN_N_local;
     rhoDDot(0,0) = this->aRho.dot(rDDot_BN_B_local) + this->bRho.dot(omegaDot_BN_B_local) + this->cRho;
 	this->rhoDotState->setDerivative(rhoDDot);
@@ -194,17 +225,20 @@ void linearTranslationOneDOFStateEffector::computeDerivatives(double integTime, 
 void linearTranslationOneDOFStateEffector::updateEnergyMomContributions(double integTime, Eigen::Vector3d & rotAngMomPntCContr_B,
                                                           double & rotEnergyContr, Eigen::Vector3d omega_BN_B)
 {
+
     //  - Get variables needed for energy momentum calcs
     Eigen::Vector3d omegaLocal_BN_B;
     omegaLocal_BN_B = omegaState->getState();
     Eigen::Vector3d rDotPcB_B;
+    // omega PB is zero
+    Eigen::Vector3d omega_PN_B = this->omega_BN_B;
 
     // - Find rotational angular momentum contribution from hub
     rDotPcB_B = this->rPrime_PcB_B + omegaLocal_BN_B.cross(this->r_PcB_B);
-    rotAngMomPntCContr_B = this->mass*this->r_PcB_B.cross(rDotPcB_B);
+    rotAngMomPntCContr_B = this->IPntPc_B * omega_PN_B + this->mass*this->r_PcB_B.cross(rDotPcB_B);
 
     // - Find rotational energy contribution from the hub
-    rotEnergyContr = 1.0/2.0*this->mass*rDotPcB_B.dot(rDotPcB_B) + 1.0/2.0*this->k*this->rho*this->rho;
+    rotEnergyContr = 1.0 / 2.0 * omega_PN_B.dot(this->IPntPc_B * omega_PN_B) + 1.0/2.0*this->mass*rDotPcB_B.dot(rDotPcB_B) + 1.0/2.0*this->k*this->rho*this->rho;
 
     return;
 }
@@ -239,4 +273,52 @@ void linearTranslationOneDOFStateEffector::calcForceTorqueOnBody(double integTim
     this->torqueOnBodyPntC_B = -(this->mass*rTilde_PcC_B*this->pHat_B*rhoDDotLocal + this->mass*omegaLocalTilde_BN_B*rTilde_PcC_B*rPrime_PcC_B - this->mass*(rPrimeTilde_PcC_B*rTilde_PcC_B + rTilde_PcC_B*rPrimeTilde_PcC_B)*omegaLocal_BN_B);
 
     return;
+
+
+}
+
+void linearTranslationOneDOFStateEffector::computeTranslatingBodyInertialStates()
+{
+    // inertial attitude
+    Eigen::Matrix3d dcm_PN;
+    dcm_PN = (this->dcm_BP).transpose() * this->dcm_BN;
+    this->sigma_PN = eigenMRPd2Vector3d(eigenC2MRP(dcm_PN));
+
+    // inertial position vector
+    this->r_PcN_N = (Eigen::Vector3d)*this->inertialPositionProperty + this->dcm_BN.transpose() * this->r_PcB_B;
+
+    // inertial velocity vector
+    Eigen::Vector3d rDot_PcB_B = this->rPrime_PcB_B + this->omegaTilde_BN_B * this->r_PcB_B;
+    this->v_PcN_N = (Eigen::Vector3d)*this->inertialVelocityProperty + this->dcm_BN.transpose() * rDot_PcB_B;
+}
+
+/*! This method is used so that the simulation will ask SB to update messages */
+void linearTranslationOneDOFStateEffector::UpdateState(uint64_t CurrentSimNanos)
+{
+    ////! - Read the incoming command array
+    //if (this->motorTorqueInMsg.isLinked() && this->motorTorqueInMsg.isWritten()) {
+    //    ArrayMotorTorqueMsgPayload incomingCmdBuffer;
+    //    incomingCmdBuffer = this->motorTorqueInMsg();
+    //    this->u = incomingCmdBuffer.motorTorque[0];
+    //}
+
+    ////! - Read the incoming lock command array
+    //if (this->motorLockInMsg.isLinked() && this->motorLockInMsg.isWritten()) {
+    //    ArrayEffectorLockMsgPayload incomingLockBuffer;
+    //    incomingLockBuffer = this->motorLockInMsg();
+    //    this->lockFlag = incomingLockBuffer.effectorLockFlag[0];
+    //}
+
+    ////! - Read the incoming angle command array
+    //if (this->spinningBodyRefInMsg.isLinked() && this->spinningBodyRefInMsg.isWritten()) {
+    //    HingedRigidBodyMsgPayload incomingRefBuffer;
+    //    incomingRefBuffer = this->spinningBodyRefInMsg();
+    //    this->thetaRef = incomingRefBuffer.theta;
+    //    this->thetaDotRef = incomingRefBuffer.thetaDot;
+    //}
+
+    /* Compute spinning body inertial states */
+    this->computeTranslatingBodyInertialStates();
+
+    this->writeOutputStateMessages(CurrentSimNanos);
 }
