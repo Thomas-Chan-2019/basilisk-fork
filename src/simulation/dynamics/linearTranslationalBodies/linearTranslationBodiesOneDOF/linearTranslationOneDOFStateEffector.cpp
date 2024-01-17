@@ -123,8 +123,8 @@ void linearTranslationOneDOFStateEffector::updateEffectorMassProps(double integT
 
 	// - Grab rho from state manager and define r_PcB_B
 	this->rho = this->rhoState->getState()(0,0);
-    this->r_PcP0_B = this->dcm_PB.transpose() * this->r_PcP_P;
-	this->r_PcB_B = this->r_P0B_B + this->rho * this->pHat_B + this->r_PcP0_B;
+    this->r_PcP0_B = this->dcm_PB.transpose() * this->r_PcP_P + this->rho * this->pHat_B;
+	this->r_PcB_B = this->r_P0B_B + this->r_PcP0_B;
 
 	// - Update the effectors mass
 	this->effProps.mEff = this->mass;
@@ -156,7 +156,7 @@ void linearTranslationOneDOFStateEffector::updateContributions(double integTime,
     Eigen::MRPd sigmaLocal_BN;
     Eigen::Matrix3d dcm_BN;
     Eigen::Matrix3d dcm_NB;
-    sigmaLocal_BN = (Eigen::Vector3d ) this->sigmaState->getState();
+    sigmaLocal_BN = sigma_BN;
     dcm_NB = sigmaLocal_BN.toRotationMatrix();
     dcm_BN = dcm_NB.transpose();
     this->omega_BN_B = omega_BN_B;
@@ -171,16 +171,15 @@ void linearTranslationOneDOFStateEffector::updateContributions(double integTime,
     F_g = this->mass*g_B;
 
 	//  aRho
-    this->aRho = -this->mass*this->pHat_B.transpose();
+    this->aRho = -this->pHat_B.transpose();
 
     //  bRho
-    this->bRho = this->mass*this->pHat_B.transpose()*this->rTilde_PcB_B;
+    this->bRho = this->pHat_B.transpose()*this->rTilde_PcB_B;
 
     //  cRho
     // grabbing omega
-    Eigen::Vector3d omega_BN_B_local = this->omegaState->getState();
-    Eigen::Matrix3d omegaTilde_BN_B_local;
-    omegaTilde_BN_B_local = eigenTilde(omega_BN_B_local);
+    Eigen::Vector3d omega_BN_B_local = omega_BN_B;
+    Eigen::Matrix3d omegaTilde_BN_B_local = eigenTilde(omega_BN_B_local);
 	cRho = 1.0/(this->mass)*(this->pHat_B.transpose() * F_g - this->k*this->rho - this->c*this->rhoDot
 		         - 2 * this->mass*this->pHat_B.transpose() * (omegaTilde_BN_B_local * this->rPrime_PcB_B)
 		                   - this->mass*this->pHat_B.transpose() * (omegaTilde_BN_B_local*omegaTilde_BN_B_local*this->r_PcB_B));
@@ -228,7 +227,8 @@ void linearTranslationOneDOFStateEffector::updateEnergyMomContributions(double i
 
     //  - Get variables needed for energy momentum calcs
     Eigen::Vector3d omegaLocal_BN_B;
-    omegaLocal_BN_B = omegaState->getState();
+    this->omega_BN_B = omega_BN_B;
+    omegaLocal_BN_B = omega_BN_B;
     Eigen::Vector3d rDotPcB_B;
     // omega PB is zero
     Eigen::Vector3d omega_PN_B = this->omega_BN_B;
@@ -238,7 +238,7 @@ void linearTranslationOneDOFStateEffector::updateEnergyMomContributions(double i
     rotAngMomPntCContr_B = this->IPntPc_B * omega_PN_B + this->mass*this->r_PcB_B.cross(rDotPcB_B);
 
     // - Find rotational energy contribution from the hub
-    rotEnergyContr = 1.0 / 2.0 * omega_PN_B.dot(this->IPntPc_B * omega_PN_B) + 1.0/2.0*this->mass*rDotPcB_B.dot(rDotPcB_B) + 1.0/2.0*this->k*this->rho*this->rho;
+    rotEnergyContr = 1.0/2.0*omega_PN_B.dot(this->IPntPc_B * omega_PN_B) + 1.0/2.0*this->mass*rDotPcB_B.dot(rDotPcB_B) + 1.0/2.0*this->k*this->rho*this->rho;
 
     return;
 }
