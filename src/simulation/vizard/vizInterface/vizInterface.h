@@ -80,8 +80,10 @@ public:
     std::vector<EventDialog *> eventDialogs={};   //!< [-] vector of dialog boxes to show
     std::string comProtocol;                    //!< Communication protocol to use when connecting to Vizard
     std::string comAddress;                     //!< Communication address to use when connecting to Vizard
-    std::string comPortNumber;                  //!< Communication port number to use when connecting to Vizard
-    
+    std::string reqPortNumber;                  //!< Communication port number to use when connecting to Vizard (REQ)
+    std::string pubPortNumber;                  //!< Communication port number to use when connecting to Vizard (PUB)
+    int vizComMode;                             //!< 0: broadcast only. 1: 2-way comm only. 2: 2-way comm and broadcast.
+
     ReadFunctor<EpochMsgPayload> epochInMsg;    //!< [-] simulation epoch date/time input msg
     MsgCurrStatus epochMsgStatus;                   //!< [-] ID of the epoch msg
     EpochMsgPayload epochMsgBuffer;                   //!< [-] epoch msg data
@@ -93,8 +95,10 @@ public:
 
 private:
     // ZeroMQ State
-    void* context;
+    void* requester_context;
     void* requester_socket;
+    void* publisher_context;
+    void* publisher_socket;
     int firstPass;                                          //!< Flag to intialize the viz at first timestep
 
     std::vector<MsgCurrStatus>spiceInMsgStatus;             //!< [-] status of the incoming planets' spice data messages

@@ -44,7 +44,8 @@ VizInterface::VizInterface()
     
     this->comProtocol = "tcp";
     this->comAddress = "localhost";
-    this->comPortNumber = "5556";
+    this->reqPortNumber = "5556";
+    this->pubPortNumber = "5557";
     
     return;
 }
@@ -71,16 +72,37 @@ void VizInterface::Reset(uint64_t CurrentSimNanos)
         for (size_t camCounter =0; camCounter<this->cameraConfInMsgs.size(); camCounter++) {
             this->bskImagePtrs[camCounter] = NULL;
         }
-        this->context = zmq_ctx_new();
-        this->requester_socket = zmq_socket(this->context, ZMQ_REQ);
-        zmq_connect(this->requester_socket, (this->comProtocol + "://" + this->comAddress + ":" + this->comPortNumber).c_str());
+
+        std::string text;
+
+        this->requester_context = zmq_ctx_new();
+        this->requester_socket = zmq_socket(this->requester_context, ZMQ_REQ);
+        assert(this->requester_socket);
+        text = this->comProtocol + "://" + this->comAddress + ":" + this->reqPortNumber;
+        //std::cout << text.c_str() << std::endl;
+        int twoWayConnect = zmq_connect(this->requester_socket, text.c_str());
+        if (twoWayConnect != 0){
+            text = "2-Way socket did not connect correctly.";
+            bskLogger.bskLog(BSK_ERROR, text.c_str());
+        }
+
+        this->publisher_context = zmq_ctx_new();
+        this->publisher_socket = zmq_socket(this->publisher_context, ZMQ_PUB);
+        text = this->comProtocol + "://" + this->comAddress + ":" + this->pubPortNumber;
+        //std::cout << text.c_str() << std::endl;
+        int broadcastConnect = zmq_bind(this->publisher_socket, text.c_str());
+        if (broadcastConnect != 0){
+            text = "Broadcast socket did not connect correctly.";
+            bskLogger.bskLog(BSK_ERROR, text.c_str());
+        }
 
         void* message = malloc(4 * sizeof(char));
         memcpy(message, "PING", 4);
         zmq_msg_t request;
 
-        std::string text;
-        text = "Waiting for Vizard at " + this->comProtocol + "://" + this->comAddress + ":" + this->comPortNumber;
+        text = "Broadcasting at " + this->comProtocol + "://" + this->comAddress + ":" + this->pubPortNumber;
+        bskLogger.bskLog(BSK_INFORMATION, text.c_str());
+        text = "Waiting for Vizard at " + this->comProtocol + "://" + this->comAddress + ":" + this->reqPortNumber;
         bskLogger.bskLog(BSK_INFORMATION, text.c_str());
 
         zmq_msg_init_data(&request, message, 4, message_buffer_deallocate, NULL);
@@ -90,6 +112,8 @@ void VizInterface::Reset(uint64_t CurrentSimNanos)
         zmq_send (this->requester_socket, "PING", 4, 0);
         bskLogger.bskLog(BSK_INFORMATION, "Basilisk-Vizard connection made");
         zmq_msg_close(&request);
+
+        std::cout << "finished reset method" << std::endl;
     }
 
     std::vector<VizSpacecraftData>::iterator scIt;
@@ -1093,13 +1117,20 @@ void VizInterface::WriteProtobuffer(uint64_t CurrentSimNanos)
             zmq_msg_init_data(&request_header, header_message, 10, message_buffer_deallocate, NULL);
             zmq_msg_init(&empty_frame1);
             zmq_msg_init(&empty_frame2);
-            zmq_msg_init_data(&request_buffer, serialized_message,byteCount, message_buffer_deallocate, NULL);
+            zmq_msg_init_data(&request_buffer, serialized_message, byteCount, message_buffer_deallocate, NULL);
 
+            /*! - Send to 2-WAY (REQUESTER) buffer (5556) */
             zmq_msg_send(&request_header, this->requester_socket, ZMQ_SNDMORE);
             zmq_msg_send(&empty_frame1, this->requester_socket, ZMQ_SNDMORE);
             zmq_msg_send(&empty_frame2, this->requester_socket, ZMQ_SNDMORE);
             zmq_msg_send(&request_buffer, this->requester_socket, 0);
             
+            /*! - Send to BROADCAST (PUBLISHER) buffer (5557) */
+            zmq_msg_send(&request_header, this->publisher_socket, ZMQ_SNDMORE);
+            zmq_msg_send(&empty_frame1, this->publisher_socket, ZMQ_SNDMORE);
+            zmq_msg_send(&empty_frame2, this->publisher_socket, ZMQ_SNDMORE);
+            zmq_msg_send(&request_buffer, this->publisher_socket, 0);
+
             zmq_msg_close(&request_header);
             zmq_msg_close(&empty_frame1);
             zmq_msg_close(&empty_frame2);
