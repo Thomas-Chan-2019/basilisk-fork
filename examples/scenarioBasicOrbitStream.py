@@ -216,20 +216,17 @@ def run(show_plots, liveStream, liveUserInput, timeStep, orbitCase, useSpherical
 
     if liveStream:
         clockSync = simSynch.ClockSynch()
-        clockSync.accelFactor = 50.0
+        clockSync.accelFactor = 4.0
         scSim.AddModelToTask(simTaskName, clockSync)
 
-        # if this scenario is to interface with the BSK Viz, uncomment the following line
+        # Configure Vizard, using liveStream and liveUserInput options
         viz = vizSupport.enableUnityVisualization(scSim, simTaskName, scObject
                                             , liveStream=True
                                             , liveUserInput=True
                                             )
-        viz.settings.keyboardLiveInput = "asdfghjkl"
+        # Set key listeners
+        viz.settings.keyboardLiveInput = "abcd"
 
-        # set up recorder for user inputs
-        if liveUserInput:
-            userRec = viz.userInputMsg.recorder(macros.sec2nano(0.5))
-            scSim.AddModelToTask(simTaskName, userRec)
             
         panel1 = vizInterface.EventDialog()
         panel1.eventHandlerID = "Panel Name 1"
@@ -268,22 +265,32 @@ def run(show_plots, liveStream, liveUserInput, timeStep, orbitCase, useSpherical
     #
     scSim.InitializeSimulation()
 
-    #
-    #   configure a simulation stop time and execute the simulation run
-    #
-    scSim.ConfigureStopTime(simulationTime)
-    scSim.ExecuteSimulation()
+    incrementalStopTime = 0
 
-    # live user inputs do not affect sim states in this example, but they
-    # are recorded and can be printed out by uncommenting the line below.
-    if liveUserInput:
-        populatedKeyboardInputs = [x for x in userRec.keyboardInput if x]
-    #    print(*populatedInputs, sep = "\n")
+    while incrementalStopTime < simulationTime:
+        print(incrementalStopTime)
+        incrementalStopTime += simulationTimeStep
+        scSim.ConfigureStopTime(incrementalStopTime)
+        scSim.ExecuteSimulation()
 
-    # EventReply objects currently cannot be observed using a recorder
-    # (due to Swig / numpy array issues when elements are variable-length
-    # vectors), but the instantaneous EventReplys can be read using 
-    # msg.read()
+        # Retrieve copy of user input message from Vizard
+        userInputs = viz.userInputMsg.read()
+        keyInputs = userInputs.keyboardInput
+        eventInputs = userInputs.eventReplies
+
+        # Parse keyboard inputs
+        if 'a' in keyInputs:
+            print("key - A")
+        if 'b' in keyInputs:
+            print("key - B")
+
+        # Parse panel responses
+        for response in eventInputs:
+            if response.eventHandlerID == "Panel Name 1":
+                # Can add any other behavior here
+                print("Panel 1 response: " + response.reply)
+            if response.eventHandlerID == "Panel Name 2":
+                print("Panel 2 response: " + response.reply)
 
 
     #
