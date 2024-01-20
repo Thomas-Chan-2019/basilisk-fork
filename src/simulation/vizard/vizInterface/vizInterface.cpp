@@ -1126,10 +1126,15 @@ void VizInterface::WriteProtobuffer(uint64_t CurrentSimNanos)
             zmq_msg_send(&request_buffer, this->requester_socket, 0);
             
             /*! - Send to BROADCAST (PUBLISHER) buffer (5557) */
-            zmq_msg_send(&request_header, this->publisher_socket, ZMQ_SNDMORE);
+            /*zmq_msg_send(&request_header, this->publisher_socket, ZMQ_SNDMORE);
             zmq_msg_send(&empty_frame1, this->publisher_socket, ZMQ_SNDMORE);
             zmq_msg_send(&empty_frame2, this->publisher_socket, ZMQ_SNDMORE);
-            zmq_msg_send(&request_buffer, this->publisher_socket, 0);
+            zmq_msg_send(&request_buffer, this->publisher_socket, 0);*/
+            
+            zmq_send(this->publisher_socket, "SIM_UPDATE",10, ZMQ_SNDMORE);
+            zmq_send(this->publisher_socket, &request_buffer, byteCount, 0);
+            
+          
 
             zmq_msg_close(&request_header);
             zmq_msg_close(&empty_frame1);
