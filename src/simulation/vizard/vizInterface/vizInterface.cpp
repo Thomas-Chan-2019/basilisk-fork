@@ -1114,6 +1114,9 @@ void VizInterface::WriteProtobuffer(uint64_t CurrentSimNanos)
             void* header_message = malloc(10 * sizeof(char));
             memcpy(header_message, "SIM_UPDATE", 10);
             
+            zmq_send(this->publisher_socket, "SIM_UPDATE",10, ZMQ_SNDMORE);
+            zmq_send(this->publisher_socket, serialized_message, byteCount, 0);
+            
             zmq_msg_init_data(&request_header, header_message, 10, message_buffer_deallocate, NULL);
             zmq_msg_init(&empty_frame1);
             zmq_msg_init(&empty_frame2);
@@ -1131,8 +1134,7 @@ void VizInterface::WriteProtobuffer(uint64_t CurrentSimNanos)
             zmq_msg_send(&empty_frame2, this->publisher_socket, ZMQ_SNDMORE);
             zmq_msg_send(&request_buffer, this->publisher_socket, 0);*/
             
-            zmq_send(this->publisher_socket, "SIM_UPDATE",10, ZMQ_SNDMORE);
-            zmq_send(this->publisher_socket, &request_buffer, byteCount, 0);
+
             
           
 
