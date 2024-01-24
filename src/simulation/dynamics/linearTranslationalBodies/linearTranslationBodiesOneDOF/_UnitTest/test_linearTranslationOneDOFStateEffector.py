@@ -146,7 +146,7 @@ def translatingBody(show_plots, cmdForce, lock, rhoRef):
     translationRef.rhoDot = 0.0
     translationRefMsg = messaging.TranslatingRigidBodyMsg().write(translationRef)
     translatingBody.translatingBodyRefInMsg.subscribeTo(translationRefMsg)
- 
+
     # # Create the force cmd force message
     # cmdArray = messaging.ArrayMotorForceMsgPayload()
     # cmdArray.motorForce = [cmdForce]  # [Nm]

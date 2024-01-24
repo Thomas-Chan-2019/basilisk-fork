@@ -251,7 +251,7 @@ void linearTranslationOneDOFStateEffector::updateEnergyMomContributions(double i
     rotAngMomPntCContr_B = this->IPntPc_B * omega_PN_B + this->mass*this->r_PcB_B.cross(rDotPcB_B);
 
     // - Find rotational energy contribution from the hub
-    rotEnergyContr = 1.0/2.0*omega_PN_B.dot(this->IPntPc_B * omega_PN_B) + 1.0/2.0*this->mass*rDotPcB_B.dot(rDotPcB_B) + 1.0/2.0*this->k*this->rho*this->rho;
+    rotEnergyContr = 1.0/2.0*omega_PN_B.dot(this->IPntPc_B * omega_PN_B) + 1.0/2.0*this->mass*rDotPcB_B.dot(rDotPcB_B) + 1.0/2.0*this->k*(this->rho-this->rhoRef)*(this->rho-this->rhoRef);
 
     return;
 }

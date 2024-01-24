@@ -269,7 +269,7 @@ def spinningBody(show_plots, cmdTorque, lock, thetaRef):
             testMessages.append(
                 "FAILED: Spinning Body integrated test failed rotational angular momentum unit test")
 
-    # Only check rotational energy if no torques and no damping are applied
+    # Only check rotational energy if no torques and no damping are applied (nonconservative forces)
     if cmdTorque == 0.0 and thetaRef == 0.0:
         for i in range(0, len(initialRotEnergy)):
             # check a vector values
