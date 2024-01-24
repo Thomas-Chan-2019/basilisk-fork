@@ -49,7 +49,7 @@ from Basilisk.architecture import messaging
 @pytest.mark.parametrize("cmdForce, lock, rhoRef", [
     (0.0, False, 0.0),
     (0.0, True, 0.0),
-    (1.0, False, 2.0),
+    (1.0, False, 0.0),
     (0.0, False, 5.0)])
 def test_translatingBody(show_plots, cmdForce, lock, rhoRef):
     r"""
@@ -111,9 +111,9 @@ def translatingBody(show_plots, cmdForce, lock, rhoRef):
     translatingBody = linearTranslationOneDOFStateEffector.linearTranslationOneDOFStateEffector()
 
     # Define properties of spinning body
-    translatingBody.mass = 50.0
-    translatingBody.rhoInit = 20.0
-    translatingBody.rhoDotInit = 2.0
+    translatingBody.mass = 20.0
+    translatingBody.rhoInit = 1.0
+    translatingBody.rhoDotInit = 0.05
     translatingBody.pHat_B = [[3.0/5.0], [4.0/5.0], [0.0]]
     translatingBody.r_PcP_P = [[-1.0], [1.0], [0.0]]
     translatingBody.r_P0B_B = [[-5.0], [4.0], [3.0]]
@@ -123,11 +123,11 @@ def translatingBody(show_plots, cmdForce, lock, rhoRef):
     translatingBody.dcm_PB = [[0.0, -1.0, 0.0],
                               [0.0, 0.0, -1.0],
                               [1.0, 0.0, 0.0]]
-    translatingBody.k = 1.0
+    translatingBody.k = 100.0
     if lock:
         translatingBody.rhoDotInit = 0
     if rhoRef != 0.0:
-        translatingBody.c = 50
+        translatingBody.c = 30
     translatingBody.ModelTag = "translatingBody"
 
     # Add spinning body to spacecraft
@@ -242,13 +242,13 @@ def translatingBody(show_plots, cmdForce, lock, rhoRef):
     plt.clf()
     plt.plot(rhoData.times() * 1e-9, rho)
     plt.xlabel('time (s)')
-    plt.ylabel('theta')
+    plt.ylabel('rho')
 
     plt.figure()
     plt.clf()
     plt.plot(rhoData.times() * 1e-9, rhoDot)
     plt.xlabel('time (s)')
-    plt.ylabel('thetaDot')
+    plt.ylabel('rhoDot')
 
     if show_plots:
         plt.show()
@@ -289,11 +289,11 @@ def translatingBody(show_plots, cmdForce, lock, rhoRef):
             testFailCount += 1
             testMessages.append("FAILED: Translating Body integrated test failed orbital energy unit test")
 
-# if damper given
+    # if damper given
     if rhoRef != 0.0:
         if not unitTestSupport.isDoubleEqual(rho[-1], rhoRef, 0.01):
             testFailCount += 1
-            testMessages.append("FAILED: Spinning Body integrated test failed angle convergence unit test")
+            testMessages.append("FAILED: Translating Body integrated test failed angle convergence unit test")
 
     if testFailCount == 0:
         print("PASSED: " + " Translating Body gravity integrated test")
@@ -305,4 +305,4 @@ def translatingBody(show_plots, cmdForce, lock, rhoRef):
 
 
 if __name__ == "__main__":
-    translatingBody(True,0.0,False,0.0)
+    translatingBody(True,0.0,False,0.5)

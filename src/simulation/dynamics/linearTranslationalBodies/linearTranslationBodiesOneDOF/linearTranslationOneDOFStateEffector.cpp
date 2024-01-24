@@ -192,7 +192,8 @@ void linearTranslationOneDOFStateEffector::updateContributions(double integTime,
         this->bRho = this->pHat_B.transpose()*this->rTilde_PcB_B;
         //  cRho
         // DOUBLE CHECK
-        cRho = this->motorForce + 1.0/(this->mass)*(this->pHat_B.transpose() * F_g - this->k*this->rho - this->c*this->rhoDot
+        cRho = 1.0/(this->mass)*(this->pHat_B.transpose() * F_g + this->motorForce
+                - this->k*(this->rho - this->rhoRef) - this->c*(this->rhoDot - this->rhoDotRef)
                      - 2 * this->mass*this->pHat_B.transpose() * (omegaTilde_BN_B_local * this->rPrime_PcB_B)
                                - this->mass*this->pHat_B.transpose() * (omegaTilde_BN_B_local*omegaTilde_BN_B_local*this->r_PcB_B));
    }
