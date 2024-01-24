@@ -1,7 +1,7 @@
 /*
  ISC License
 
- Copyright (c) 2016, Autonomous Vehicle Systems Lab, University of Colorado at Boulder
+ Copyright (c) 2023, Autonomous Vehicle Systems Lab, University of Colorado at Boulder
 
  Permission to use, copy, modify, and/or distribute this software for any
  purpose with or without fee is hereby granted, provided that the above
@@ -93,7 +93,7 @@ void linearTranslationOneDOFStateEffector::registerStates(DynParamManager& state
 
 void linearTranslationOneDOFStateEffector::writeOutputStateMessages(uint64_t CurrentSimNanos)
 {
-    // Write out the spinning body output messages
+    // Write out the translating body output messages
     if (this->translatingBodyOutMsg.isLinked()) {
         TranslatingRigidBodyMsgPayload translatingBodyBuffer;
         translatingBodyBuffer = this->translatingBodyOutMsg.zeroMsgPayload;
@@ -102,7 +102,7 @@ void linearTranslationOneDOFStateEffector::writeOutputStateMessages(uint64_t Cur
         this->translatingBodyOutMsg.write(&translatingBodyBuffer, this->moduleID, CurrentSimNanos);
     }
 
-    // Write out the spinning body state config log message
+    // Write out the translating body state config log message
     if (this->translatingBodyConfigLogOutMsg.isLinked()) {
         SCStatesMsgPayload configLogMsg;
         configLogMsg = this->translatingBodyConfigLogOutMsg.zeroMsgPayload;
@@ -135,6 +135,13 @@ void linearTranslationOneDOFStateEffector::updateEffectorMassProps(double integT
 	this->IPntPc_B = this->dcm_PB.transpose()*this->IPntPc_P*this->dcm_PB;
 	this->effProps.IEffPntB_B = this->IPntPc_B + this->mass * this->rTilde_PcB_B * this->rTilde_PcB_B.transpose();
 
+    // Lock the axis if the flag is set to 1
+    if (this->lockFlag == 1)
+    {
+        Eigen::MatrixXd zeroMatrix = Eigen::MatrixXd::Constant(1, 1, 0.0);
+        this->rhoDotState->setState(zeroMatrix);
+    }
+
 	// - Grab rhoDot from the stateManager and define rPrime_PcB_B
 	this->rhoDot = this->rhoDotState->getState()(0, 0);
 	this->rPrime_PcB_B = this->rhoDot * this->pHat_B;
@@ -152,7 +159,7 @@ void linearTranslationOneDOFStateEffector::updateEffectorMassProps(double integT
 /*! This method is for the translating body to add its contributions to the back-sub method */
 void linearTranslationOneDOFStateEffector::updateContributions(double integTime, BackSubMatrices & backSubContr, Eigen::Vector3d sigma_BN, Eigen::Vector3d omega_BN_B, Eigen::Vector3d g_N)
 {
-    // - Find dcm_BN UNALTERED
+    // - Find dcm_BN
     Eigen::MRPd sigmaLocal_BN;
     Eigen::Matrix3d dcm_BN;
     Eigen::Matrix3d dcm_NB;
@@ -170,19 +177,25 @@ void linearTranslationOneDOFStateEffector::updateContributions(double integTime,
     g_B = dcm_BN*gLocal_N;
     F_g = this->mass*g_B;
 
-	//  aRho
-    this->aRho = -this->pHat_B.transpose();
-
-    //  bRho
-    this->bRho = this->pHat_B.transpose()*this->rTilde_PcB_B;
-
-    //  cRho
-    // grabbing omega
-    Eigen::Vector3d omega_BN_B_local = omega_BN_B;
-    Eigen::Matrix3d omegaTilde_BN_B_local = eigenTilde(omega_BN_B_local);
-	cRho = 1.0/(this->mass)*(this->pHat_B.transpose() * F_g - this->k*this->rho - this->c*this->rhoDot
-		         - 2 * this->mass*this->pHat_B.transpose() * (omegaTilde_BN_B_local * this->rPrime_PcB_B)
-		                   - this->mass*this->pHat_B.transpose() * (omegaTilde_BN_B_local*omegaTilde_BN_B_local*this->r_PcB_B));
+    // a b and c are zero if lock flag is 1
+    Eigen::Matrix3d omegaTilde_BN_B_local = eigenTilde(omega_BN_B);
+    if (this->lockFlag == 1)
+    {
+        this->aRho.setZero();
+        this->bRho.setZero();
+        this->cRho = 0.0;
+    }
+    else {
+        //  aRho
+        this->aRho = -this->pHat_B.transpose();
+        //  bRho
+        this->bRho = this->pHat_B.transpose()*this->rTilde_PcB_B;
+        //  cRho
+        // DOUBLE CHECK
+        cRho = this->motorForce + 1.0/(this->mass)*(this->pHat_B.transpose() * F_g - this->k*this->rho - this->c*this->rhoDot
+                     - 2 * this->mass*this->pHat_B.transpose() * (omegaTilde_BN_B_local * this->rPrime_PcB_B)
+                               - this->mass*this->pHat_B.transpose() * (omegaTilde_BN_B_local*omegaTilde_BN_B_local*this->r_PcB_B));
+   }
 
 	// - Compute matrix/vector contributions, this excludes the general contributions
 	backSubContr.matrixA = this->mass*this->pHat_B*this->aRho.transpose();
@@ -295,30 +308,29 @@ void linearTranslationOneDOFStateEffector::computeTranslatingBodyInertialStates(
 /*! This method is used so that the simulation will ask SB to update messages */
 void linearTranslationOneDOFStateEffector::UpdateState(uint64_t CurrentSimNanos)
 {
-    ////! - Read the incoming command array
-    //if (this->motorTorqueInMsg.isLinked() && this->motorTorqueInMsg.isWritten()) {
-    //    ArrayMotorTorqueMsgPayload incomingCmdBuffer;
-    //    incomingCmdBuffer = this->motorTorqueInMsg();
-    //    this->u = incomingCmdBuffer.motorTorque[0];
-    //}
+    //! - Read the incoming command array
+    if (this->motorForceInMsg.isLinked() && this->motorForceInMsg.isWritten()) {
+        ArrayMotorForceMsgPayload incomingCmdBuffer;
+        incomingCmdBuffer = this->motorForceInMsg();
+        this->motorForce = incomingCmdBuffer.motorForce[0];
+    }
 
-    ////! - Read the incoming lock command array
-    //if (this->motorLockInMsg.isLinked() && this->motorLockInMsg.isWritten()) {
-    //    ArrayEffectorLockMsgPayload incomingLockBuffer;
-    //    incomingLockBuffer = this->motorLockInMsg();
-    //    this->lockFlag = incomingLockBuffer.effectorLockFlag[0];
-    //}
+    //! - Read the incoming lock command array
+    if (this->LockInMsg.isLinked() && this->LockInMsg.isWritten()) {
+        ArrayEffectorLockMsgPayload incomingLockBuffer;
+        incomingLockBuffer = this->LockInMsg();
+        this->lockFlag = incomingLockBuffer.effectorLockFlag[0];
+    }
 
-    ////! - Read the incoming angle command array
-    //if (this->spinningBodyRefInMsg.isLinked() && this->spinningBodyRefInMsg.isWritten()) {
-    //    HingedRigidBodyMsgPayload incomingRefBuffer;
-    //    incomingRefBuffer = this->spinningBodyRefInMsg();
-    //    this->thetaRef = incomingRefBuffer.theta;
-    //    this->thetaDotRef = incomingRefBuffer.thetaDot;
-    //}
+    //! - Read the incoming angle command array
+    if (this->translatingBodyRefInMsg.isLinked() && this->translatingBodyRefInMsg.isWritten()) {
+        TranslatingRigidBodyMsgPayload incomingRefBuffer;
+        incomingRefBuffer = this->translatingBodyRefInMsg();
+        this->rhoRef = incomingRefBuffer.rho;
+        this->rhoDotRef = incomingRefBuffer.rhoDot;
+    }
 
-    /* Compute spinning body inertial states */
+    /* Compute translating body inertial states */
     this->computeTranslatingBodyInertialStates();
-
     this->writeOutputStateMessages(CurrentSimNanos);
 }

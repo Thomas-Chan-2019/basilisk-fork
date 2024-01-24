@@ -1,7 +1,7 @@
 
 # ISC License
 #
-# Copyright (c) 2022, Autonomous Vehicle Systems Lab, University of Colorado at Boulder
+# Copyright (c) 2023, Autonomous Vehicle Systems Lab, University of Colorado at Boulder
 #
 # Permission to use, copy, modify, and/or distribute this software for any
 # purpose with or without fee is hereby granted, provided that the above
@@ -18,9 +18,9 @@
 
 #
 #   Unit Test Script
-#   Module Name:        spinningBodies
-#   Author:             João Vaz Carneiro
-#   Creation Date:      September 15, 2022
+#   Module Name:        translating Bodies
+#   Author:             Peter Johnson
+#   Creation Date:      December 3, 2023
 #
 
 import inspect
@@ -39,24 +39,24 @@ from Basilisk.simulation import spacecraft, linearTranslationOneDOFStateEffector
 from Basilisk.architecture import messaging
 
 
-# uncomment this line is this test is to be skipped in the global unit test run, adjust message as needed
+# uncomment this line if this test is to be skipped in the global unit test run, adjust message as needed
 # @pytest.mark.skipif(conditionstring)
 # uncomment this line if this test has an expected failure, adjust message as needed
-# @pytest.mark.xfail() # need to update how the RW states are defined
+# @pytest.mark.xfail()
 # provide a unique test method name, starting with test_
 
 # runs 4 tests, each time changing the input
-# rhoref, command force?
-@pytest.mark.parametrize("rhoRef", [(0.0),
-                                    (2.0),
-                                    (5.0)])
-def test_translatingBody(show_plots, rhoRef):
+@pytest.mark.parametrize("cmdForce, lock, rhoRef", [
+    (0.0, False, 0.0),
+    (0.0, True, 0.0),
+    (1.0, False, 2.0),
+    (0.0, False, 5.0)])
+def test_translatingBody(show_plots, cmdForce, lock, rhoRef):
     r"""
     **Validation Test Description**
 
-    This unit test sets up a spacecraft with a single-axis rotating rigid body attached to a rigid hub. The spinning
-    body's center of mass is off-center from the spinning axis and the position of the axis is arbitrary. The scenario
-    includes gravity acting on both the spacecraft and the effector.
+    This unit test sets up a spacecraft with a single-axis translating rigid body attached to a rigid hub. The position
+    of the boom axis is arbitrary. The scenario includes gravity acting on both the spacecraft and the effector.
 
     **Description of Variables Being Tested**
 
@@ -69,13 +69,13 @@ def test_translatingBody(show_plots, rhoRef):
     - ``finalRotAngMom``
     - ``finalRotEnergy``
 
-    against their initial values.
+    should be constant when tested against their initial values.
     """
-    [testResults, testMessage] = translatingBody(show_plots, rhoRef)
+    [testResults, testMessage] = translatingBody(show_plots, cmdForce, lock, rhoRef)
     assert testResults < 1, testMessage
 
-
-def translatingBody(show_plots, rhoRef):
+# NEED TO ADD FLAGS BACK IN (REF SPINNING BODIES)
+def translatingBody(show_plots, cmdForce, lock, rhoRef):
     __tracebackhide__ = True
 
     testFailCount = 0  # zero unit test result counter
@@ -114,7 +114,6 @@ def translatingBody(show_plots, rhoRef):
     translatingBody.mass = 50.0
     translatingBody.rhoInit = 20.0
     translatingBody.rhoDotInit = 2.0
-    # how do we actually define phat in the B frame? seems hard
     translatingBody.pHat_B = [[3.0/5.0], [4.0/5.0], [0.0]]
     translatingBody.r_PcP_P = [[-1.0], [1.0], [0.0]]
     translatingBody.r_P0B_B = [[-5.0], [4.0], [3.0]]
@@ -125,17 +124,34 @@ def translatingBody(show_plots, rhoRef):
                               [0.0, 0.0, -1.0],
                               [1.0, 0.0, 0.0]]
     translatingBody.k = 1.0
+    if lock:
+        translatingBody.rhoDotInit = 0
+    if rhoRef != 0.0:
+        translatingBody.c = 50
     translatingBody.ModelTag = "translatingBody"
 
     # Add spinning body to spacecraft
     scObject.addStateEffector(translatingBody)
 
-    # # Create the reference message
-    # translationRef = messaging.TranslatingRigidBodyMsgPayload()
-    # translationRef.rho = rhoRef
-    # translationRef.rhoDot = 0.0
-    # translationRefMsg = messaging.HingedRigidBodyMsg().write(translationRef)
-    # translatingBody.translatingBodyRefInMsg.subscribeTo(translationRefMsg)
+    # create lock message
+    if lock:
+        lockArray = messaging.ArrayEffectorLockMsgPayload()
+        lockArray.effectorLockFlag = [1]
+        lockMsg = messaging.ArrayEffectorLockMsg().write(lockArray)
+        translatingBody.LockInMsg.subscribeTo(lockMsg)
+
+    # Create the reference message
+    translationRef = messaging.TranslatingRigidBodyMsgPayload()
+    translationRef.rho = rhoRef
+    translationRef.rhoDot = 0.0
+    translationRefMsg = messaging.TranslatingRigidBodyMsg().write(translationRef)
+    translatingBody.translatingBodyRefInMsg.subscribeTo(translationRefMsg)
+ 
+    # # Create the force cmd force message
+    # cmdArray = messaging.ArrayMotorForceMsgPayload()
+    # cmdArray.motorForce = [cmdForce]  # [Nm]
+    # cmdMsg = messaging.ArrayMotorForceMsg().write(cmdArray)
+    # translatingBody.motorForceInMsg.subscribeTo(cmdMsg)
 
     # Add test module to runtime call list
     unitTestSim.AddModelToTask(unitTaskName, translatingBody)
@@ -259,13 +275,13 @@ def translatingBody(show_plots, rhoRef):
             testMessages.append(
                 "FAILED: Translating Body integrated test failed rotational angular momentum unit test")
 
-    # # Only check rotational energy if no torques and no damping are applied
-    # if cmdTorque == 0.0 and thetaRef == 0.0:
-    for i in range(0, len(initialRotEnergy)):
-        # check a vector values
-        if not unitTestSupport.isArrayEqualRelative(finalRotEnergy[i], initialRotEnergy[i], 1, accuracy):
-            testFailCount += 1
-            testMessages.append("FAILED: Translating Body integrated test failed rotational energy unit test")
+    # Only check rotational energy if no damping and no forces are applied (WHY) cmdForce needed here
+    if cmdForce == 0 and rhoRef == 0.0:
+        for i in range(0, len(initialRotEnergy)):
+            # check a vector values
+            if not unitTestSupport.isArrayEqualRelative(finalRotEnergy[i], initialRotEnergy[i], 1, accuracy):
+                testFailCount += 1
+                testMessages.append("FAILED: Translating Body integrated test failed rotational energy unit test")
 
     for i in range(0, len(initialOrbEnergy)):
         # check a vector values
@@ -274,10 +290,10 @@ def translatingBody(show_plots, rhoRef):
             testMessages.append("FAILED: Translating Body integrated test failed orbital energy unit test")
 
 # if damper given
-    # if thetaRef != 0.0:
-    #     if not unitTestSupport.isDoubleEqual(theta[-1], thetaRef, 0.01):
-    #         testFailCount += 1
-    #         testMessages.append("FAILED: Spinning Body integrated test failed angle convergence unit test")
+    if rhoRef != 0.0:
+        if not unitTestSupport.isDoubleEqual(rho[-1], rhoRef, 0.01):
+            testFailCount += 1
+            testMessages.append("FAILED: Spinning Body integrated test failed angle convergence unit test")
 
     if testFailCount == 0:
         print("PASSED: " + " Translating Body gravity integrated test")
@@ -289,4 +305,4 @@ def translatingBody(show_plots, rhoRef):
 
 
 if __name__ == "__main__":
-    translatingBody(True, 0.0)
+    translatingBody(True,0.0,False,0.0)

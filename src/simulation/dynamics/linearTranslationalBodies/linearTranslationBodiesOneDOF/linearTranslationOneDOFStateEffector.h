@@ -26,6 +26,8 @@
 #include "architecture/utilities/avsEigenMRP.h"
 #include "architecture/utilities/bskLogging.h"
 
+#include "architecture/msgPayloadDefC/ArrayMotorForceMsgPayload.h"
+#include "architecture/msgPayloadDefC/ArrayEffectorLockMsgPayload.h"
 #include "architecture/msgPayloadDefC/SCStatesMsgPayload.h"
 #include "architecture/msgPayloadDefC/TranslatingRigidBodyMsgPayload.h"
 #include "architecture/messaging/messaging.h"
@@ -50,29 +52,36 @@ public:
 
 //
 	Eigen::Vector3d pHat_B;         //!< -- spinning axis in B frame components.
-    Eigen::Vector3d r_PcP_P;       //!< [m] vector pointing from location P0 along pHat to P_C in p frame components
+    Eigen::Vector3d r_PcP_P;        //!< [m] vector pointing from location P0 along pHat to P_C in p frame components
     Eigen::Vector3d r_P0B_B;        //!< [m] vector pointing from body frame B origin to point p0 origin of p frame in B frame components
     Eigen::Matrix3d IPntPc_P;       //!< [kg-m^2] Inertia of pc about point p in p frame component
     Eigen::Matrix3d dcm_PB;         //!< -- DCM from the p frame to the body frame
 //
 
-    Message<TranslatingRigidBodyMsgPayload> translatingBodyOutMsg;      //!< state output message
-    Message<SCStatesMsgPayload> translatingBodyConfigLogOutMsg;         //!< translating body state config log message
+    Message<TranslatingRigidBodyMsgPayload> translatingBodyOutMsg;        //!< state output message
+    Message<SCStatesMsgPayload> translatingBodyConfigLogOutMsg;           //!< translating body state config log message
+    ReadFunctor<ArrayMotorForceMsgPayload> motorForceInMsg;               //!< -- (optional) motor force input message
+    ReadFunctor<TranslatingRigidBodyMsgPayload> translatingBodyRefInMsg;  //!< -- (optional) reference state input message
+    ReadFunctor<ArrayEffectorLockMsgPayload> LockInMsg;                   //!< -- (optional) lock flag input message
 
 private:
+    int lockFlag = 0;                   //!< [] flag for locking the translation axis
     double cRho;                        //!< -- Term needed for back-sub method
 
     double rho;                         //!< [m] displacement from equilibrium
     double rhoDot;                      //!< [m/s] time derivative of displacement from equilibrium
-    Eigen::Vector3d r_PcB_B;            //!< [m] position vector form B to center of mass location of effector
-    Eigen::Vector3d r_PcP0_B;           //!< [m] vector pointing from body frame B origin to point p0 origin of p frame in B frame components
+    double rhoRef = 0.0;                //!< [m] translating body reference position
+    double rhoDotRef = 0.0;             //!< [m/s] translating body reference velocity
+    double motorForce = 0.0;            //!< [N] optional motor force
+    Eigen::Vector3d r_PcB_B;            //!< [m] position vector from B to center of mass location of effector
+    Eigen::Vector3d r_PcP0_B;           //!< [m] vector pointing from point p0 origin of p frame to center of mass location of effector in B frame components
     Eigen::Matrix3d rTilde_PcP_B;       //!< [m] tilde matrix of r_PcP_B
 	Eigen::Vector3d rPrime_PcP_B;       //!< [m/s] Body time derivative of r_PcP_B
 	Eigen::Matrix3d rPrimeTilde_PcP_B;  //!< [m/s] Tilde matrix of rPrime_PcP_B
 	Eigen::Matrix3d rTilde_PcB_B;       //!< [m] tilde matrix of r_PcB_B
 	Eigen::Vector3d rPrime_PcB_B;       //!< [m/s] Body time derivative of r_PcB_B
 	Eigen::Matrix3d rPrimeTilde_PcB_B;  //!< [m/s] Tilde matrix of rPrime_PcB_B
-	Eigen::Matrix3d IPntPc_B;           //!< [kg-m^2] Inertia of Pc about point B in B frame component
+	Eigen::Matrix3d IPntPc_B;           //!< [kg-m^2] Inertia of Pc about point B in B frame components
 	Eigen::Matrix3d dcm_BN;             //!< -- DCM from the B frame to the N frame
     Eigen::Vector3d omega_BN_B;         //!< [rad/s] angular velocity of the B frame wrt the N frame in B frame components.
     Eigen::Matrix3d omegaTilde_BN_B;    //!< [rad/s] tilde matrix of omega_BN_B
@@ -83,7 +92,7 @@ private:
     Eigen::Vector3d bRho;          //!< -- Term needed for back-sub method
 
     Eigen::MatrixXd *g_N;          //!< [m/s^2] Gravitational acceleration in N frame components
-	StateData *rhoState;		   //!< -- state data for spring mass damper displacement from equilibrium
+	StateData *rhoState;		   //!< -- state data for displacement from equilibrium
     Eigen::MatrixXd *c_B;          //!< [m] Vector from point B to CoM of s/c in B frame components
     Eigen::MatrixXd *cPrime_B;     //!< [m/s] Body time derivative of vector c_B in B frame components
 	StateData *rhoDotState;		   //!< -- state data for time derivative of rho;
