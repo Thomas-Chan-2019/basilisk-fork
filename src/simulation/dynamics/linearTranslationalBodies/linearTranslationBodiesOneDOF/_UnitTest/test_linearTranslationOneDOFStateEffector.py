@@ -74,7 +74,6 @@ def test_translatingBody(show_plots, cmdForce, lock, rhoRef):
     [testResults, testMessage] = translatingBody(show_plots, cmdForce, lock, rhoRef)
     assert testResults < 1, testMessage
 
-# NEED TO ADD FLAGS BACK IN (REF SPINNING BODIES)
 def translatingBody(show_plots, cmdForce, lock, rhoRef):
     __tracebackhide__ = True
 
@@ -110,7 +109,7 @@ def translatingBody(show_plots, cmdForce, lock, rhoRef):
     # Create two hinged rigid bodies
     translatingBody = linearTranslationOneDOFStateEffector.linearTranslationOneDOFStateEffector()
 
-    # Define properties of spinning body
+    # Define properties of translating body
     translatingBody.mass = 20.0
     translatingBody.rhoInit = 1.0
     translatingBody.rhoDotInit = 0.05
@@ -130,7 +129,7 @@ def translatingBody(show_plots, cmdForce, lock, rhoRef):
         translatingBody.c = 30
     translatingBody.ModelTag = "translatingBody"
 
-    # Add spinning body to spacecraft
+    # Add translating body to spacecraft
     scObject.addStateEffector(translatingBody)
 
     # create lock message
@@ -147,11 +146,11 @@ def translatingBody(show_plots, cmdForce, lock, rhoRef):
     translationRefMsg = messaging.TranslatingRigidBodyMsg().write(translationRef)
     translatingBody.translatingBodyRefInMsg.subscribeTo(translationRefMsg)
 
-    # # Create the force cmd force message
-    # cmdArray = messaging.ArrayMotorForceMsgPayload()
-    # cmdArray.motorForce = [cmdForce]  # [Nm]
-    # cmdMsg = messaging.ArrayMotorForceMsg().write(cmdArray)
-    # translatingBody.motorForceInMsg.subscribeTo(cmdMsg)
+    # Create the force cmd force message
+    cmdArray = messaging.ArrayMotorForceMsgPayload()
+    cmdArray.motorForce = [cmdForce]  # [Nm]
+    cmdMsg = messaging.ArrayMotorForceMsg().write(cmdArray)
+    translatingBody.motorForceInMsg.subscribeTo(cmdMsg)
 
     # Add test module to runtime call list
     unitTestSim.AddModelToTask(unitTaskName, translatingBody)
