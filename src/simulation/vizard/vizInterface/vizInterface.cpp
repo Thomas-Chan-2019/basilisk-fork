@@ -82,17 +82,20 @@ void VizInterface::Reset(uint64_t CurrentSimNanos)
         //std::cout << text.c_str() << std::endl;
         int twoWayConnect = zmq_connect(this->requester_socket, text.c_str());
         if (twoWayConnect != 0){
-            text = "2-Way socket did not connect correctly.";
+            int error_code = zmq_errno();
+            text = "2-way socket did not connect correctly. ZMQ error code: " + std::to_string(error_code);
             bskLogger.bskLog(BSK_ERROR, text.c_str());
         }
 
         this->publisher_context = zmq_ctx_new();
         this->publisher_socket = zmq_socket(this->publisher_context, ZMQ_PUB);
+        assert(this->publisher_socket);
         text = this->comProtocol + "://" + this->comAddress + ":" + this->pubPortNumber;
         //std::cout << text.c_str() << std::endl;
         int broadcastConnect = zmq_bind(this->publisher_socket, text.c_str());
         if (broadcastConnect != 0){
-            text = "Broadcast socket did not connect correctly.";
+            int error_code = zmq_errno();
+            text = "Broadcast socket did not connect correctly. ZMQ error code: " + std::to_string(error_code);
             bskLogger.bskLog(BSK_ERROR, text.c_str());
         }
 
