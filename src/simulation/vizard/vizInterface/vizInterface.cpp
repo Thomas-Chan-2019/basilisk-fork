@@ -45,8 +45,8 @@ VizInterface::VizInterface()
     this->comProtocol = "tcp";
     this->comAddress = "localhost";
     this->reqPortNumber = "5556";
-    this->pubPortNumber = "5557";
-    
+    this->pubPortNumber = "5570";
+
     return;
 }
 
