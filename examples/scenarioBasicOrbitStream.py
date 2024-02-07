@@ -256,6 +256,7 @@ def run(show_plots, liveStream, liveUserInput, timeStep, orbitCase, useSpherical
         viz.eventDialogs.append(panel1)
         viz.eventDialogs.append(panel2)
 
+        viz.broadcastSettingsSendDelay = 1
 
     #
     #   initialize Simulation:  This function clears the simulation log, and runs the self_init()
@@ -268,7 +269,7 @@ def run(show_plots, liveStream, liveUserInput, timeStep, orbitCase, useSpherical
     incrementalStopTime = 0
 
     while incrementalStopTime < simulationTime:
-        print(incrementalStopTime)
+        print("Time: " + str(incrementalStopTime))
         incrementalStopTime += simulationTimeStep
         scSim.ConfigureStopTime(incrementalStopTime)
         scSim.ExecuteSimulation()

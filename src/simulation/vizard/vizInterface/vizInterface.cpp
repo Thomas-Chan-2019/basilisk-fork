@@ -40,6 +40,9 @@ VizInterface::VizInterface()
     this->liveUserInput = false;
     this->FrameNumber= -1;
 
+    this->settingsSendTime = time(0);
+    this->broadcastSettingsSendDelay = 2;
+
     this->firstPass = 0;
     
     this->comProtocol = "tcp";
@@ -79,7 +82,6 @@ void VizInterface::Reset(uint64_t CurrentSimNanos)
         this->requester_socket = zmq_socket(this->requester_context, ZMQ_REQ);
         assert(this->requester_socket);
         text = this->comProtocol + "://" + this->comAddress + ":" + this->reqPortNumber;
-        //std::cout << text.c_str() << std::endl;
         int twoWayConnect = zmq_connect(this->requester_socket, text.c_str());
         if (twoWayConnect != 0){
             int error_code = zmq_errno();
@@ -91,7 +93,6 @@ void VizInterface::Reset(uint64_t CurrentSimNanos)
         this->publisher_socket = zmq_socket(this->publisher_context, ZMQ_PUB);
         assert(this->publisher_socket);
         text = this->comProtocol + "://" + this->comAddress + ":" + this->pubPortNumber;
-        //std::cout << text.c_str() << std::endl;
         int broadcastConnect = zmq_bind(this->publisher_socket, text.c_str());
         if (broadcastConnect != 0){
             int error_code = zmq_errno();
@@ -115,8 +116,6 @@ void VizInterface::Reset(uint64_t CurrentSimNanos)
         zmq_send (this->requester_socket, "PING", 4, 0);
         bskLogger.bskLog(BSK_INFORMATION, "Basilisk-Vizard connection made");
         zmq_msg_close(&request);
-
-        std::cout << "finished reset method" << std::endl;
     }
 
     std::vector<VizSpacecraftData>::iterator scIt;
@@ -472,8 +471,11 @@ void VizInterface::WriteProtobuffer(uint64_t CurrentSimNanos)
 {
     vizProtobufferMessage::VizMessage* message = new vizProtobufferMessage::VizMessage;
 
-    /*! Send the Vizard settings once */
-    if (this->settings.dataFresh) {
+    /*! Send the Vizard settings according to interval set by broadcastSettingsSendDelay field */
+    int64_t now = time(0);
+    if (this->settings.dataFresh || (now - this->settingsSendTime) >= this->broadcastSettingsSendDelay) {
+        std::cout << "sending broadcast settings" << std::endl;
+
         vizProtobufferMessage::VizMessage::VizSettingsPb* vizSettings;
         vizSettings = new vizProtobufferMessage::VizMessage::VizSettingsPb;
 
@@ -724,6 +726,7 @@ void VizInterface::WriteProtobuffer(uint64_t CurrentSimNanos)
         message->set_allocated_settings(vizSettings);
 
         this->settings.dataFresh = false;
+        this->settingsSendTime = now;
     }
 
     /*! Send the Vizard live settings */
@@ -1104,9 +1107,19 @@ void VizInterface::WriteProtobuffer(uint64_t CurrentSimNanos)
             zmq_msg_recv (&receive_buffer, requester_socket, 0);
             zmq_msg_close(&receive_buffer);
 
-            /*! - send protobuffer raw over zmq_socket */
+            /*! - Pack message */
             void* serialized_message = malloc(byteCount);
             message->SerializeToArray(serialized_message, (int) byteCount);
+
+            /*! - Send serialized message to BROADCAST (PUBLISHER) socket */
+            int sendStatus = zmq_send(this->publisher_socket, "SIM_UPDATE", 10, ZMQ_SNDMORE);
+            if (sendStatus == -1) {
+                bskLogger.bskLog(BSK_ERROR, "Broadcast header did not send to socket.");
+            }
+            sendStatus = zmq_send(this->publisher_socket, serialized_message, byteCount, 0);
+            if (sendStatus == -1) {
+                bskLogger.bskLog(BSK_ERROR, "Broadcast protobuffer did not send to socket.");
+            }
 
             /*! - Normal sim step by sending protobuffers */
             zmq_msg_t request_header;
@@ -1116,31 +1129,18 @@ void VizInterface::WriteProtobuffer(uint64_t CurrentSimNanos)
 
             void* header_message = malloc(10 * sizeof(char));
             memcpy(header_message, "SIM_UPDATE", 10);
-            
-            zmq_send(this->publisher_socket, "SIM_UPDATE",10, ZMQ_SNDMORE);
-            zmq_send(this->publisher_socket, serialized_message, byteCount, 0);
-            
+
             zmq_msg_init_data(&request_header, header_message, 10, message_buffer_deallocate, NULL);
             zmq_msg_init(&empty_frame1);
             zmq_msg_init(&empty_frame2);
             zmq_msg_init_data(&request_buffer, serialized_message, byteCount, message_buffer_deallocate, NULL);
 
-            /*! - Send to 2-WAY (REQUESTER) buffer (5556) */
+            /*! - Send to 2-WAY (REQUESTER) socket */
             zmq_msg_send(&request_header, this->requester_socket, ZMQ_SNDMORE);
             zmq_msg_send(&empty_frame1, this->requester_socket, ZMQ_SNDMORE);
             zmq_msg_send(&empty_frame2, this->requester_socket, ZMQ_SNDMORE);
             zmq_msg_send(&request_buffer, this->requester_socket, 0);
             
-            /*! - Send to BROADCAST (PUBLISHER) buffer (5557) */
-            /*zmq_msg_send(&request_header, this->publisher_socket, ZMQ_SNDMORE);
-            zmq_msg_send(&empty_frame1, this->publisher_socket, ZMQ_SNDMORE);
-            zmq_msg_send(&empty_frame2, this->publisher_socket, ZMQ_SNDMORE);
-            zmq_msg_send(&request_buffer, this->publisher_socket, 0);*/
-            
-
-            
-          
-
             zmq_msg_close(&request_header);
             zmq_msg_close(&empty_frame1);
             zmq_msg_close(&empty_frame2);

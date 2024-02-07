@@ -24,6 +24,7 @@
 #include <fstream>
 #include <map>
 #include <zmq.h>
+#include <ctime>
 
 #include "architecture/_GeneralModuleFiles/sys_model.h"
 #include "simulation/vizard/_GeneralModuleFiles/vizStructures.h"
@@ -82,7 +83,8 @@ public:
     std::string comAddress;                     //!< Communication address to use when connecting to Vizard
     std::string reqPortNumber;                  //!< Communication port number to use when connecting to Vizard (REQ)
     std::string pubPortNumber;                  //!< Communication port number to use when connecting to Vizard (PUB)
-    int vizComMode;                             //!< 0: broadcast only. 1: 2-way comm only. 2: 2-way comm and broadcast.
+    int vizComMode;                             //!< 0: 2-way comm only. 1: broadcast only. 2: 2-way comm and broadcast.
+    double broadcastSettingsSendDelay;          //!< Real-time delay between sending Viz settings to broadcast socket
 
     ReadFunctor<EpochMsgPayload> epochInMsg;    //!< [-] simulation epoch date/time input msg
     MsgCurrStatus epochMsgStatus;                   //!< [-] ID of the epoch msg
@@ -100,6 +102,8 @@ private:
     void* publisher_context;
     void* publisher_socket;
     int firstPass;                                          //!< Flag to intialize the viz at first timestep
+
+    int64_t settingsSendTime;                               //!< System time stamp when settings message was last sent to broadcast socket
 
     std::vector<MsgCurrStatus>spiceInMsgStatus;             //!< [-] status of the incoming planets' spice data messages
     std::vector <SpicePlanetStateMsgPayload> spiceMessage;  //!< [-] Spice message copies
