@@ -49,8 +49,10 @@ Version |release|
 - Deprecated the :ref:`prescribedMotionMsgPayload` message and replaced with two separate
   :ref:`prescribedTranslationMsgPayload` and :ref:`prescribedRotationMsgPayload` messages.
 - added support for the new ``swig`` 4.2 version
+- Created a :ref:`prescribedRotation1DOF` dynamics module to profile a prescribed 1 DOF rotation for a secondary
+  rigid body connected to the spacecraft hub. This new module deprecates the :ref:`prescribedRot1DOF` fsw module.
+  To simulate the rotation, this module must be connected to the :ref:`prescribedMotionStateEffector` dynamics module.
 
->>>>>>> c996337e2 (update release notes and known issues)
 
 Version 2.2.1 (Dec. 22, 2023)
 -----------------------------
