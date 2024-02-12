@@ -37,20 +37,27 @@ class linearTranslationOneDOFStateEffector :
 	public StateEffector, public SysModel
 {
 public:
-//
+// MESSAGING
+    Message<TranslatingRigidBodyMsgPayload> translatingBodyOutMsg;        //!< state output message
+    Message<SCStatesMsgPayload> translatingBodyConfigLogOutMsg;           //!< translating body state config log message
+    ReadFunctor<ArrayMotorForceMsgPayload> motorForceInMsg;               //!< -- (optional) motor force input message
+    ReadFunctor<TranslatingRigidBodyMsgPayload> translatingBodyRefInMsg;  //!< -- (optional) reference state input message
+    ReadFunctor<ArrayEffectorLockMsgPayload> LockInMsg;                   //!< -- (optional) lock flag input message
+
+// Constructor/Destructor and setter
+    linearTranslationOneDOFStateEffector();           //!< -- Contructor
+	~linearTranslationOneDOFStateEffector();          //!< -- Destructor
+    void linearTranslationOneDOFStateEffector::setParameters(double mass, double k, double c, double rhoInit, double rhoDotInit, Eigen::Vector3d pHat_B, Eigen::Vector3d r_PcP_P, Eigen::Vector3d r_P0B_B, Eigen::Matrix3d IPntPc_P, Eigen::Matrix3d dcm_PB); //!< -- set user defined parameters
+private:
+// Scalar parameters set by user
     double mass = 1.0;              //!< [kg] mass of effector
     double k = 0;                   //!< [N/m] linear spring constant
     double c = 0;                   //!< [N-s/m] linear damping term
     double rhoInit = 0;             //!< [m] Initial value for particle offset
     double rhoDotInit = 0;          //!< [m/s] Initial value for particle offset derivative
-// dont touch c (unit test)
-
-    std::string nameOfRhoState;     //!< [-] Identifier for the rho state data container
-    std::string nameOfRhoDotState;  //!< [-] Identifier for the rhoDot state data container
-
-	BSKLogger bskLogger;            //!< -- BSK Logging
-
 //
+
+// Vector/Matrix parameters set by user
 	Eigen::Vector3d pHat_B;         //!< -- axis of translation in B frame components.
     Eigen::Vector3d r_PcP_P;        //!< [m] vector pointing from location P0 along pHat to P_C in p frame components
     Eigen::Vector3d r_P0B_B;        //!< [m] vector pointing from body frame B origin to point p0 origin of p frame in B frame components
@@ -58,13 +65,9 @@ public:
     Eigen::Matrix3d dcm_PB;         //!< -- DCM from the p frame to the body frame
 //
 
-    Message<TranslatingRigidBodyMsgPayload> translatingBodyOutMsg;        //!< state output message
-    Message<SCStatesMsgPayload> translatingBodyConfigLogOutMsg;           //!< translating body state config log message
-    ReadFunctor<ArrayMotorForceMsgPayload> motorForceInMsg;               //!< -- (optional) motor force input message
-    ReadFunctor<TranslatingRigidBodyMsgPayload> translatingBodyRefInMsg;  //!< -- (optional) reference state input message
-    ReadFunctor<ArrayEffectorLockMsgPayload> LockInMsg;                   //!< -- (optional) lock flag input message
+    std::string nameOfRhoState;     //!< [-] Identifier for the rho state data container
+    std::string nameOfRhoDotState;  //!< [-] Identifier for the rhoDot state data container
 
-private:
     int lockFlag = 0;                   //!< [] flag for locking the translation axis
     double cRho;                        //!< -- Term needed for back-sub method
 
@@ -108,9 +111,7 @@ private:
     Eigen::Vector3d sigma_PN;           //!< -- MRP attitude of frame S relative to inertial frame
     Eigen::Vector3d omega_PN_P;         //!< [rad/s] inertial translating body frame angular velocity vector
 
-public:
-	linearTranslationOneDOFStateEffector();           //!< -- Contructor
-	~linearTranslationOneDOFStateEffector();          //!< -- Destructor
+    // functions
 	void registerStates(DynParamManager& states);     //!< -- Method for SMD to register its states
 	void linkInStates(DynParamManager& states);       //!< -- Method for SMD to get access of other states
     void writeOutputStateMessages(uint64_t CurrentSimNanos);
@@ -122,6 +123,8 @@ public:
     void computeDerivatives(double integTime, Eigen::Vector3d rDDot_BN_N, Eigen::Vector3d omegaDot_BN_B, Eigen::Vector3d sigma_BN);  //!< -- Method for each stateEffector to calculate derivatives
     void UpdateState(uint64_t CurrentSimNanos);
     void computeTranslatingBodyInertialStates();               //!< Method for computing the SB's states
+    void backSubContribution(BackSubMatrices& backSubContr, Eigen::Vector3d omega_BN_B, Eigen::Vector3d F_g);
+
 };
 
 

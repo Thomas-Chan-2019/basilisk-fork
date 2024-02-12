@@ -52,7 +52,24 @@ linearTranslationOneDOFStateEffector::~linearTranslationOneDOFStateEffector()
     this->effectorID = 1;    /* reset the panel ID*/
     return;
 }
+////////////////////////////////
+/*! set user parameters */
+void linearTranslationOneDOFStateEffector::setParameters(double mass, double k, double c, double rhoInit, double rhoDotInit, Eigen::Vector3d pHat_B, Eigen::Vector3d r_PcP_P, Eigen::Vector3d r_P0B_B, Eigen::Matrix3d IPntPc_P, Eigen::Matrix3d dcm_PB)
+{
+    this->mass = mass;
+    this->k = k;
+    this->c = c;
+    this->rhoInit = rhoInit;
+    this->rhoDotInit = rhoDotInit;
+    this->pHat_B = pHat_B;
+    this->r_PcP_P = r_PcP_P;
+    this->r_P0B_B = r_P0B_B;
+    this->IPntPc_P = IPntPc_P;
+    this->dcm_PB = dcm_PB;
 
+    return;
+}
+///////////////////////////////
 /*! Method for translating body to access the states that it needs. It needs gravity and the hub states */
 void linearTranslationOneDOFStateEffector::linkInStates(DynParamManager& statesIn)
 {
@@ -177,7 +194,14 @@ void linearTranslationOneDOFStateEffector::updateContributions(double integTime,
     g_B = dcm_BN*gLocal_N;
     F_g = this->mass*g_B;
 
-    // a b and c are zero if lock flag is 1
+    backSubContribution(backSubContr, omega_BN_B, F_g);
+    return;
+}
+
+/* used by  update contributions to set the backsub coefficients */
+void linearTranslationOneDOFStateEffector::backSubContribution(BackSubMatrices & backSubContr, Eigen::Vector3d omega_BN_B, Eigen::Vector3d F_g)
+{
+// a b and c are zero if lock flag is 1
     Eigen::Matrix3d omegaTilde_BN_B_local = eigenTilde(omega_BN_B);
     if (this->lockFlag == 1)
     {
@@ -208,7 +232,6 @@ void linearTranslationOneDOFStateEffector::updateContributions(double integTime,
                                                              this->mass*this->cRho*this->rTilde_PcB_B * this->pHat_B;
     return;
 }
-
 /*! This method is used to define the derivatives of rho. One is the trivial kinematic derivative and the other is
  derived using the back-sub method */
 void linearTranslationOneDOFStateEffector::computeDerivatives(double integTime, Eigen::Vector3d rDDot_BN_N, Eigen::Vector3d omegaDot_BN_B, Eigen::Vector3d sigma_BN)
@@ -235,8 +258,7 @@ void linearTranslationOneDOFStateEffector::computeDerivatives(double integTime, 
 }
 
 /*! This method is for the translating body to add its contributions to energy and momentum */
-void linearTranslationOneDOFStateEffector::updateEnergyMomContributions(double integTime, Eigen::Vector3d & rotAngMomPntCContr_B,
-                                                          double & rotEnergyContr, Eigen::Vector3d omega_BN_B)
+void linearTranslationOneDOFStateEffector::updateEnergyMomContributions(double integTime, Eigen::Vector3d & rotAngMomPntCContr_B, double & rotEnergyContr, Eigen::Vector3d omega_BN_B)
 {
 
     //  - Get variables needed for energy momentum calcs
