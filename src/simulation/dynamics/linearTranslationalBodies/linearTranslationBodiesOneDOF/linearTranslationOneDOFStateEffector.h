@@ -44,10 +44,33 @@ public:
     ReadFunctor<TranslatingRigidBodyMsgPayload> translatingBodyRefInMsg;  //!< -- (optional) reference state input message
     ReadFunctor<ArrayEffectorLockMsgPayload> LockInMsg;                   //!< -- (optional) lock flag input message
 
-// Constructor/Destructor and setter
+// Constructor/Destructor
     linearTranslationOneDOFStateEffector();           //!< -- Contructor
 	~linearTranslationOneDOFStateEffector();          //!< -- Destructor
-    void linearTranslationOneDOFStateEffector::setParameters(double mass, double k, double c, double rhoInit, double rhoDotInit, Eigen::Vector3d pHat_B, Eigen::Vector3d r_PcP_P, Eigen::Vector3d r_P0B_B, Eigen::Matrix3d IPntPc_P, Eigen::Matrix3d dcm_PB); //!< -- set user defined parameters
+// Setters for user defined parameters
+    void linearTranslationOneDOFStateEffector::setMass(double mass);
+    void linearTranslationOneDOFStateEffector::setK(double k);
+    void linearTranslationOneDOFStateEffector::setC(double c);
+    void linearTranslationOneDOFStateEffector::setRhoInit(double rhoInit);
+    void linearTranslationOneDOFStateEffector::setRhoDotInit(double rhoDotInit);
+    void linearTranslationOneDOFStateEffector::set_Phat_B(Eigen::Vector3d pHat_B);
+    void linearTranslationOneDOFStateEffector::set_r_PcP_P(Eigen::Vector3d r_PcP_P);
+    void linearTranslationOneDOFStateEffector::set_r_P0B_B(Eigen::Vector3d r_P0B_B);
+    void linearTranslationOneDOFStateEffector::set_IPntPc_P(Eigen::Matrix3d IPntPc_P);
+    void linearTranslationOneDOFStateEffector::set_dcm_PB(Eigen::Matrix3d dcm_PB);
+// Getters for user defined parameters
+    double linearTranslationOneDOFStateEffector::getMass();
+    double linearTranslationOneDOFStateEffector::getK();
+    double linearTranslationOneDOFStateEffector::getC();
+    double linearTranslationOneDOFStateEffector::getRhoInit();
+    double linearTranslationOneDOFStateEffector::getRhoDotInit();
+    Eigen::Vector3d linearTranslationOneDOFStateEffector::get_Phat_B();
+    Eigen::Vector3d linearTranslationOneDOFStateEffector::get_r_PcP_P();
+    Eigen::Vector3d linearTranslationOneDOFStateEffector::get_r_P0B_B();
+    Eigen::Matrix3d linearTranslationOneDOFStateEffector::get_IPntPc_P();
+    Eigen::Matrix3d linearTranslationOneDOFStateEffector::get_dcm_PB();
+
+
 private:
 // Scalar parameters set by user
     double mass = 1.0;              //!< [kg] mass of effector

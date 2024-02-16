@@ -52,24 +52,132 @@ linearTranslationOneDOFStateEffector::~linearTranslationOneDOFStateEffector()
     this->effectorID = 1;    /* reset the panel ID*/
     return;
 }
-////////////////////////////////
+
+
 /*! set user parameters */
-void linearTranslationOneDOFStateEffector::setParameters(double mass, double k, double c, double rhoInit, double rhoDotInit, Eigen::Vector3d pHat_B, Eigen::Vector3d r_PcP_P, Eigen::Vector3d r_P0B_B, Eigen::Matrix3d IPntPc_P, Eigen::Matrix3d dcm_PB)
+void linearTranslationOneDOFStateEffector::setMass(double mass)
 {
     this->mass = mass;
+
+    return;
+}
+
+void linearTranslationOneDOFStateEffector::setK(double k)
+{
     this->k = k;
+
+    return;
+}
+
+void linearTranslationOneDOFStateEffector::setC(double c)
+{
     this->c = c;
+
+    return;
+}
+
+
+void linearTranslationOneDOFStateEffector::setRhoInit(double rhoInit)
+{
     this->rhoInit = rhoInit;
+
+    return;
+}
+
+void linearTranslationOneDOFStateEffector::setRhoDotInit(double rhoDotInit)
+{
     this->rhoDotInit = rhoDotInit;
+
+    return;
+}
+
+void linearTranslationOneDOFStateEffector::set_Phat_B(Eigen::Vector3d pHat_B)
+{
     this->pHat_B = pHat_B;
+
+    return;
+}
+
+void linearTranslationOneDOFStateEffector::set_r_PcP_P(Eigen::Vector3d r_PcP_P)
+{
     this->r_PcP_P = r_PcP_P;
+
+    return;
+}
+
+void linearTranslationOneDOFStateEffector::set_r_P0B_B(Eigen::Vector3d r_P0B_B)
+{
     this->r_P0B_B = r_P0B_B;
+
+    return;
+}
+
+void linearTranslationOneDOFStateEffector::set_IPntPc_P(Eigen::Matrix3d IPntPc_P)
+{
     this->IPntPc_P = IPntPc_P;
+
+    return;
+}
+
+void linearTranslationOneDOFStateEffector::set_dcm_PB(Eigen::Matrix3d dcm_PB)
+{
     this->dcm_PB = dcm_PB;
 
     return;
 }
-///////////////////////////////
+
+/*! get user parameters */
+double linearTranslationOneDOFStateEffector::getMass()
+{
+    return this->mass;
+}
+
+double linearTranslationOneDOFStateEffector::getK()
+{
+    return this->k;
+}
+
+double linearTranslationOneDOFStateEffector::getC()
+{
+    return this->c;
+}
+
+double linearTranslationOneDOFStateEffector::getRhoInit()
+{
+    return this->rhoInit;
+}
+
+double linearTranslationOneDOFStateEffector::getRhoDotInit()
+{
+    return this->rhoDotInit;
+}
+
+Eigen::Vector3d linearTranslationOneDOFStateEffector::get_Phat_B()
+{
+    return this->pHat_B;
+}
+
+Eigen::Vector3d linearTranslationOneDOFStateEffector::get_r_PcP_P()
+{
+    return this->r_PcP_P ;
+}
+
+Eigen::Vector3d linearTranslationOneDOFStateEffector::get_r_P0B_B()
+{
+    return this->r_P0B_B;
+}
+
+Eigen::Matrix3d linearTranslationOneDOFStateEffector::get_IPntPc_P()
+{
+    return this->IPntPc_P;
+}
+
+Eigen::Matrix3d linearTranslationOneDOFStateEffector::get_dcm_PB()
+{
+    return this->dcm_PB;
+}
+
+
 /*! Method for translating body to access the states that it needs. It needs gravity and the hub states */
 void linearTranslationOneDOFStateEffector::linkInStates(DynParamManager& statesIn)
 {
