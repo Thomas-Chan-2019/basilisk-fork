@@ -44,6 +44,9 @@ provides information on what the message is used for.
     * - spinningBodyOutMsg
       - :ref:`HingedRigidBodyMsgPayload`
       - output message with the scalar spinning body states
+    * - spinningBodyOutMsgC
+      - :ref:`HingedRigidBodyMsgPayload`
+      - C-wrapoped output message with the scalar spinning body states
     * - prescribedRotationOutMsg
       - :ref:`PrescribedRotationMsgPayload`
       - output message with the prescribed spinning body rotational states
