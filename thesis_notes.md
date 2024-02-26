@@ -1,8 +1,11 @@
- # Basilisk Thesis Notes
+# Basilisk Thesis Notes
+This repo is a direct FORK from the original [Basilisk repo](https://github.com/AVSLab/basilisk). Run `git fetch upstream` regularly to catch latest updates from the original repo. Simulations and configuration files created for this project are located inside the `dev/` file, including chosen example simulation scripts inside `dev/template-examples` copied from scripts in `examples/`.
 
- ## Run basic simulations by:
-source .venv/bin/activate
-python3 scenarioBasicOrbitStream.py
+## Run basic simulations by:
+```
+source .venv/bin/activate $activate python virtual env
+python3 scenarioBasicOrbitStream.py $run basic simulations in terminal 
+```
 
 ## Viz-support:
 Viz Socket: [tcp://localhost:5556](tcp://localhost:5556)
@@ -20,17 +23,18 @@ viz = vizSupport.enableUnityVisualization(scSim, simTaskName, scList
 # Enable "saveFile=fileName"
 ```
 
-# Basilisk video takeaways:
-- `scSim/Process/scObject` as SC, add the essential lines as covered in the Basic orbit case + specify moment of inertias (as Astrobee)
+## Basilisk video takeaways:
+- `scSim, Process, scObject` as SC, add the essential lines as covered in the Basic orbit case + specify moment of inertias (as Astrobee)
 - Gravity factory `gravFactory` -> create Earth or other planets, map these using the line to attach Gravity model to SC (photo underlined)
 - From video Basilisk: attitude feedback with RW devices: RW factory -> can specify RW spec here, see [scenarioAttitudeFeedbackRW.py](examples/scenarioAttitudeFeedbackRW.py) (probably same for thruster?); create 3 wheels with same/different initial speed and direction; seems also can map with VoltageIO, check if can related to power consumption/EPS things
 - Orbital motions module [orbitalMotion.py](dist3/Basilisk/utilities/orbitalMotion.py) for state vectors r,v & rotational + attitude sigma & omega (?)
 - Always use line: scSim.AddModelToTask() and add all used objects, gravity bodies, RWEffectors, etc for the the logging to work
 
 
-Useful Basilisk *utilities* modules:
+## Useful Basilisk modules (from `Basilisk.utilities` or `Basilisk.architecture`):
+- [macros.py](dist3/Basilisk/utilities/macros.py): time (e.g. day, hour, second conversions to nanosec), degree-to-radian, RPM conversions
 - [RigidBodyKinematics.py](dist3/Basilisk/utilities/RigidBodyKinematics.py): EP, Gibbs vector (or Classical Rodrigues Parameters), MRP, RV, Euler angles conversions***
 - [orbitalMotion.py](dist3/Basilisk/utilities/orbitalMotion.py): planetary constants, state r,v to element & vice versa, Atmospheric Drag functions (need c_D, area, mass inputs), J-Perturbations of Earth & diff. planets, Solar Radiation pressure {***Mind the units when use them, some uses km/s^2 !}, Orbital Element conversions (classicial <=> equinoctial <=> hill frame <=> RV)
 - [astroFunctions.py](dist3/Basilisk/utilities/astroFunctions.py): 
 *To create thrusters/RWs:*
-- [simIncludeThruster.py](dist3/Basilisk/utilities/simIncludeThruster.py) & [simIncludeRW.py](dist3/Basilisk/utilities/simIncludeRW.py), see files for interfacing.
+- [simIncludeThruster.py](dist3/Basilisk/utilities/simIncludeThruster.py) & [simIncludeRW.py](dist3/Basilisk/utilities/simIncludeRW.py), see files for thrusters/RWs creation & interfacing. Also see [fswSetupThrusters.py](dist3/Basilisk/utilities/fswSetupThrusters.py) & [fswSetupRW.py](dist3/Basilisk/utilities/fswSetupRW.py) & the `messaging` module in `Basilisk.architecture` to understand the messaging and data accessing after the simulation ends -> how to get useful data (state vectors, orbits, thruster/RW performances) & visualization params out of the simulation {also check [`this messaging related module`](dist3/Basilisk/architecture/messaging/__init__.py) for exhaustive available Basilisk messages}.
