@@ -56,4 +56,5 @@ the servicer and debris object are integrated at the same time.  This is not req
 as there are no direct satellite-to-satellite dynamic interactions.; ALSO see line 248 which sync the integration of both S/Cs + demo of changing integrator from default RK4.
 
 ## Making Python Modules:
-See [this url](https://hanspeterschaub.info/basilisk/Learn/makingModules/pyModules.html), should be useful for creating a new controller! Also see how the [mrpFeedback.c](src/fswAlgorithms/attControl/mrpFeedback/mrpFeedback.c)  (`mrpSteering` module is not useful as it relates to servo control)
+- See [making-pyModules.py](docs/source/codeSamples/making-pyModules.py) & [this url](https://hanspeterschaub.info/basilisk/Learn/makingModules/pyModules.html) for basic Python module creation, should be useful for creating a new controller! 
+- Also see how the [mrpFeedback.py](dist3/Basilisk/fswAlgorithms/mrpFeedback.py) for controller module demo ( & if necessary [mrpFeedback.c](src/fswAlgorithms/attControl/mrpFeedback/mrpFeedback.c) for actual control laws)  (`mrpSteering` module is not useful as it relates to servo control)
