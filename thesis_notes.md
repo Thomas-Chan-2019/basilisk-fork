@@ -37,4 +37,23 @@ viz = vizSupport.enableUnityVisualization(scSim, simTaskName, scList
 - [orbitalMotion.py](dist3/Basilisk/utilities/orbitalMotion.py): planetary constants, state r,v to element & vice versa, Atmospheric Drag functions (need c_D, area, mass inputs), J-Perturbations of Earth & diff. planets, Solar Radiation pressure {***Mind the units when use them, some uses km/s^2 !}, Orbital Element conversions (classicial <=> equinoctial <=> hill frame <=> RV)
 - [astroFunctions.py](dist3/Basilisk/utilities/astroFunctions.py): 
 *To create thrusters/RWs:*
-- [simIncludeThruster.py](dist3/Basilisk/utilities/simIncludeThruster.py) & [simIncludeRW.py](dist3/Basilisk/utilities/simIncludeRW.py), see files for thrusters/RWs creation & interfacing. Also see [fswSetupThrusters.py](dist3/Basilisk/utilities/fswSetupThrusters.py) & [fswSetupRW.py](dist3/Basilisk/utilities/fswSetupRW.py) & the `messaging` module in `Basilisk.architecture` to understand the messaging and data accessing after the simulation ends -> how to get useful data (state vectors, orbits, thruster/RW performances) & visualization params out of the simulation {also check [`this messaging related module`](dist3/Basilisk/architecture/messaging/__init__.py) for exhaustive available Basilisk messages}.
+- [simIncludeThruster.py](dist3/Basilisk/utilities/simIncludeThruster.py) & [simIncludeRW.py](dist3/Basilisk/utilities/simIncludeRW.py), see examples in [scenarioAttitudeFeedbackRW.py line 441](examples/scenarioAttitudeFeedbackRW.py) & [scenarioFormationReconfig.py line 148](examples/scenarioFormationReconfig.py) for RWs/thrusters creation & interfacing. Also see [fswSetupThrusters.py](dist3/Basilisk/utilities/fswSetupThrusters.py) & [fswSetupRW.py](dist3/Basilisk/utilities/fswSetupRW.py) & the `messaging` module in `Basilisk.architecture` to understand the messaging and data accessing after the simulation ends -> how to get useful data (state vectors, orbits, thruster/RW performances) & visualization params out of the simulation {also check [`this messaging related module`](dist3/Basilisk/architecture/messaging/__init__.py) for exhaustive available Basilisk messages}.
+- [inertial3D.py](src/fswAlgorithms/attGuidance/inertial3D): Computes the reference attitude trajectory for a general 3D inertial pointing. A corrected body frame will align with the desired reference frame.
+- [attTrackingError.py](src/fswAlgorithms/attGuidance/attTrackingError/attTrackingError.c): determines S/C attitude error/difference from the reference attitude in MRP.
+- [mrpRotation.py](src/fswAlgorithms/attGuidance/mrpRotation/mrpRotation.c) or [web](https://hanspeterschaub.info/basilisk/Documentation/fswAlgorithms/attGuidance/mrpRotation/mrpRotation.html): held constant angular velocity vector constant, gives MRP input/output, may need to used with [initial3DSpin.py](https://hanspeterschaub.info/basilisk/Documentation/fswAlgorithms/attGuidance/inertial3DSpin/inertial3DSpin.html)?
+
+## Useful simulation examples:
+- [scenarioRendezVous.py](dev/template-examples/scenarioRendezVous.py): The script illustrates how the simulation can be run for fixed periods of time after which
+some flight software modules change their input subscript to switch between the three possible
+attitude pointing modes 1) Hill pointing, 2) spacecraft point at the debris object and 3) sun pointing of the solar panels.
+- [scenarioFormationBasic.py](dev/template-examples/scenarioFormationBasic.py): Demonstrates a basic method to simulate 3 satellites with 6-DOF motion and how to visualize the simulation
+data in :ref:`Vizard <vizard>`.  One satellite is a 3-axis attitude controlled
+satellite, while the second satellite is a tumbling space debris object.  The controlled satellite simulation components
+are taken from [scenarioAttitudeFeedbackRW.py](examples/scenarioAttitudeFeedbackRW.py). The purpose of this script is to show an explicit method to
+setup multiple satellites, and also show how to store the Basilisk simulation data to be able to visualize
+both satellite's motions within the :ref:`Vizard <vizard>` application. Note, this scenario also illustrates how to ensure that the differential equations of motion of
+the servicer and debris object are integrated at the same time.  This is not required in this scenario
+as there are no direct satellite-to-satellite dynamic interactions.; ALSO see line 248 which sync the integration of both S/Cs + demo of changing integrator from default RK4.
+
+## Making Python Modules:
+See [this url](https://hanspeterschaub.info/basilisk/Learn/makingModules/pyModules.html), should be useful for creating a new controller! Also see how the [mrpFeedback.c](src/fswAlgorithms/attControl/mrpFeedback/mrpFeedback.c)  (`mrpSteering` module is not useful as it relates to servo control)
