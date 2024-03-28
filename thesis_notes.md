@@ -53,11 +53,11 @@ satellite, while the second satellite is a tumbling space debris object.  The co
 are taken from [scenarioAttitudeFeedbackRW.py](examples/scenarioAttitudeFeedbackRW.py). The purpose of this script is to show an explicit method to
 setup multiple satellites, and also show how to store the Basilisk simulation data to be able to visualize
 both satellite's motions within the :ref:`Vizard <vizard>` application. Note, this scenario also illustrates how to ensure that the differential equations of motion of
-the servicer and debris object are integrated at the same time.  This is not required in this scenario
+the servicer and debris object are integrated at the same time (see [Advanced: Using `DynamicObject` Basilisk Modules](https://hanspeterschaub.info/basilisk/Learn/bskPrinciples/bskPrinciples-9.html)).  This is not required in this scenario
 as there are no direct satellite-to-satellite dynamic interactions.; ALSO see line 248 which sync the integration of both S/Cs + demo of changing integrator from default RK4.
 - [scenarioHohmann.py](dev/template-examples/scenarioHohmann.py): Hohnmann transfer for delta-V examples & Hill-pointing
 - [scenarioAttLocPoint.py](examples/scenarioAttLocPoint.py): Ground location / Ground station creation + Vizard visualisation style (`stationName` & ground location vector `r_GP_P`).
-- [scenarioFormationReconfig.py](examples/scenarioFormationReconfig.py) & [spacecraftReconfig.c](src/fswAlgorithms/formationFlying/spacecraftReconfig/spacecraftReconfig.c) & [web](https://hanspeterschaub.info/basilisk/Documentation/fswAlgorithms/formationFlying/spacecraftReconfig/spacecraftReconfig.html): formation flight spacecraft reconfiguring module (bang-bang controller?) with potetial useful references on messaging. (also see [web for formationBarycenter](https://hanspeterschaub.info/basilisk/Documentation/fswAlgorithms/formationFlying/formationBarycenter/formationBarycenter.html), determinethe barycenter of a swarm of satellites)
+- [scenarioFormationReconfig.py](examples/scenarioFormationReconfig.py) & [spacecraftReconfig.c](src/fswAlgorithms/formationFlying/spacecraftReconfig/spacecraftReconfig.c) & [web](https://hanspeterschaub.info/basilisk/Documentation/fswAlgorithms/formationFlying/spacecraftReconfig/spacecraftReconfig.html): formation flight spacecraft reconfiguring module (Via _Scheduled delta-V_ at Apogee/Perigee) with potetial useful references on messaging. (also see [web for formationBarycenter](https://hanspeterschaub.info/basilisk/Documentation/fswAlgorithms/formationFlying/formationBarycenter/formationBarycenter.html), determinethe barycenter of a swarm of satellites). This module (line 335) computes the difference in _orbital elements_ instead of cartesian x-y-z.
 
 ## Making Python Modules:
 - NEW: see [scenarioAttitudePointingPy.py](examples/scenarioAttitudePointingPy.py) line 286 for `PythonMRPPD` implementations
@@ -65,3 +65,46 @@ as there are no direct satellite-to-satellite dynamic interactions.; ALSO see li
 - Also see how the [mrpFeedback.py](dist3/Basilisk/fswAlgorithms/mrpFeedback.py) for controller module demo ( & if necessary [mrpFeedback.c](src/fswAlgorithms/attControl/mrpFeedback/mrpFeedback.c) for actual control laws)  (`mrpSteering` module is not useful as it relates to servo control) ; ![mrpFeedback](./ref-images/moduleIOMrpFeedback.svg)
 - Flow chart from [scenarioFormationBasic from Basilisk web](https://hanspeterschaub.info/basilisk/examples/scenarioFormationBasic.html): ![basicFormationFlowChart](./ref-images/basicFormation-FlowChart.png)
 - Message `rwMotorTorque`: see [web](https://hanspeterschaub.info/basilisk/Documentation/fswAlgorithms/effectorInterfaces/rwMotorTorque/rwMotorTorque.html?highlight=rwmotortorque)to map RW thrust, relates with the above flow chart; check this [link](https://hanspeterschaub.info/basilisk/Documentation/fswAlgorithms/effectorInterfaces/index.html) as well.
+
+
+## Messaging between modules:
+- Message subscription notes/example **I/O**:
+- Control torque Output (e.g. `mrpControl.cmdTorqueOutMsg`) -> `rwMotorTorque.rwMotorTorque()` -> `reactionWheelStateEffector.ReactionWheelStateEffector()` 
+- `extForceTorque.ExtForceTorque()` can be used to replace the `rwMotorTorque` & `rwStateEffector` when no actuators (RW) for command torque is defined
+- To create new message, visit this [link](https://hanspeterschaub.info/basilisk/Learn/makingModules/makingModules-2.html?highlight=new%20message)
+- [Message recorder](https://hanspeterschaub.info/basilisk/Learn/bskPrinciples/bskPrinciples-4.html): use this
+```
+someMsgRec = module.someOutMsg.recorder() # or recorder(minUpdateTime) to reduce the record time, must be lower than the recorded module update time!
+scSim.AddModelToTask("taskName", someMsgRec) # need to add recorder model to sim!
+```
+Use `someMsgRec.times()` to get the time array of recorder, e.g. MRP against time (also explore what us `someMsgRec.timesWritten()`)
+
+Call `someMsgRec.clear()` to clear recorder data and only add new data
+
+Use `msgCopy = msg.read()` to create an initial copy of message/payload
+
+To [record Module variables](https://hanspeterschaub.info/basilisk/Learn/bskPrinciples/bskPrinciples-6.html) instead of simple module I/O: `moduleLogger = module.logger(variableName, recordingTime)`, where `variableName` must be either a string or a list of strings like: 
+`mod2.dummy = 1; mod2.dumVector = [1., 2., 3.]; variableName = ["dummy", "dumVector"]`; again it has `moduleLogger.times() & .clear()` functions
+
+[](): `messaging.SomeMsg_C_addAuthor(someCModule.dataOutMsg, cStandAloneMsg)`
+
+![addAuthor](./ref-images/message_addAuthor_C.svg)
+
+## Quick Notes:
+- [scenarioFormationBasic.py](dev/template-examples/scenarioFormationBasic.py) does not use `inertial3D` module for the attitude reference signal as it is already using the `hillPoint` module which also gives a constant attitude reference signal (line 335) to feed into the `attError` module.
+- `thrusterStateEffector` (newer, contains time integration & can turn on in ratio of 0-100% / 0-1) v.s. `thrusterDynamicEffector` (older, without time integration, only on/off or 0/1)
+- [BSK_MultiSatDynamics.py](examples/MultiSatBskSim/modelsMultiSat/BSK_MultiSatDynamics.py) & [BSK_MultiSatFsw.py](examples/MultiSatBskSim/modelsMultiSat/BSK_MultiSatFsw.py): good example module setup for gathering S/C creation, gravity body creation, thruster/RW creations & other instances (GS, batteries, power, solar panel, etc.), as well as setting up FSW related modules like `inertial3D`, `attTrackingError` & `mrpFeedback`
+- [Simulation Update Debugging](https://hanspeterschaub.info/basilisk/Learn/bskPrinciples/bskPrinciples-2a.html): For testing purposes, to execute the code, this script doesn’t run the simulation for a period of time. Rather, the simulation is executed for a single time step. This is convenient in particular when testing the module input-output behavior. The command to execute Basilisk for one time step is: 
+``` 
+# perform a single Update on all modules
+scSim.TotalSim.SingleStepProcesses() 
+```
+- [Task Priority & Simulation Documentation Figures](): Print task priority in terminal & save priority figures via:
+```
+# print to the terminal window the execution order of the processes, task lists and modules
+scSim.ShowExecutionOrder()
+# uncomment this code to show the execution order figure and save it off
+# fig = scSim.ShowExecutionFigure(False)
+# fig.savefig("qs-bsk-2b-order.svg", transparent=True, bbox_inches = 'tight', pad_inches = 0)
+```
+![taskPriority](./ref-images/task_priority_fig.svg)
