@@ -58,6 +58,8 @@ as there are no direct satellite-to-satellite dynamic interactions.; ALSO see li
 - [scenarioHohmann.py](dev/template-examples/scenarioHohmann.py): Hohnmann transfer for delta-V examples & Hill-pointing
 - [scenarioAttLocPoint.py](examples/scenarioAttLocPoint.py): Ground location / Ground station creation + Vizard visualisation style (`stationName` & ground location vector `r_GP_P`).
 - [scenarioFormationReconfig.py](examples/scenarioFormationReconfig.py) & [spacecraftReconfig.c](src/fswAlgorithms/formationFlying/spacecraftReconfig/spacecraftReconfig.c) & [web](https://hanspeterschaub.info/basilisk/Documentation/fswAlgorithms/formationFlying/spacecraftReconfig/spacecraftReconfig.html): formation flight spacecraft reconfiguring module (Via _Scheduled delta-V_ at Apogee/Perigee) with potetial useful references on messaging. (also see [web for formationBarycenter](https://hanspeterschaub.info/basilisk/Documentation/fswAlgorithms/formationFlying/formationBarycenter/formationBarycenter.html), determinethe barycenter of a swarm of satellites). This module (line 335) computes the difference in _orbital elements_ instead of cartesian x-y-z.
+- [scenario_BasicOrbitFormation.py](https://hanspeterschaub.info/basilisk/examples/BskSim/scenarios/scenario_BasicOrbitFormation.html): could utilise this pre-defined structure of simulation/modules
+![BSK_MultiSat_Sim](./ref-images/test_scenario_BasicOrbitFormation.svg)
 
 ## Making Python Modules:
 - NEW: see [scenarioAttitudePointingPy.py](examples/scenarioAttitudePointingPy.py) line 286 for `PythonMRPPD` implementations
@@ -99,7 +101,7 @@ To [record Module variables](https://hanspeterschaub.info/basilisk/Learn/bskPrin
 # perform a single Update on all modules
 scSim.TotalSim.SingleStepProcesses() 
 ```
-- [Task Priority & Simulation Documentation Figures](): Print task priority in terminal & save priority figures via:
+- [Task Priority & Simulation Documentation Figures](https://hanspeterschaub.info/basilisk/Learn/bskPrinciples/bskPrinciples-2b.html): Print task priority in terminal & save priority figures via:
 ```
 # print to the terminal window the execution order of the processes, task lists and modules
 scSim.ShowExecutionOrder()
@@ -108,3 +110,4 @@ scSim.ShowExecutionOrder()
 # fig.savefig("qs-bsk-2b-order.svg", transparent=True, bbox_inches = 'tight', pad_inches = 0)
 ```
 ![taskPriority](./ref-images/task_priority_fig.svg)
+- __Unit Test__: see [Unit Test for `ThrusterStateEffector`](src/simulation/dynamics/Thrusters/thrusterStateEffector/_UnitTest/test_ThrusterStateEffectorUnit.py) for how to mimic a unit test case

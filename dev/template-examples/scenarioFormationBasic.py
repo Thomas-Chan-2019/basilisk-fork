@@ -454,7 +454,7 @@ def run(show_plots):
         viz = vizSupport.enableUnityVisualization(scSim, simTaskName, [scObject, scObject2, scObject3]
                                                   , rwEffectorList=[rwStateEffector, rwStateEffector2, None]
                                                   , lightList=[[servicerLight], None, None]
-                                                  # , saveFile=fileName,
+                                                  , saveFile=fileName,
                                                   )
         # setup one-way instrument camera by having frameRate be 0
         vizSupport.createCameraConfigMsg(viz, parentName=scObject.ModelTag,

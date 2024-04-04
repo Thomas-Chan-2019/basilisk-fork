@@ -1,8 +1,9 @@
 from Basilisk.architecture import sysModel, messaging
 import numpy as np
 
+# See https://hanspeterschaub.info/basilisk/Learn/makingModules/pyModules.html for Python Module creation original example.
 # This controller should have I/O messages from:
-# Input: VehicleConfigMsgPayload, AttGuidMsgReader (if control att.), 
+# Input: VehicleConfigMsgPayload, AttGuidMsgReader (if control att.), TODO
 class PIDController(sysModel.SysModel):
     """
     This class inherits from the `SysModel` available in the ``Basilisk.architecture.sysModel`` module.
@@ -33,12 +34,33 @@ class PIDController(sysModel.SysModel):
         self.K = 0
         # Derivative gain term used in control
         self.P = 0
-        # Input guidance structure message
-        self.guidInMsg = messaging.AttGuidMsgReader()
-        # Output body torque message name
+        
+        # Input guidance structure message: Translational
+        self.transGuidInMsg = messaging.TransGuidMsg()
+        # Input guidance structure message: Rotational
+        self.attGuidInMsg = messaging.AttGuidMsg()
+        # For mass & moment of inertia
+        self.vehConfigInMsg = messaging.VehicleConfigMsg() 
+        
+        # # Include thruster & RW arrays configs:
+        # self.thrParamsInMsg = messaging.THRArrayConfigMsg()
+        # self.rwParamsInMsg = messaging.RWArrayConfigMsg()
+        
+        # Output body thrust & force message name
+        self.cmdForceOutMsg = messaging.CmdForceBodyMsg() # 
+        # self.cmdForceInMsg = messaging.CmdForceInertialMsg # to verify
         self.cmdTorqueOutMsg = messaging.CmdTorqueBodyMsg()
+        
+        # # Input guidance structure message
+        # self.guidInMsg = messaging.AttGuidMsgReader()
+        # # Output body torque message name
+        # self.cmdTorqueOutMsg = messaging.CmdTorqueBodyMsg()
 
     def Reset(self, CurrentSimNanos):
+        # Proportional gain term used in control
+        self.K = 0
+        # Derivative gain term used in control
+        self.P = 0
         """
         The Reset method is used to clear out any persistent variables that need to get changed
         when a task is restarted.  This method is typically only called once after selfInit/crossInit,
@@ -60,13 +82,21 @@ class PIDController(sysModel.SysModel):
         :return: none
         """
         # read input message
-        guidMsgBuffer = self.guidInMsg()
+        transGuidMsgBuffer = self.transGuidInMsg()
+        attGuidMsgBuffer = self.attGuidInMsg()
 
         # create output message buffer
+        forceOutMsgBuffer = messaging.CmdForceBodyMsgPayload()
         torqueOutMsgBuffer = messaging.CmdTorqueBodyMsgPayload()
+        
+        # compute TRANS control solution
+        FrCmd = np.array(transGuidMsgBuffer.r_BR_B) * self.K + np.array(transGuidMsgBuffer.v_BR_B) * self.P
+        forceOutMsgBuffer.forceRequestBody = (-FrCmd).tolist()
 
-        # compute control solution
-        lrCmd = np.array(guidMsgBuffer.sigma_BR) * self.K + np.array(guidMsgBuffer.omega_BR_B) * self.P
+        self.cmdForceOutMsg.write(forceOutMsgBuffer, CurrentSimNanos, self.moduleID)
+
+        # compute ATT control solution
+        lrCmd = np.array(attGuidMsgBuffer.sigma_BR) * self.K + np.array(attGuidMsgBuffer.omega_BR_B) * self.P
         torqueOutMsgBuffer.torqueRequestBody = (-lrCmd).tolist()
 
         self.cmdTorqueOutMsg.write(torqueOutMsgBuffer, CurrentSimNanos, self.moduleID)

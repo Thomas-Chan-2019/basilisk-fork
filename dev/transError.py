@@ -62,11 +62,26 @@ class transError(sysModel.SysModel):
         # read input message
         targetTransInMsgBuffer = self.targetTransInMsg()
         chaserTransInMsgBuffer = self.chaserTransInMsg()
+        transRefInMsgBuffer = self.transRefInMsg()
 
         # create output message buffer
         # Need a new message type?
-        # torqueOutMsgBuffer = messaging.CmdTorqueBodyMsgPayload()
+        transGuidOutMsgBuffer = messaging.TransGuidMsgPayload()
 
+
+        # Simple subtraction for error:
+        transErr1 = np.array(targetTransInMsgBuffer.r_BN_N) - np.array(chaserTransInMsgBuffer.r_BN_N)
+        transErr2 = transErr1 - np.array(transRefInMsgBuffer.r_RN_N)
+        
+        # Also log velocity error in case we need it
+        vErr1 = np.array(targetTransInMsgBuffer.v_BN_N) - np.array(chaserTransInMsgBuffer.v_BN_N)
+        vErr2 = vErr1 - np.array(transRefInMsgBuffer.v_RN_N)
+        
+        transGuidOutMsgBuffer.r_BR_B = transErr2.tolist()
+        transGuidOutMsgBuffer.v_BR_B = vErr2.tolist()
+        
+        self.transGuidOutMsg.write(transGuidOutMsgBuffer, CurrentSimNanos, self.moduleID)
+        
         # # compute control solution
         # lrCmd = np.array(guidMsgBuffer.sigma_BR) * self.K + np.array(guidMsgBuffer.omega_BR_B) * self.P
         # torqueOutMsgBuffer.torqueRequestBody = (-lrCmd).tolist()
