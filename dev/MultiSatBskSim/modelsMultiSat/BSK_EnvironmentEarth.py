@@ -73,8 +73,10 @@ class BSKEnvironmentModel:
         self.earth = 1
         self.moon = 2
 
+
+        # ----------------- Need see if we need to remove! ------------------
         # Override information with SPICE
-        timeInitString = "2021 MAY 04 07:47:48.965 (UTC)"
+        timeInitString = "2021 MAY 04 07:47:48.965 (UTC)" # Need see if we need to remove!
         self.gravFactory.createSpiceInterface(bskPath + '/supportData/EphemerisData/',
                                               timeInitString,
                                               epochInMsg=True)
@@ -85,6 +87,7 @@ class BSKEnvironmentModel:
         pyswice.furnsh_c(self.gravFactory.spiceObject.SPICEDataPath + 'naif0012.tls')  # leap second file
         pyswice.furnsh_c(self.gravFactory.spiceObject.SPICEDataPath + 'de-403-masses.tpc')  # solar system masses
         pyswice.furnsh_c(self.gravFactory.spiceObject.SPICEDataPath + 'pck00010.tpc')  # generic Planetary Constants
+        # ----------------- Need see if we need to remove! ------------------
 
     def SetEpochObject(self):
         """

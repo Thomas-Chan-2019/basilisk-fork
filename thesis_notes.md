@@ -92,6 +92,11 @@ To [record Module variables](https://hanspeterschaub.info/basilisk/Learn/bskPrin
 
 ![addAuthor](./ref-images/message_addAuthor_C.svg)
 
+
+## Building the simulation framework using the BSK_MultiSat structure
+- [BSK_MultiSatMasters.py](dev/MultiSatBskSim/BSK_MultiSatMasters.py): User defined scenarios should inherit the classes `BSKSim` & `BSKScenario` in `BSK_MultiSatMasters`. For __general usage__: User shall build scenario files inheritting `BSK_MultiSatMasters.BSKSim` (get/set Environment, Dynamics & FSW models corresponding to `BSK_Environment_{}`, `BSK_MultiSatDynamics` & `BSK_MultiSatFsw`) & `.BSKScenario` (override its inheritted `configure_initial_conditions(), log_outputs() & pull_outputs(showPlots, SCIndex)`); Consult example [scenario_StationKeepingMultiSat.py](dev/MultiSatBskSim/scenariosMultiSat/scenario_StationKeepingMultiSat.py) for details.
+
+
 ## Quick Notes:
 - [scenarioFormationBasic.py](dev/template-examples/scenarioFormationBasic.py) does not use `inertial3D` module for the attitude reference signal as it is already using the `hillPoint` module which also gives a constant attitude reference signal (line 335) to feed into the `attError` module.
 - `thrusterStateEffector` (newer, contains time integration & can turn on in ratio of 0-100% / 0-1) v.s. `thrusterDynamicEffector` (older, without time integration, only on/off or 0/1)

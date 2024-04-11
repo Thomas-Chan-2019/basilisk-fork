@@ -163,8 +163,11 @@ import BSK_MultiSatFsw
 import BSK_MultiSatPlotting as plt
 
 # Create your own scenario child class
-class scenario_StationKeepingFormationFlying(BSKSim, BSKScenario):
+
+# class shall Inherits BSK_MultiSatMasters.BSKSim & .BSKScenario
+class scenario_StationKeepingFormationFlying(BSKSim, BSKScenario): 
     def __init__(self, numberSpacecraft, relativeNavigation):
+        # This below is initializing the scenario itself using the class structure defined in 
         super(scenario_StationKeepingFormationFlying, self).__init__(
             numberSpacecraft, relativeNavigation=relativeNavigation, fswRate=1, dynRate=1, envRate=1, relNavRate=1)
         self.name = 'scenario_StationKeepingFormationFlying'

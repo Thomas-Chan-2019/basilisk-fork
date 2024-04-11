@@ -258,6 +258,8 @@ def run(show_plots, useUnmodeledTorque, useIntGain, useKnownTorque, useCMsg):
     # vector would leave it's components all zero for the simulation.
     if useUnmodeledTorque:
         extFTObject.extTorquePntB_B = [[0.25], [-0.25], [0.1]]
+        # extFTObject.extForce_B for setting body force 
+        # extFTObject.extForce_N for setting inertial force
     scObject.addDynamicEffector(extFTObject)
     scSim.AddModelToTask(simTaskName, extFTObject)
 

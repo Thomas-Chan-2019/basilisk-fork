@@ -18,11 +18,21 @@
 
 import numpy as np
 from Basilisk import __path__
+# thrusterDynamicEffector -> thrusterStateEffector ? 
 from Basilisk.simulation import (spacecraft, simpleNav, simpleMassProps, reactionWheelStateEffector,
                                  thrusterDynamicEffector, simpleSolarPanel, simplePowerSink, simpleBattery, fuelTank,
                                  ReactionWheelPower)
+from Basilisk.simulation import (extForceTorque) # Needed for external disturbances?
 from Basilisk.utilities import (macros as mc, unitTestSupport as sp, RigidBodyKinematics as rbk,
                                 simIncludeRW, simIncludeThruster)
+
+import inspect, os, sys
+filename = inspect.getframeinfo(inspect.currentframe()).filename
+path = os.path.dirname(os.path.abspath(filename))
+# Import master classes: simulation base class and scenario base class
+sys.path.append(path + '/../../')
+
+import scConfig
 
 bskPath = __path__[0]
 
@@ -31,11 +41,11 @@ class BSKDynamicModels:
     """
     Defines the Dynamics class.
     """
-    def __init__(self, SimBase, dynRate, spacecraftIndex):
+    def __init__(self, SimBase, dynRate, spacecraftIndex, includeExtDisturbances=False, includeSubsystems=False):
         self.I_sc = None
         self.solarPanelAxis = None
-        self.numRW = 4
-        self.numThr = None
+        self.numRW = 4 # change RW number when needed
+        self.numThr = None # change Thruster number when needed
         self.tankModel = None
         self.spacecraftIndex = spacecraftIndex
 
@@ -47,22 +57,28 @@ class BSKDynamicModels:
         SimBase.dynProc[spacecraftIndex].addTask(SimBase.CreateNewTask(self.taskName, self.processTasksTimeStep))
 
         # Instantiate Dyn modules as objects
-        self.scObject = spacecraft.Spacecraft()
+        # self.scObject = spacecraft.Spacecraft()
+        self.scObject = None
         self.simpleNavObject = simpleNav.SimpleNav()
         self.simpleMassPropsObject = simpleMassProps.SimpleMassProps()
         self.rwStateEffector = reactionWheelStateEffector.ReactionWheelStateEffector()
         self.rwFactory = simIncludeRW.rwFactory()
         self.thrusterDynamicEffector = thrusterDynamicEffector.ThrusterDynamicEffector()
         self.thrusterFactory = simIncludeThruster.thrusterFactory()
-        self.solarPanel = simpleSolarPanel.SimpleSolarPanel()
-        self.powerSink = simplePowerSink.SimplePowerSink()
-        self.powerMonitor = simpleBattery.SimpleBattery()
-        self.fuelTankStateEffector = fuelTank.FuelTank()
 
-        self.rwPowerList = []
-        for item in range(self.numRW):
-            self.rwPowerList.append(ReactionWheelPower.ReactionWheelPower())
+        if includeExtDisturbances:
+            # External disturbance mapping: TODO
+            self.extDisturbance = extForceTorque.ExtForceTorque()
 
+        if includeSubsystems:
+            self.solarPanel = simpleSolarPanel.SimpleSolarPanel()
+            self.powerSink = simplePowerSink.SimplePowerSink()
+            self.powerMonitor = simpleBattery.SimpleBattery()
+            self.fuelTankStateEffector = fuelTank.FuelTank()
+            self.rwPowerList = []
+            for item in range(self.numRW):
+                self.rwPowerList.append(ReactionWheelPower.ReactionWheelPower())
+        
         # Initialize all modules and write init one-time messages
         self.InitAllDynObjects(SimBase)
 
@@ -72,10 +88,15 @@ class BSKDynamicModels:
         SimBase.AddModelToTask(self.taskName, self.simpleMassPropsObject, 99)
         SimBase.AddModelToTask(self.taskName, self.rwStateEffector, 100)
         SimBase.AddModelToTask(self.taskName, self.thrusterDynamicEffector, 100)
-        SimBase.AddModelToTask(self.taskName, self.solarPanel, 100)
-        SimBase.AddModelToTask(self.taskName, self.powerSink, 100)
-        SimBase.AddModelToTask(self.taskName, self.powerMonitor, 100)
-        SimBase.AddModelToTask(self.taskName, self.fuelTankStateEffector, 100)
+        
+        if includeExtDisturbances: # check if we add external disturbances
+            SimBase.AddModelToTask(self.taskName, self.extDisturbance, 100)
+        
+        if includeSubsystems:
+            SimBase.AddModelToTask(self.taskName, self.solarPanel, 100)
+            SimBase.AddModelToTask(self.taskName, self.powerSink, 100)
+            SimBase.AddModelToTask(self.taskName, self.powerMonitor, 100)
+            SimBase.AddModelToTask(self.taskName, self.fuelTankStateEffector, 100)
 
         for item in range(self.numRW):
             SimBase.AddModelToTask(self.taskName, self.rwPowerList[item], 100)
@@ -83,17 +104,14 @@ class BSKDynamicModels:
     # ------------------------------------------------------------------------------------------- #
     # These are module-initialization methods
 
-    def SetSpacecraftHub(self):
+    def SetSpacecraftHub(self): # Modified from original to support self-developped scConfig module.
         """
         Defines the spacecraft object properties.
         """
-        self.scObject.ModelTag = "sat-" + str(self.spacecraftIndex)
-        self.I_sc = [900., 0., 0.,
-                     0., 800., 0.,
-                     0., 0., 600.]
-        self.scObject.hub.mHub = 750.0  # kg - spacecraft mass
-        self.scObject.hub.r_BcB_B = [[0.0], [0.0], [0.0]]  # m - position vector of body-fixed point B relative to CM
-        self.scObject.hub.IHubPntBc_B = sp.np2EigenMatrix3d(self.I_sc)
+        # See dev/scConfig.py for details on creating a S/C, based on Astrobee config for now.
+        self.scObject = scConfig.createSC(scName="astrobee")
+        self.scObject.ModelTag = "sat-" + str(self.spacecraftIndex) # Update model tag in accordance to SC index
+        self.I_sc = self.scObject.hub.IHubPntBc_B
 
     def SetGravityBodies(self, SimBase):
         """
@@ -128,6 +146,7 @@ class BSKDynamicModels:
         self.simpleMassPropsObject.ModelTag = "SimpleMassProperties" + str(self.spacecraftIndex)
         self.simpleMassPropsObject.scMassPropsInMsg.subscribeTo(self.scObject.scMassOutMsg)
 
+    # We should redefine the axis of the RWs!
     def SetReactionWheelDynEffector(self):
         """
         Defines the RW state effector.
@@ -154,7 +173,8 @@ class BSKDynamicModels:
         self.numRW = self.rwFactory.getNumOfDevices()
         self.rwFactory.addToSpacecraft("RWArray" + str(self.spacecraftIndex), self.rwStateEffector, self.scObject)
 
-    def SetThrusterDynEffector(self):
+    # We should redefine the axis of the Thrusters!
+    def SetThrusterDynEffector(self): 
         """
         Defines the thruster state effector.
         """
@@ -224,21 +244,35 @@ class BSKDynamicModels:
         for item in range(self.numRW):
             self.powerMonitor.addPowerNodeToModel(self.rwPowerList[item].nodePowerOutMsg)
 
+    def SetExtForceTorque(self):
+        self.extDisturbance.ModelTag = "externalDisturbance"
+        # Hard coded external forces, to decide if use, or create atmospheric/J2 drag modules:
+        # self.extDisturbance.extTorquePntB_B = [[0.25], [-0.25], [0.1]]
+        # self.extDisturbance.extForce_B = [[0.],[0.],[-0.]] for setting body force 
+        # self.extDisturbance.extForce_N = [[0.],[0.],[-0.]] for setting inertial force
+        self.scObject.addDynamicEffector(self.extDisturbance)
+    
     # Global call to initialize every module
-    def InitAllDynObjects(self, SimBase):
+    def InitAllDynObjects(self, SimBase, includeExtDisturbances, includeSubsystems):
         """
         Initializes all dynamic objects.
         """
         self.SetSpacecraftHub()
         self.SetGravityBodies(SimBase)
-        self.SetReactionWheelDynEffector()
-        self.SetThrusterDynEffector()
-        self.SetFuelTank()
+        self.SetReactionWheelDynEffector() # TODO - change axis / power
+        self.SetThrusterDynEffector() # TODO - change axis / thrust forces
+        
+        if includeExtDisturbances:
+            self.SetExtForceTorque() # TODO - check if needed at first stage without disturbances
+        
         self.SetSimpleNavObject()
         self.SetSimpleMassPropsObject()
         self.SetGroundLocations(SimBase)
-        self.SetReactionWheelPower()
         self.SetEclipseObject(SimBase)
-        self.SetSolarPanel(SimBase)
-        self.SetPowerSink()
-        self.SetBattery()
+        
+        if includeSubsystems:
+            self.SetFuelTank()
+            self.SetReactionWheelPower()
+            self.SetSolarPanel(SimBase)
+            self.SetPowerSink()
+            self.SetBattery()

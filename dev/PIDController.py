@@ -31,9 +31,11 @@ class PIDController(sysModel.SysModel):
         super(PIDController, self).__init__()
 
         # Proportional gain term used in control
-        self.K = 0
+        self.K_trans = 0
+        self.K_rot = 0
         # Derivative gain term used in control
-        self.P = 0
+        self.P_trans = 0
+        self.P_rot = 0
         
         # Input guidance structure message: Translational
         self.transGuidInMsg = messaging.TransGuidMsg()
@@ -58,9 +60,11 @@ class PIDController(sysModel.SysModel):
 
     def Reset(self, CurrentSimNanos):
         # Proportional gain term used in control
-        self.K = 0
+        self.K_trans = 0
+        self.K_rot = 0
         # Derivative gain term used in control
-        self.P = 0
+        self.P_trans = 0
+        self.P_rot = 0
         """
         The Reset method is used to clear out any persistent variables that need to get changed
         when a task is restarted.  This method is typically only called once after selfInit/crossInit,
@@ -90,13 +94,13 @@ class PIDController(sysModel.SysModel):
         torqueOutMsgBuffer = messaging.CmdTorqueBodyMsgPayload()
         
         # compute TRANS control solution
-        FrCmd = np.array(transGuidMsgBuffer.r_BR_B) * self.K + np.array(transGuidMsgBuffer.v_BR_B) * self.P
+        FrCmd = np.array(transGuidMsgBuffer.r_BR_B) * self.K_trans + np.array(transGuidMsgBuffer.v_BR_B) * self.P_trans
         forceOutMsgBuffer.forceRequestBody = (-FrCmd).tolist()
 
         self.cmdForceOutMsg.write(forceOutMsgBuffer, CurrentSimNanos, self.moduleID)
 
         # compute ATT control solution
-        lrCmd = np.array(attGuidMsgBuffer.sigma_BR) * self.K + np.array(attGuidMsgBuffer.omega_BR_B) * self.P
+        lrCmd = np.array(attGuidMsgBuffer.sigma_BR) * self.K_rot + np.array(attGuidMsgBuffer.omega_BR_B) * self.P_rot
         torqueOutMsgBuffer.torqueRequestBody = (-lrCmd).tolist()
 
         self.cmdTorqueOutMsg.write(torqueOutMsgBuffer, CurrentSimNanos, self.moduleID)
