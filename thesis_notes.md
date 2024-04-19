@@ -92,6 +92,10 @@ To [record Module variables](https://hanspeterschaub.info/basilisk/Learn/bskPrin
 
 ![addAuthor](./ref-images/message_addAuthor_C.svg)
 
+Updated Controller Flow to State Effectors affecting EOM:
+- Concerning `rwMotorTorque()` & `thrForceMapping()`/`torqueForceThrustMapping()`:  they take `CmdTorqueBodyMsg` / `CmdForceBodyMsg` IN, `ArrayMotorTorqueMsgPayload` / `THRArrayCmdForceMsg` OUT; New flowchart included below:
+![Message Flow Chart from controller to EOM state effector](./ref-images/bsk_module_control_flow_controller_to_EOM_state_effectors.jpeg)
+
 
 ## BSKLogger & BSK Log levels:
 - Consult [bskLogging.py](dist3/Basilisk/architecture/bskLogging.py), [attTrackingError.c](src/fswAlgorithms/attGuidance/attTrackingError/attTrackingError.c) and [transError.py](dev/transError.py) for implementations of BSKLogging in the terminal!
@@ -122,9 +126,6 @@ scSim.ShowExecutionOrder()
 ```
 ![taskPriority](./ref-images/task_priority_fig.svg)
 - __Unit Test__: see [Unit Test for `ThrusterStateEffector`](src/simulation/dynamics/Thrusters/thrusterStateEffector/_UnitTest/test_ThrusterStateEffectorUnit.py) for how to mimic a unit test case
-
-- Concerning `rwMotorTorque()` & `thrForceMapping()`/`torqueForceThrustMapping()`:  they take `CmdTorqueBodyMsg` / `CmdForceBodyMsg` IN, `ArrayMotorTorqueMsgPayload` / `THRArrayCmdForceMsg` OUT
-
 - Updates to create RW: in [simIncludeRW.py](dist3/Basilisk/utilities/simIncludeRW.py) & example specified in [scenarioAttitudeConstrainedManeuver.py](examples/scenarioAttitudeConstrainedManeuver.py) line 211, RW should be initialised with spin axis `gsHat_B` and position vector `rwB_B` or `varrWB_B` (if any); example of creating RWs are:
 
 __Case 1__ - Simple 3-axis aligned:
