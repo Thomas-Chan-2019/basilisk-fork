@@ -93,6 +93,12 @@ To [record Module variables](https://hanspeterschaub.info/basilisk/Learn/bskPrin
 ![addAuthor](./ref-images/message_addAuthor_C.svg)
 
 
+## BSKLogger & BSK Log levels:
+- Consult [bskLogging.py](dist3/Basilisk/architecture/bskLogging.py), [attTrackingError.c](src/fswAlgorithms/attGuidance/attTrackingError/attTrackingError.c) and [transError.py](dev/transError.py) for implementations of BSKLogging in the terminal!
+This is for aliging the `Reset()` function action of our created Python Modules with the C modules
+![BSKLogging](/ref-images/bskLogger_Python_from_att_transError.png) 
+- __TODO__: add back `Reset()` actions for [PIDController.py](/dev/PIDController.py) or others controllers in accordance to [mrpFeedback.c](src/fswAlgorithms/attControl/mrpFeedback/mrpFeedback.c)
+
 ## Building the simulation framework using the BSK_MultiSat structure
 - [BSK_MultiSatMasters.py](dev/MultiSatBskSim/BSK_MultiSatMasters.py): User defined scenarios should inherit the classes `BSKSim` & `BSKScenario` in `BSK_MultiSatMasters`. For __general usage__: User shall build scenario files inheritting `BSK_MultiSatMasters.BSKSim` (get/set Environment, Dynamics & FSW models corresponding to `BSK_Environment_{}`, `BSK_MultiSatDynamics` & `BSK_MultiSatFsw`) & `.BSKScenario` (override its inheritted `configure_initial_conditions(), log_outputs() & pull_outputs(showPlots, SCIndex)`); Consult example [scenario_StationKeepingMultiSat.py](dev/MultiSatBskSim/scenariosMultiSat/scenario_StationKeepingMultiSat.py) for details.
 
@@ -116,3 +122,81 @@ scSim.ShowExecutionOrder()
 ```
 ![taskPriority](./ref-images/task_priority_fig.svg)
 - __Unit Test__: see [Unit Test for `ThrusterStateEffector`](src/simulation/dynamics/Thrusters/thrusterStateEffector/_UnitTest/test_ThrusterStateEffectorUnit.py) for how to mimic a unit test case
+
+- Concerning `rwMotorTorque()` & `thrForceMapping()`/`torqueForceThrustMapping()`:  they take `CmdTorqueBodyMsg` / `CmdForceBodyMsg` IN, `ArrayMotorTorqueMsgPayload` / `THRArrayCmdForceMsg` OUT
+
+- Updates to create RW: in [simIncludeRW.py](dist3/Basilisk/utilities/simIncludeRW.py) & example specified in [scenarioAttitudeConstrainedManeuver.py](examples/scenarioAttitudeConstrainedManeuver.py) line 211, RW should be initialised with spin axis `gsHat_B` and position vector `rwB_B` or `varrWB_B` (if any); example of creating RWs are:
+
+__Case 1__ - Simple 3-axis aligned:
+
+```
+#
+# add RW devices
+#
+# Make RW factory instance
+rwFactory = simIncludeRW.rwFactory()
+
+# store the RW dynamical model type
+varRWModel = messaging.BalancedWheels
+
+# create each RW by specifying the RW type, the spin axis gsHat, plus optional arguments
+maxMomentum = 0.01
+maxSpeed = 6000 * macros.RPM
+RW1 = rwFactory.create('custom', [1, 0, 0], Omega=0.  # RPM
+                        , Omega_max=maxSpeed
+                        , maxMomentum=maxMomentum
+                        , u_max=0.001
+                        , RWModel=varRWModel)
+RW2 = rwFactory.create('custom', [0, 1, 0], Omega=0.  # RPM
+                        , Omega_max=maxSpeed
+                        , maxMomentum=maxMomentum
+                        , u_max=0.001
+                        , RWModel=varRWModel)
+RW3 = rwFactory.create('custom', [0, 0, 1], Omega=0.  # RPM
+                        , Omega_max=maxSpeed
+                        , maxMomentum=maxMomentum
+                        , u_max=0.001
+                        , RWModel=varRWModel)
+
+numRW = rwFactory.getNumOfDevices()
+
+# create RW object container and tie to spacecraft object
+rwStateEffector = reactionWheelStateEffector.ReactionWheelStateEffector()
+rwStateEffector.ModelTag = "RW_cluster"
+rwFactory.addToSpacecraft(scObject.ModelTag, rwStateEffector, scObject)
+
+# add RW object array to the simulation process
+scSim.AddModelToTask(simTaskName, rwStateEffector, 2)
+```
+
+__Case 2__ - Tetrahedron structure (avoid saturation?) (in original [BSK_MultiSatDynamics.py](dev/MultiSatBskSim/modelsMultiSat/BSK_MultiSatDynamicsOld.py)):
+```
+# We should redefine the axis of the RWs!
+def SetReactionWheelDynEffector(self):
+    """
+    Defines the RW state effector.
+    """
+    # specify RW momentum capacity
+    maxRWMomentum = 50.  # Nms
+
+    # Define orthogonal RW pyramid
+    # -- Pointing directions
+    rwElAngle = np.array([40.0, 40.0, 40.0, 40.0]) * mc.D2R
+    rwAzimuthAngle = np.array([45.0, 135.0, 225.0, 315.0]) * mc.D2R
+    rwPosVector = [[0.8, 0.8, 1.79070],
+                    [0.8, -0.8, 1.79070],
+                    [-0.8, -0.8, 1.79070],
+                    [-0.8, 0.8, 1.79070]]
+
+    for elAngle, azAngle, posVector in zip(rwElAngle, rwAzimuthAngle, rwPosVector):
+        gsHat = (rbk.Mi(-azAngle, 3).dot(rbk.Mi(elAngle, 2))).dot(np.array([1, 0, 0]))
+        self.rwFactory.create('Honeywell_HR16',
+                                gsHat,
+                                maxMomentum=maxRWMomentum,
+                                rWB_B=posVector)
+
+    self.numRW = self.rwFactory.getNumOfDevices()
+    self.rwFactory.addToSpacecraft("RWArray" + str(self.spacecraftIndex), self.rwStateEffector, self.scObject)
+```
+
+![RW Settings](./ref-images/rwSettings_simIncludeRW.png)

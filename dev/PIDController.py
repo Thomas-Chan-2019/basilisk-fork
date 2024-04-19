@@ -1,9 +1,11 @@
 from Basilisk.architecture import sysModel, messaging
+from Basilisk.utilities import orbitalMotion, RigidBodyKinematics as RBK # Import for Hill-frame conversion & control if necessary
 import numpy as np
 
 # See https://hanspeterschaub.info/basilisk/Learn/makingModules/pyModules.html for Python Module creation original example.
 # This controller should have I/O messages from:
 # Input: VehicleConfigMsgPayload, AttGuidMsgReader (if control att.), TODO
+# Unlike the `mrpFeedback.py` module, we first ignore the RW inertial effects and do not import the RW params in the EOM.
 class PIDController(sysModel.SysModel):
     """
     This class inherits from the `SysModel` available in the ``Basilisk.architecture.sysModel`` module.
@@ -42,7 +44,7 @@ class PIDController(sysModel.SysModel):
         # Input guidance structure message: Rotational
         self.attGuidInMsg = messaging.AttGuidMsg()
         # For mass & moment of inertia
-        self.vehConfigInMsg = messaging.VehicleConfigMsg() 
+        self.vehConfigInMsg = messaging.VehicleConfigMsg()
         
         # # Include thruster & RW arrays configs:
         # self.thrParamsInMsg = messaging.THRArrayConfigMsg()
@@ -65,6 +67,12 @@ class PIDController(sysModel.SysModel):
         # Derivative gain term used in control
         self.P_trans = 0
         self.P_rot = 0
+        
+        # TODO: Add back Reset() actions in accordance to mrpFeedback.c, basically:
+        # 1) Message subscription check -> throw BSK log error if not linked;
+        # 2) Read `VehicleConfigMsgPayload` for I_sc (also m_SC);
+        # 3) Reset control gains or constraints for MPC controllers when implemented.
+        
         """
         The Reset method is used to clear out any persistent variables that need to get changed
         when a task is restarted.  This method is typically only called once after selfInit/crossInit,
@@ -93,16 +101,23 @@ class PIDController(sysModel.SysModel):
         forceOutMsgBuffer = messaging.CmdForceBodyMsgPayload()
         torqueOutMsgBuffer = messaging.CmdTorqueBodyMsgPayload()
         
+        # Do we need Hill-frame based controller?
+        # If so -> use `orbitalMotion.rv2hill()` and `.hill2rv()`
+        # `rv2hill(rc_N, vc_N, rd_N, vd_N)`
+        # `hill2rv(rc_N, vc_N, rho_H, rhoPrime_H)`
+        
         # compute TRANS control solution
         FrCmd = np.array(transGuidMsgBuffer.r_BR_B) * self.K_trans + np.array(transGuidMsgBuffer.v_BR_B) * self.P_trans
         forceOutMsgBuffer.forceRequestBody = (-FrCmd).tolist()
-
         self.cmdForceOutMsg.write(forceOutMsgBuffer, CurrentSimNanos, self.moduleID)
 
         # compute ATT control solution
-        lrCmd = np.array(attGuidMsgBuffer.sigma_BR) * self.K_rot + np.array(attGuidMsgBuffer.omega_BR_B) * self.P_rot
+        omega_BR_B_Tilde = RBK.v3Tilde(attGuidMsgBuffer.omega_BR_B)
+        lrCmd = np.array(attGuidMsgBuffer.sigma_BR) * self.K_rot + np.array(attGuidMsgBuffer.omega_BR_B) * self.P_rot + np.array(omega_BR_B_Tilde) * np.array(self.vehConfigInMsg.ISCPntB_B) * np.array(attGuidMsgBuffer.omega_BR_B)
+        # To add reference trajectory related terms (e.g. omega_r, sigma_r) when needed:
+        # PD Form:
+        # u = -[K]*sigma - [P]*(omega - omega_r) + [I]*(omegaDot_r - [omegaTilde]*omega_r) + [omegaTilde]*[I]*omega - L
         torqueOutMsgBuffer.torqueRequestBody = (-lrCmd).tolist()
-
         self.cmdTorqueOutMsg.write(torqueOutMsgBuffer, CurrentSimNanos, self.moduleID)
 
         # All Python SysModels have self.bskLogger available

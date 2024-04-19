@@ -21,45 +21,29 @@ import itertools
 import numpy as np
 from Basilisk.architecture import messaging
 from Basilisk.fswAlgorithms import (inertial3D, locationPointing, attTrackingError, mrpFeedback,
-                                    rwMotorTorque, spacecraftReconfig) # most of the pointing/controller/feedback modules are not used
-from Basilisk.utilities import (macros as mc, fswSetupThrusters, fswSetupRW) # need the fswSetupRW module?
+                                    rwMotorTorque, spacecraftReconfig)
+from Basilisk.utilities import (macros as mc, fswSetupThrusters)
 from Basilisk.utilities import deprecated
 
-import inspect, os, sys
-filename = inspect.getframeinfo(inspect.currentframe()).filename
-path = os.path.dirname(os.path.abspath(filename))
-# Import master classes: simulation base class and scenario base class
-sys.path.append(path + '/../../')
-import transError, PIDController # self developed modules
 
 class BSKFswModels:
     """Defines the FSW class"""
     def __init__(self, SimBase, fswRate, spacecraftIndex):
         # define empty class variables
-        self.targetSCIndex = 0 # Set target SC index among ALL created SC at 0, can move to scenario creation later!
         self.spacecraftIndex = spacecraftIndex
-        self.decayTime = None # control decay time
-        self.xi = None # damping ratio
+        self.decayTime = None
+        self.xi = None
         self.modeRequest = "standby"
         self.stationKeeping = "OFF"
 
         self.vcMsg = None
-        self.fswThrusterConfigMsg = None
         self.fswRwConfigMsg = None
+        self.fswThrusterConfigMsg = None
         self.cmdTorqueMsg = None
         self.cmdTorqueDirectMsg = None
         self.attRefMsg = None
         self.attGuidMsg = None
         self.cmdRwMotorMsg = None
-        
-        # Added for thrusters translational control
-        self.cmdForceMsg = None 
-        self.cmdForceDirectMsg = None 
-        # transError messages:
-        self.targetTransInMsg = None
-        self.chaserTransInMsg = None
-        self.transRefInMsg = None
-        self.transGuidOutMsg = None
 
         # Define process name and default time-step for all FSW tasks defined later on
         self.processName = SimBase.FSWProcessName[spacecraftIndex]
@@ -68,78 +52,38 @@ class BSKFswModels:
         # Create tasks
         SimBase.fswProc[spacecraftIndex].addTask(SimBase.CreateNewTask("inertialPointTask" + str(spacecraftIndex),
                                                                        self.processTasksTimeStep), 20)
+        SimBase.fswProc[spacecraftIndex].addTask(SimBase.CreateNewTask("sunPointTask" + str(spacecraftIndex),
+                                                                       self.processTasksTimeStep), 20)
+        SimBase.fswProc[spacecraftIndex].addTask(SimBase.CreateNewTask("locPointTask" + str(spacecraftIndex),
+                                                                       self.processTasksTimeStep), 20)
+        SimBase.fswProc[spacecraftIndex].addTask(SimBase.CreateNewTask("spacecraftReconfigTask" + str(spacecraftIndex),
+                                                                       self.processTasksTimeStep), 15)
         SimBase.fswProc[spacecraftIndex].addTask(SimBase.CreateNewTask("trackingErrorTask" + str(spacecraftIndex),
                                                                        self.processTasksTimeStep), 10)
-        # New tasks for new modules:
-        SimBase.fswProc[spacecraftIndex].addTask(SimBase.CreateNewTask("transErrorTask" + str(spacecraftIndex),
-                                                                       self.processTasksTimeStep), 10) # Following priority of trackingErrorTask (pending to be removed)
-        # transControllerTask created here is later called below to add the actuator control axis (rwMotorTorque & [TODO] thruster mapping module)!
-        SimBase.fswProc[spacecraftIndex].addTask(SimBase.CreateNewTask("transControllerTask" + str(spacecraftIndex),
-                                                                       self.processTasksTimeStep), 5) # Following priority of mrpFeedbackRWsTask (pending to be removed)
-        
-        # # ------------------ <START> PEND REMOVE ------------------
-        
-        # SimBase.fswProc[spacecraftIndex].addTask(SimBase.CreateNewTask("sunPointTask" + str(spacecraftIndex),
-        #                                                                self.processTasksTimeStep), 20)
-        # SimBase.fswProc[spacecraftIndex].addTask(SimBase.CreateNewTask("locPointTask" + str(spacecraftIndex),
-        #                                                                self.processTasksTimeStep), 20)
-        # SimBase.fswProc[spacecraftIndex].addTask(SimBase.CreateNewTask("spacecraftReconfigTask" + str(spacecraftIndex),
-        #                                                                self.processTasksTimeStep), 15)
-        # SimBase.fswProc[spacecraftIndex].addTask(SimBase.CreateNewTask("mrpFeedbackRWsTask" + str(spacecraftIndex),
-        #                                                                self.processTasksTimeStep), 5)
-        # # ------------------ <END> PEND REMOVE ------------------
-        
-
-
-        self.sunPoint = locationPointing.locationPointing()
-        self.sunPoint.ModelTag = "sunPoint"
-        
-        self.sunPoint = locationPointing.locationPointing()
-        self.sunPoint.ModelTag = "sunPoint"
-
-
-        self.locPoint = locationPointing.locationPointing()
-        self.locPoint.ModelTag = "locPoint"
-        
-        self.locPoint = locationPointing.locationPointing()
-        self.locPoint.ModelTag = "locPoint"
+        SimBase.fswProc[spacecraftIndex].addTask(SimBase.CreateNewTask("mrpFeedbackRWsTask" + str(spacecraftIndex),
+                                                                       self.processTasksTimeStep), 5)
 
         # Create module data and module wraps
-        self.inertial3DPoint = inertial3D.inertial3D() # Get att. reference MRP message
+        self.inertial3DPoint = inertial3D.inertial3D()
         self.inertial3DPoint.ModelTag = "inertial3D"
-        
+
+        self.sunPoint = locationPointing.locationPointing()
+        self.sunPoint.ModelTag = "sunPoint"
+
+        self.locPoint = locationPointing.locationPointing()
+        self.locPoint.ModelTag = "locPoint"
+
+        self.spacecraftReconfig = spacecraftReconfig.spacecraftReconfig()
+        self.spacecraftReconfig.ModelTag = "spacecraftReconfig"
+
         self.trackingError = attTrackingError.attTrackingError()
         self.trackingError.ModelTag = "trackingError"
 
+        self.mrpFeedbackRWs = mrpFeedback.mrpFeedback()
+        self.mrpFeedbackRWs.ModelTag = "mrpFeedbackRWs"
+
         self.rwMotorTorque = rwMotorTorque.rwMotorTorque()
         self.rwMotorTorque.ModelTag = "rwMotorTorque"
-
-        # Add new modules:
-        self.transError = transError.transError()
-        self.transError.ModelTag = "transError"
-        
-        self.transController = PIDController.PIDController()
-        self.transController.ModelTag = "transController"
-
-        # <-- PEND ADD Thruster Mapping like Torque Mapping Module `rwMotorTorque`-->
-        
-        # # ------------------ <START> PEND REMOVE ------------------
-        
-        # self.sunPoint = locationPointing.locationPointing()
-        # self.sunPoint.ModelTag = "sunPoint"
-
-        # self.locPoint = locationPointing.locationPointing()
-        # self.locPoint.ModelTag = "locPoint"
-
-        # self.spacecraftReconfig = spacecraftReconfig.spacecraftReconfig()
-        # self.spacecraftReconfig.ModelTag = "spacecraftReconfig"
-
-
-        # self.mrpFeedbackRWs = mrpFeedback.mrpFeedback()
-        # self.mrpFeedbackRWs.ModelTag = "mrpFeedbackRWs"
-        
-        # # ------------------ <END> PEND REMOVE ------------------
-
 
         # create the FSW module gateway messages
         self.setupGatewayMsgs(SimBase)
@@ -149,26 +93,17 @@ class BSKFswModels:
 
         # Assign initialized modules to tasks
         SimBase.AddModelToTask("inertialPointTask" + str(spacecraftIndex), self.inertial3DPoint, 10)
+
+        SimBase.AddModelToTask("sunPointTask" + str(spacecraftIndex), self.sunPoint, 10)
+
+        SimBase.AddModelToTask("locPointTask" + str(spacecraftIndex), self.locPoint, 10)
+
+        SimBase.AddModelToTask("spacecraftReconfigTask" + str(spacecraftIndex), self.spacecraftReconfig, 10)
+
         SimBase.AddModelToTask("trackingErrorTask" + str(spacecraftIndex), self.trackingError, 9)
-        # Add new modules to simulation:
-        SimBase.AddModelToTask("transErrorTask" + str(spacecraftIndex), self.transError, 9)
-        SimBase.AddModelToTask("transControllerTask" + str(spacecraftIndex), self.transController, 7) # transControllerTask is defined above when created a new event!
 
-        SimBase.AddModelToTask("transControllerTask" + str(spacecraftIndex), self.rwMotorTorque, 6)
-
-
-        # ------------------ <START> PEND REMOVE ------------------
-        
-        # SimBase.AddModelToTask("sunPointTask" + str(spacecraftIndex), self.sunPoint, 10)
-        # SimBase.AddModelToTask("locPointTask" + str(spacecraftIndex), self.locPoint, 10)
-        # SimBase.AddModelToTask("spacecraftReconfigTask" + str(spacecraftIndex), self.spacecraftReconfig, 10)
-
-        # SimBase.AddModelToTask("mrpFeedbackRWsTask" + str(spacecraftIndex), self.mrpFeedbackRWs, 7)
-        # SimBase.AddModelToTask("mrpFeedbackRWsTask" + str(spacecraftIndex), self.rwMotorTorque, 6)
-
-        # ------------------ <END> PEND REMOVE ------------------
-
-
+        SimBase.AddModelToTask("mrpFeedbackRWsTask" + str(spacecraftIndex), self.mrpFeedbackRWs, 7)
+        SimBase.AddModelToTask("mrpFeedbackRWsTask" + str(spacecraftIndex), self.rwMotorTorque, 6)
 
         # Create events to be called for triggering GN&C maneuvers
         SimBase.fswProc[spacecraftIndex].disableAllTasks()
@@ -227,7 +162,6 @@ class BSKFswModels:
         """
         Defines the inertial pointing guidance module.
         """
-        # Pend change -> this is hardcoded
         self.inertial3DPoint.sigma_R0N = [0.1, 0.2, -0.3]
         messaging.AttRefMsg_C_addAuthor(self.inertial3DPoint.attRefOutMsg, self.attRefMsg)
 
@@ -269,31 +203,6 @@ class BSKFswModels:
         chiefMsg = messaging.NavTransMsg().write(chiefData)
         self.spacecraftReconfig.chiefTransInMsg.subscribeTo(chiefMsg)
 
-    # New setup transError.py module:
-    def SetTransError(self, SimBase):
-        # Target trans nav:
-        self.transError.targetTransInMsg.subscribeTo(
-            SimBase.DynModels[self.targetSCIndex].simpleNavObject.transOutMsg) # Taking the Target index
-        # Chaser trans nav:
-        self.transError.chaserTransInMsg.subscribeTo(
-            SimBase.DynModels[self.spacecraftIndex].simpleNavObject.transOutMsg)
-        # Trans reference:
-        self.transError.transRefInMsg.subscribeTo(self.transRefInMsg)
-        messaging.AttGuidMsg_C_addAuthor(self.transError.transGuidOutMsg, self.transGuidOutMsg)
-        # `self.transGuidOutMsg` has been set in function setupGatewayMsgs() with C addAuthor() 
-        # -> Check why, probably because the original structure would switch between control modules (SpacecraftReconfig, Local Pointing, Sun Pointing etc.)
-    
-    def SetTransController(self, SimBase):
-        self.decayTime = 50 # copy from MRP Feedback module
-        self.xi = 0.9 # copy from MRP Feedback module only
-        # TODO
-        # self.transController.
-        # .subscribeTo()
-        self.transController.vehConfigInMsg.subscribeTo(SimBase.DynModels[self.spacecraftIndex].simpleMassPropsObject.vehicleConfigOutMsg)
-        # Unlike the `mrpFeedback.py` module, we first ignore the RW inertial effects and do not import the RW params in the EOM.
-        self.transController.transGuidInMsg.subscribeTo(self.transGuidOutMsg)
-        return
-    
     def SetAttitudeTrackingError(self, SimBase):
         """
         Defines the module that converts a reference message into a guidance message.
@@ -302,13 +211,13 @@ class BSKFswModels:
             SimBase.DynModels[self.spacecraftIndex].simpleNavObject.attOutMsg)
         self.trackingError.attRefInMsg.subscribeTo(self.attRefMsg)
         messaging.AttGuidMsg_C_addAuthor(self.trackingError.attGuidOutMsg, self.attGuidMsg)
-                
+
     def SetMRPFeedbackRWA(self, SimBase):
         """
         Defines the control properties.
         """
-        self.decayTime = 50 # for MRP Feedback module only
-        self.xi = 0.9 # for MRP Feedback module only
+        self.decayTime = 50
+        self.xi = 0.9
         self.mrpFeedbackRWs.Ki = -1  # make value negative to turn off integral feedback
         self.mrpFeedbackRWs.P = 2 * np.max(SimBase.DynModels[self.spacecraftIndex].I_sc) / self.decayTime
         self.mrpFeedbackRWs.K = (self.mrpFeedbackRWs.P / self.xi) * \
@@ -328,7 +237,6 @@ class BSKFswModels:
         """
         # Configure RW pyramid exactly as it is in the Dynamics (i.e. FSW with perfect knowledge)
         # the same msg is used here for both spacecraft
-        fswSetupRW.clearSetup() # Check if this would affect the simultation!
         self.fswRwConfigMsg = SimBase.DynModels[self.spacecraftIndex].rwFactory.getConfigMessage()
 
     def SetThrustersConfigMsg(self, SimBase):
@@ -360,16 +268,13 @@ class BSKFswModels:
         Initializes all FSW objects.
         """
         self.SetInertial3DPointGuidance()
-        # self.SetSunPointGuidance(SimBase)
-        # self.SetLocationPointGuidance(SimBase)
+        self.SetSunPointGuidance(SimBase)
+        self.SetLocationPointGuidance(SimBase)
         self.SetAttitudeTrackingError(SimBase)
         self.SetRWConfigMsg(SimBase)
         self.SetThrustersConfigMsg(SimBase)
-        # Added translational controller modules:
-        self.SetTransError(SimBase)
-        self.SetTransController(SimBase)
-        # self.SetMRPFeedbackRWA(SimBase)
-        # self.SetSpacecraftOrbitReconfig(SimBase)
+        self.SetMRPFeedbackRWA(SimBase)
+        self.SetSpacecraftOrbitReconfig(SimBase)
         self.SetRWMotorTorque()
 
     def setupGatewayMsgs(self, SimBase):
@@ -377,27 +282,19 @@ class BSKFswModels:
         and provide a common input msg for down-stream modules"""
         self.attRefMsg = messaging.AttRefMsg_C()
         self.attGuidMsg = messaging.AttGuidMsg_C()
-        # Add translational message first, need to figure out what is "Gateway Messages"
-        self.transRefInMsg = messaging.TransRefMsg_C()
-        self.transGuidOutMsg = messaging.TransGuidMsg_C()
-        
+
         self.zeroGateWayMsgs()
 
         # connect gateway FSW effector command msgs with the dynamics
         SimBase.DynModels[self.spacecraftIndex].rwStateEffector.rwMotorCmdInMsg.subscribeTo(
             self.rwMotorTorque.rwMotorTorqueOutMsg)
-        
-        # Code stop working here -> need implementation on Thrust-Force-to-On-Time:
         SimBase.DynModels[self.spacecraftIndex].thrusterDynamicEffector.cmdsInMsg.subscribeTo(
-            self.spacecraftReconfig.onTimeOutMsg) # Need to change spacecraftReconfig related here to sth like thrForceMapping
+            self.spacecraftReconfig.onTimeOutMsg)
 
     def zeroGateWayMsgs(self):
         """Zero all the FSW gateway message payloads"""
         self.attRefMsg.write(messaging.AttRefMsgPayload())
         self.attGuidMsg.write(messaging.AttGuidMsgPayload())
-        # Add to "Zero out" translational message first, need to figure out what is "Gateway Messages"
-        self.transRefInMsg.write(messaging.TransRefMsgPayload())
-        self.transGuidOutMsg.write(messaging.TransGuidMsgPayload())
 
     @property
     def inertial3DPointData(self):

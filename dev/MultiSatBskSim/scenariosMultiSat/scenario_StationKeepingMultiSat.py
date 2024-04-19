@@ -155,9 +155,9 @@ sys.path.append(path + '/../')
 sys.path.append(path + '/../modelsMultiSat')
 sys.path.append(path + '/../plottingMultiSat')
 from BSK_MultiSatMasters import BSKSim, BSKScenario
-import BSK_EnvironmentEarth
-import BSK_MultiSatDynamics
-import BSK_MultiSatFsw
+import BSK_EnvironmentEarth, BSK_MultiSatDynamics, BSK_MultiSatFsw
+# import BSK_MultiSatDynamicsOld as BSK_MultiSatDynamics # Temp. solution to make it work
+# import BSK_MultiSatFswOld as BSK_MultiSatFsw # Temp. solution to make it work
 
 # Import plotting files for your scenario
 import BSK_MultiSatPlotting as plt

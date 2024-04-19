@@ -6,12 +6,19 @@ import sys
 from Basilisk.simulation import spacecraft
 from Basilisk.utilities import unitTestSupport, macros  # general support file with common unit test functions
 
-class SCConfig(object):
-    def __init__(self, mHub, IHub, ModelTag="spacecraftBody", r_BcB_B=[[0.0], [0.0], [0.0]]):
+class SCConfig(object): # TODO - Add RW & Thruster configs
+    def __init__(self, mHub, IHub, ModelTag="spacecraftBody", 
+                 r_BcB_B=[[0.0], [0.0], [0.0]], 
+                 RW_gsHat_B_Matrix=[[1, 0, 0],[0, 1, 0],[0, 0, 1]],
+                 THR_gsHat_B_Matrix=[[1, 0, 0],[0, 1, 0],[0, 0, 1]]
+                 ):
         self.mHub = mHub
         self.IHub = IHub
         self.ModelTag = ModelTag
         self.r_BcB_B=r_BcB_B
+        self.RW_gsHat_B_Matrix = RW_gsHat_B_Matrix
+        self.THR_gsHat_B_Matrix = THR_gsHat_B_Matrix
+        
         
 # Astrobee Config:
 Astrobee = SCConfig(
@@ -20,6 +27,7 @@ Astrobee = SCConfig(
      0., 0.143, 0.,
      0., 0., 0.162],
     ModelTag="astrobee"
+    # TODO - add RW & Thrusters config!
 )
 
 # Prisma Config:
@@ -30,7 +38,7 @@ Astrobee = SCConfig(
 # I - [kg*m^2, 3x3 array] moment of inertia
 # ModelTag - simulation model tag for model mapping
 # r_BcB_B - [m, 1x3 array] position vector of body-fixed point B relative to CM
-def createSC(scName="astrobee"):
+def createSC(scName="astrobee", RWConfig=None, THRConfig=None):
     if scName=="astrobee":
         sc = Astrobee
         print("Astrobee selected.")
@@ -46,7 +54,17 @@ def createSC(scName="astrobee"):
     scObject.hub.IHubPntBc_B = unitTestSupport.np2EigenMatrix3d(sc.IHub)
     scObject.hub.r_BcB_B = sc.r_BcB_B  # m - position vector of body-fixed point B relative to CM
     
-    return scObject
+    if RWConfig != None:
+        # TODO - Implement RWConfig and pass it out, possibly a `create RW call?`
+        pass
+    
+    if THRConfig != None:
+        # TODO - Implement RWConfig and pass it out, possibly a `create Thruster call?`
+        # Do not add it to SC yet, perhaps pass it out when we return the scObject
+        pass
+    
+    
+    return scObject # TODO - pass out created RWs & thrusters!
     
 
 ### Example RW:

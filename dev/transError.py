@@ -1,4 +1,4 @@
-from Basilisk.architecture import sysModel, messaging
+from Basilisk.architecture import sysModel, messaging, bskLogging
 import numpy as np
 
 # This controller should have I/O messages from:
@@ -46,6 +46,19 @@ class transError(sysModel.SysModel):
         :param CurrentSimNanos: current simulation time in nano-seconds
         :return: none
         """
+        # This is in accordance to attTrackingError.c ("src/fswAlgorithms/attGuidance/attTrackingError/attTrackingError.c")
+        logger = bskLogging.BSKLogger() # Pend remove if self.bskLogger works!
+        if not self.targetTransInMsg.isLinked():
+            # bskLogging._bskLog(logger, bskLogging.BSK_ERROR, "Error: transError.targetTransInMsg wasn't connected.")
+            self.bskLogger.bskLog(sysModel.BSK_ERROR, f"Error: transError.targetTransInMsg wasn't connected.")
+        if not self.chaserTransInMsg.isLinked():
+            # bskLogging._bskLog(logger, bskLogging.BSK_ERROR, "Error: transError.chaserTransInMsg wasn't connected.")
+            self.bskLogger.bskLog(sysModel.BSK_ERROR, f"Error: transError.chaserTransInMsg wasn't connected.")
+        if not self.transRefInMsg.isLinked():
+            # bskLogging._bskLog(logger, bskLogging.BSK_ERROR, "Error: transError.transRefInMsg wasn't connected.")
+            self.bskLogger.bskLog(sysModel.BSK_ERROR, f"Error: transError.transRefInMsg wasn't connected.")
+
+        
         return
 
     def UpdateState(self, CurrentSimNanos):

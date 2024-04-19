@@ -115,6 +115,7 @@ def run(case):
         logger = bskLogging.BSKLogger()
         logger.setLogLevel(bskLogging.BSK_ERROR)
         print("The verbosity is only changed for this module.")
+        bskLogging._bskLog(logger, bskLogging.BSK_ERROR, "Bye")
         logger.printLogLevel()
         module.bskLogger = logger
         level = logger.getLogLevel()
