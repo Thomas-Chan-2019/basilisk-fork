@@ -21,7 +21,7 @@ import itertools
 import numpy as np
 from Basilisk.architecture import messaging
 from Basilisk.fswAlgorithms import (inertial3D, locationPointing, attTrackingError, mrpFeedback,
-                                    rwMotorTorque, spacecraftReconfig) # most of the pointing/controller/feedback modules are not used
+                                    rwMotorTorque, spacecraftReconfig, thrForceMapping, forceTorqueThrForceMapping, thrFiringSchmitt) # most of the pointing/controller/feedback modules are not used
 from Basilisk.utilities import (macros as mc, fswSetupThrusters, fswSetupRW) # need the fswSetupRW module?
 from Basilisk.utilities import deprecated
 
@@ -91,18 +91,18 @@ class BSKFswModels:
         
 
 
-        self.sunPoint = locationPointing.locationPointing()
-        self.sunPoint.ModelTag = "sunPoint"
+        # self.sunPoint = locationPointing.locationPointing()
+        # self.sunPoint.ModelTag = "sunPoint"
         
-        self.sunPoint = locationPointing.locationPointing()
-        self.sunPoint.ModelTag = "sunPoint"
+        # self.sunPoint = locationPointing.locationPointing()
+        # self.sunPoint.ModelTag = "sunPoint"
 
 
-        self.locPoint = locationPointing.locationPointing()
-        self.locPoint.ModelTag = "locPoint"
+        # self.locPoint = locationPointing.locationPointing()
+        # self.locPoint.ModelTag = "locPoint"
         
-        self.locPoint = locationPointing.locationPointing()
-        self.locPoint.ModelTag = "locPoint"
+        # self.locPoint = locationPointing.locationPointing()
+        # self.locPoint.ModelTag = "locPoint"
 
         # Create module data and module wraps
         self.inertial3DPoint = inertial3D.inertial3D() # Get att. reference MRP message
@@ -122,6 +122,12 @@ class BSKFswModels:
         self.transController.ModelTag = "transController"
 
         # <-- PEND ADD Thruster Mapping like Torque Mapping Module `rwMotorTorque`-->
+        # self.thrForceMapping = thrForceMapping.thrForceMapping()
+        self.thrForceMapping = forceTorqueThrForceMapping.forceTorqueThrForceMapping()
+        self.thrForceMapping.ModelTag = "thrForceMapping"
+
+        self.thrustOnTimeFiring = thrFiringSchmitt.thrFiringSchmitt()
+        self.thrustOnTimeFiring.ModelTag = "thrustOnTimeFiring"
         
         # # ------------------ <START> PEND REMOVE ------------------
         
@@ -151,10 +157,13 @@ class BSKFswModels:
         SimBase.AddModelToTask("inertialPointTask" + str(spacecraftIndex), self.inertial3DPoint, 10)
         SimBase.AddModelToTask("trackingErrorTask" + str(spacecraftIndex), self.trackingError, 9)
         # Add new modules to simulation:
-        SimBase.AddModelToTask("transErrorTask" + str(spacecraftIndex), self.transError, 9)
+        SimBase.AddModelToTask("transErrorTask" + str(spacecraftIndex), self.transError, 9) # transError
         SimBase.AddModelToTask("transControllerTask" + str(spacecraftIndex), self.transController, 7) # transControllerTask is defined above when created a new event!
 
-        SimBase.AddModelToTask("transControllerTask" + str(spacecraftIndex), self.rwMotorTorque, 6)
+        SimBase.AddModelToTask("transControllerTask" + str(spacecraftIndex), self.rwMotorTorque, 6) # Torque cmd to actuation mapping
+        SimBase.AddModelToTask("transControllerTask" + str(spacecraftIndex), self.thrForceMapping, 6) # Force cmd to actuation mapping
+        
+        SimBase.AddModelToTask("transControllerTask" + str(spacecraftIndex), self.thrustOnTimeFiring, 6) # Force cmd to actuation mapping
 
 
         # ------------------ <START> PEND REMOVE ------------------
@@ -292,7 +301,6 @@ class BSKFswModels:
         self.transController.vehConfigInMsg.subscribeTo(SimBase.DynModels[self.spacecraftIndex].simpleMassPropsObject.vehicleConfigOutMsg)
         # Unlike the `mrpFeedback.py` module, we first ignore the RW inertial effects and do not import the RW params in the EOM.
         self.transController.transGuidInMsg.subscribeTo(self.transGuidOutMsg)
-        return
     
     def SetAttitudeTrackingError(self, SimBase):
         """
@@ -300,7 +308,7 @@ class BSKFswModels:
         """
         self.trackingError.attNavInMsg.subscribeTo(
             SimBase.DynModels[self.spacecraftIndex].simpleNavObject.attOutMsg)
-        self.trackingError.attRefInMsg.subscribeTo(self.attRefMsg)
+        self.trackingError.attRefInMsg.subscribeTo(self.attRefMsg) # We need to figure out how specify attRefMsg!
         messaging.AttGuidMsg_C_addAuthor(self.trackingError.attGuidOutMsg, self.attGuidMsg)
                 
     def SetMRPFeedbackRWA(self, SimBase):
@@ -353,7 +361,37 @@ class BSKFswModels:
         self.rwMotorTorque.controlAxes_B = controlAxes_B
         self.rwMotorTorque.vehControlInMsg.subscribeTo(self.mrpFeedbackRWs.cmdTorqueOutMsg)
         self.rwMotorTorque.rwParamsInMsg.subscribeTo(self.fswRwConfigMsg)
+    
+    def SetThrForceMapping(self, SimBase):
+        # We should use forceTorqueThrForceMapping() for testing. 
+        # Check how from "src/fswAlgorithms/effectorInterfaces/forceTorqueThrForceMapping/_UnitTest/test_forceTorqueThrForceMapping.py" 
+        # AND https://hanspeterschaub.info/basilisk/Documentation/fswAlgorithms/effectorInterfaces/forceTorqueThrForceMapping/forceTorqueThrForceMapping.html?highlight=thrarraycmdforce
+        
+        # Need to replace the following...
+        # controlAxes_B = [1, 0, 0,
+        #                  0, 1, 0,
+        #                  0, 0, 1] # Thrust control axis
+        # self.thrForceMapping.thrForceSign = +1
+        # self.thrForceMapping.controlAxes_B = controlAxes_B
+        self.thrForceMapping.thrConfigInMsg.subscribeTo(self.fswThrusterConfigMsg) # Subscribe to FSW Thruster Config!
+        self.thrForceMapping.vehConfigInMsg.subscribeTo(SimBase.DynModels[self.spacecraftIndex].simpleMassPropsObject.vehicleConfigOutMsg)
+        self.thrForceMapping.cmdForceInMsg.subscribeTo(self.transController.cmdForceOutMsg)
+        
+    def SetThrustOntimeFiring(self, SimBase) :
+        self.thrustOnTimeFiring.thrMinFireTime = 0.002
+        self.thrustOnTimeFiring.level_on = .75
+        self.thrustOnTimeFiring.level_off = .25
+        
+        # if useDVThrusters:
+        #     thrFiringSchmittObj.baseThrustState = 1
+        
+        self.thrustOnTimeFiring.thrConfInMsg.subscribeTo(self.fswThrusterConfigMsg)
+        self.thrustOnTimeFiring.thrForceInMsg.subscribeTo(self.thrForceMapping.thrForceCmdOutMsg)
+        
+        # Also connect this to thrusterDynamicEffector from Dynamic model:
+        SimBase.DynModels[self.spacecraftIndex].thrusterDynamicEffector.cmdsInMsg.subscribeTo(self.thrustOnTimeFiring.onTimeOutMsg)
 
+    
     # Global call to initialize every module
     def InitAllFSWObjects(self, SimBase):
         """
@@ -371,11 +409,14 @@ class BSKFswModels:
         # self.SetMRPFeedbackRWA(SimBase)
         # self.SetSpacecraftOrbitReconfig(SimBase)
         self.SetRWMotorTorque()
+        
+        self.SetThrForceMapping(SimBase)
+        self.SetThrustOntimeFiring(SimBase)
 
     def setupGatewayMsgs(self, SimBase):
         """create C-wrapped gateway messages such that different modules can write to this message
         and provide a common input msg for down-stream modules"""
-        self.attRefMsg = messaging.AttRefMsg_C()
+        self.attRefMsg = messaging.AttRefMsg_C() # We need to set this!
         self.attGuidMsg = messaging.AttGuidMsg_C()
         # Add translational message first, need to figure out what is "Gateway Messages"
         self.transRefInMsg = messaging.TransRefMsg_C()

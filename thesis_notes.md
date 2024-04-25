@@ -201,3 +201,33 @@ def SetReactionWheelDynEffector(self):
 ```
 
 ![RW Settings](./ref-images/rwSettings_simIncludeRW.png)
+
+- Updates to create Thrusters: in [simIncludeThruster.py](dist3/Basilisk/utilities/simIncludeThruster.py) & example specified in [scenarioAttitudeConstrainedManeuver.py](examples/scenarioAttitudeConstrainedManeuver.py) line 211, RW should be initialised with `location` and `direction` vector; an example of creating thrusters is:
+```
+def SetThrusterDynEffector(self): 
+        """
+        Defines the thruster state effector.
+        """
+        location = [[0.0, 0.0, 0.0], 
+                    [0.0, 0.0, 0.0], 
+                    [0.0, 0.0, 0.0], 
+                    [0.0, 0.0, 0.0], 
+                    [0.0, 0.0, 0.0], 
+                    [0.0, 0.0, 0.0]] # Setting thrusters positions ALL at S/C body centre for now
+        direction = [[1.0, 0.0, 0.0], 
+                     [-1.0, 0.0, 0.0], 
+                     [0.0, 1.0, 0.0], 
+                     [0.0, -1.0, 0.0], 
+                     [0.0, 0.0, 1.0], 
+                     [0.0, 0.0, -1.0], ] # Setting thrusters direction at +/- x,y,z direction of S/C.
+
+        # create the thruster devices by specifying the thruster type and its location and direction
+        for pos_B, dir_B in zip(location, direction):
+            self.thrusterFactory.create('TEST_Thruster', pos_B, dir_B, useMinPulseTime=False)
+
+        self.numThr = self.thrusterFactory.getNumOfDevices()
+
+        # create thruster object container and tie to spacecraft object
+        self.thrusterFactory.addToSpacecraft("thrusterFactory", self.thrusterDynamicEffector, self.scObject)
+        
+```
