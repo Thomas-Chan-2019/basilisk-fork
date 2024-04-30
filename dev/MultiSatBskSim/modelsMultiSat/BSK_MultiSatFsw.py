@@ -201,43 +201,44 @@ class BSKFswModels:
                                 "self.setAllButCurrentEventActivity('initiateInertialPointing_" + str(spacecraftIndex) +
                                 "', True, useIndex=True)"])
 
-        SimBase.createNewEvent("initiateSunPointing_" + str(spacecraftIndex), self.processTasksTimeStep, True,
-                               ["self.FSWModels[" + str(spacecraftIndex) + "].modeRequest == 'sunPointing'"],
-                               ["self.fswProc[" + str(spacecraftIndex) + "].disableAllTasks()",
-                                "self.FSWModels[" + str(spacecraftIndex) + "].zeroGateWayMsgs()",
-                                "self.enableTask('sunPointTask" + str(spacecraftIndex) + "')",
-                                "self.enableTask('trackingErrorTask" + str(spacecraftIndex) + "')",
-                                "self.enableTask('mrpFeedbackRWsTask" + str(spacecraftIndex) + "')",
-                                "self.setAllButCurrentEventActivity('initiateSunPointing_" + str(spacecraftIndex) +
-                                "', True, useIndex=True)"])
+        # SimBase.createNewEvent("initiateSunPointing_" + str(spacecraftIndex), self.processTasksTimeStep, True,
+        #                        ["self.FSWModels[" + str(spacecraftIndex) + "].modeRequest == 'sunPointing'"],
+        #                        ["self.fswProc[" + str(spacecraftIndex) + "].disableAllTasks()",
+        #                         "self.FSWModels[" + str(spacecraftIndex) + "].zeroGateWayMsgs()",
+        #                         "self.enableTask('sunPointTask" + str(spacecraftIndex) + "')",
+        #                         "self.enableTask('trackingErrorTask" + str(spacecraftIndex) + "')",
+        #                         "self.enableTask('mrpFeedbackRWsTask" + str(spacecraftIndex) + "')",
+        #                         "self.setAllButCurrentEventActivity('initiateSunPointing_" + str(spacecraftIndex) +
+        #                         "', True, useIndex=True)"])
 
-        SimBase.createNewEvent("initiateLocationPointing_" + str(spacecraftIndex), self.processTasksTimeStep, True,
-                               ["self.FSWModels[" + str(spacecraftIndex) + "].modeRequest == 'locationPointing'"],
-                               ["self.fswProc[" + str(spacecraftIndex) + "].disableAllTasks()",
-                                "self.FSWModels[" + str(spacecraftIndex) + "].zeroGateWayMsgs()",
-                                "self.enableTask('locPointTask" + str(spacecraftIndex) + "')",
-                                "self.enableTask('trackingErrorTask" + str(spacecraftIndex) + "')",
-                                "self.enableTask('mrpFeedbackRWsTask" + str(spacecraftIndex) + "')",
-                                "self.setAllButCurrentEventActivity('initiateLocationPointing_" + str(spacecraftIndex) +
-                                "', True, useIndex=True)"])
+        # SimBase.createNewEvent("initiateLocationPointing_" + str(spacecraftIndex), self.processTasksTimeStep, True,
+        #                        ["self.FSWModels[" + str(spacecraftIndex) + "].modeRequest == 'locationPointing'"],
+        #                        ["self.fswProc[" + str(spacecraftIndex) + "].disableAllTasks()",
+        #                         "self.FSWModels[" + str(spacecraftIndex) + "].zeroGateWayMsgs()",
+        #                         "self.enableTask('locPointTask" + str(spacecraftIndex) + "')",
+        #                         "self.enableTask('trackingErrorTask" + str(spacecraftIndex) + "')",
+        #                         "self.enableTask('mrpFeedbackRWsTask" + str(spacecraftIndex) + "')",
+        #                         "self.setAllButCurrentEventActivity('initiateLocationPointing_" + str(spacecraftIndex) +
+        #                         "', True, useIndex=True)"])
 
-        SimBase.createNewEvent("initiateStationKeeping_" + str(spacecraftIndex), self.processTasksTimeStep, True,
-                               ["self.FSWModels[" + str(spacecraftIndex) + "].stationKeeping == 'ON'"],
-                               ["self.enableTask('spacecraftReconfigTask" + str(spacecraftIndex) + "')",
-                                "self.setEventActivity('stopStationKeeping_" + str(spacecraftIndex) + "', True)"])
-        SimBase.createNewEvent("stopStationKeeping_" + str(spacecraftIndex), self.processTasksTimeStep, True,
-                               ["self.FSWModels[" + str(spacecraftIndex) + "].stationKeeping == 'OFF'"],
-                               ["self.disableTask('spacecraftReconfigTask" + str(spacecraftIndex) + "')",
-                                "self.setEventActivity('initiateStationKeeping_" + str(spacecraftIndex) + "', True)"])
+        # SimBase.createNewEvent("initiateStationKeeping_" + str(spacecraftIndex), self.processTasksTimeStep, True,
+        #                        ["self.FSWModels[" + str(spacecraftIndex) + "].stationKeeping == 'ON'"],
+        #                        ["self.enableTask('spacecraftReconfigTask" + str(spacecraftIndex) + "')",
+        #                         "self.setEventActivity('stopStationKeeping_" + str(spacecraftIndex) + "', True)"])
+        # SimBase.createNewEvent("stopStationKeeping_" + str(spacecraftIndex), self.processTasksTimeStep, True,
+        #                        ["self.FSWModels[" + str(spacecraftIndex) + "].stationKeeping == 'OFF'"],
+        #                        ["self.disableTask('spacecraftReconfigTask" + str(spacecraftIndex) + "')",
+        #                         "self.setEventActivity('initiateStationKeeping_" + str(spacecraftIndex) + "', True)"])
 
     # ------------------------------------------------------------------------------------------- #
     # These are module-initialization methods
-    def SetInertial3DPointGuidance(self):
+    def SetInertial3DPointGuidance(self): # inertial3D module gives the Att_Ref msg!
         """
         Defines the inertial pointing guidance module.
         """
         # Pend change -> this is hardcoded
-        self.inertial3DPoint.sigma_R0N = [0.1, 0.2, -0.3]
+        self.inertial3DPoint.sigma_R0N = [0.0, 0.0, 0.0] # No attitude difference for now, can define an attitude trajectory later for monitoring!
+        # self.inertial3DPoint.sigma_R0N = [0.1, 0.2, -0.3]
         messaging.AttRefMsg_C_addAuthor(self.inertial3DPoint.attRefOutMsg, self.attRefMsg)
 
     def SetSunPointGuidance(self, SimBase):
@@ -278,6 +279,14 @@ class BSKFswModels:
         chiefMsg = messaging.NavTransMsg().write(chiefData)
         self.spacecraftReconfig.chiefTransInMsg.subscribeTo(chiefMsg)
 
+    # Setup `transRefInMsg` via hardcoded manner for now. Notice that `transRefInMsg` is defined here as:
+    # Delta distance (dr) between the target & chaser spacecraft! Refer to "dev/transError.py" Line 87 for details.
+    def SetTransRefMsg(self):
+        self.transRefInMsg.r_RN_N = [1.0, 0.0, 0.0] # Random hardcoded delta distance
+        self.transRefInMsg.v_RN_N = [0.0, 0.0, 0.0] # Random hardcoded delta velocity
+        # messaging.TransGuidMsg_C_addAuthor(self.{someModule.transRefOutMsg}, self.transRefInMsg) 
+        # # this .transRefOutMsg has to be defined in a new module if we have it later!
+
     # New setup transError.py module:
     def SetTransError(self, SimBase):
         # Target trans nav:
@@ -288,19 +297,27 @@ class BSKFswModels:
             SimBase.DynModels[self.spacecraftIndex].simpleNavObject.transOutMsg)
         # Trans reference:
         self.transError.transRefInMsg.subscribeTo(self.transRefInMsg)
-        messaging.AttGuidMsg_C_addAuthor(self.transError.transGuidOutMsg, self.transGuidOutMsg)
+        # The following line might not be necessary for now due to the fact that we only have one single module to find the transError.
+        messaging.TransGuidMsg_C_addAuthor(self.transError.transGuidOutMsg, self.transGuidOutMsg)
         # `self.transGuidOutMsg` has been set in function setupGatewayMsgs() with C addAuthor() 
         # -> Check why, probably because the original structure would switch between control modules (SpacecraftReconfig, Local Pointing, Sun Pointing etc.)
     
     def SetTransController(self, SimBase):
         self.decayTime = 50 # copy from MRP Feedback module
         self.xi = 0.9 # copy from MRP Feedback module only
-        # TODO
-        # self.transController.
-        # .subscribeTo()
-        self.transController.vehConfigInMsg.subscribeTo(SimBase.DynModels[self.spacecraftIndex].simpleMassPropsObject.vehicleConfigOutMsg)
+        # TODO - Maybe set controller gains via a JSON file separately, or define via `scConfig.py`?
+        self.transController.P_trans = 2 * SimBase.DynModels[self.spacecraftIndex].m_sc / self.decayTime
+        self.transController.P_rot = 2 * np.max(SimBase.DynModels[self.spacecraftIndex].I_sc) / self.decayTime
+        self.transController.K_trans = (self.transController.P_trans / self.xi) * \
+                                    (self.transController.P_trans / self.xi) / SimBase.DynModels[self.spacecraftIndex].m_sc
+        self.transController.K_rot = (self.transController.P_rot / self.xi) * \
+                                    (self.transController.P_rot / self.xi) / np.max(
+            SimBase.DynModels[self.spacecraftIndex].I_sc)
+        
         # Unlike the `mrpFeedback.py` module, we first ignore the RW inertial effects and do not import the RW params in the EOM.
         self.transController.transGuidInMsg.subscribeTo(self.transGuidOutMsg)
+        self.transController.attGuidInMsg.subscribeTo(self.attGuidMsg)
+        self.transController.vehConfigInMsg.subscribeTo(SimBase.DynModels[self.spacecraftIndex].simpleMassPropsObject.vehicleConfigOutMsg)
     
     def SetAttitudeTrackingError(self, SimBase):
         """
@@ -359,7 +376,8 @@ class BSKFswModels:
                          0.0, 0.0, 1.0]
 
         self.rwMotorTorque.controlAxes_B = controlAxes_B
-        self.rwMotorTorque.vehControlInMsg.subscribeTo(self.mrpFeedbackRWs.cmdTorqueOutMsg)
+        self.rwMotorTorque.vehControlInMsg.subscribeTo(self.transController.cmdTorqueOutMsg)
+        # self.rwMotorTorque.vehControlInMsg.subscribeTo(self.mrpFeedbackRWs.cmdTorqueOutMsg)
         self.rwMotorTorque.rwParamsInMsg.subscribeTo(self.fswRwConfigMsg)
     
     def SetThrForceMapping(self, SimBase):
@@ -367,7 +385,7 @@ class BSKFswModels:
         # Check how from "src/fswAlgorithms/effectorInterfaces/forceTorqueThrForceMapping/_UnitTest/test_forceTorqueThrForceMapping.py" 
         # AND https://hanspeterschaub.info/basilisk/Documentation/fswAlgorithms/effectorInterfaces/forceTorqueThrForceMapping/forceTorqueThrForceMapping.html?highlight=thrarraycmdforce
         
-        # Need to replace the following...
+        # Need to replace the following from `thrForceMapping` ...
         # controlAxes_B = [1, 0, 0,
         #                  0, 1, 0,
         #                  0, 0, 1] # Thrust control axis
@@ -377,7 +395,7 @@ class BSKFswModels:
         self.thrForceMapping.vehConfigInMsg.subscribeTo(SimBase.DynModels[self.spacecraftIndex].simpleMassPropsObject.vehicleConfigOutMsg)
         self.thrForceMapping.cmdForceInMsg.subscribeTo(self.transController.cmdForceOutMsg)
         
-    def SetThrustOntimeFiring(self, SimBase) :
+    def SetThrustOntimeFiring(self, SimBase):
         self.thrustOnTimeFiring.thrMinFireTime = 0.002
         self.thrustOnTimeFiring.level_on = .75
         self.thrustOnTimeFiring.level_off = .25
@@ -388,8 +406,9 @@ class BSKFswModels:
         self.thrustOnTimeFiring.thrConfInMsg.subscribeTo(self.fswThrusterConfigMsg)
         self.thrustOnTimeFiring.thrForceInMsg.subscribeTo(self.thrForceMapping.thrForceCmdOutMsg)
         
-        # Also connect this to thrusterDynamicEffector from Dynamic model:
-        SimBase.DynModels[self.spacecraftIndex].thrusterDynamicEffector.cmdsInMsg.subscribeTo(self.thrustOnTimeFiring.onTimeOutMsg)
+        # Below has been moved to `setupGatewayMsgs()` to connect thrusterDynamicEffector to the thrustOnTimeFiring module (`forceTorqueThrForceMapping`) 
+        # # Also connect this to thrusterDynamicEffector from Dynamic model:
+        # SimBase.DynModels[self.spacecraftIndex].thrusterDynamicEffector.cmdsInMsg.subscribeTo(self.thrustOnTimeFiring.onTimeOutMsg)
 
     
     # Global call to initialize every module
@@ -398,6 +417,7 @@ class BSKFswModels:
         Initializes all FSW objects.
         """
         self.SetInertial3DPointGuidance()
+        self.SetTransRefMsg() # Translational dr dv setting (hardcoded for now)
         # self.SetSunPointGuidance(SimBase)
         # self.SetLocationPointGuidance(SimBase)
         self.SetAttitudeTrackingError(SimBase)
@@ -409,7 +429,6 @@ class BSKFswModels:
         # self.SetMRPFeedbackRWA(SimBase)
         # self.SetSpacecraftOrbitReconfig(SimBase)
         self.SetRWMotorTorque()
-        
         self.SetThrForceMapping(SimBase)
         self.SetThrustOntimeFiring(SimBase)
 
@@ -428,9 +447,12 @@ class BSKFswModels:
         SimBase.DynModels[self.spacecraftIndex].rwStateEffector.rwMotorCmdInMsg.subscribeTo(
             self.rwMotorTorque.rwMotorTorqueOutMsg)
         
-        # Code stop working here -> need implementation on Thrust-Force-to-On-Time:
+        # Also connect this to thrusterDynamicEffector from Dynamic model:
         SimBase.DynModels[self.spacecraftIndex].thrusterDynamicEffector.cmdsInMsg.subscribeTo(
-            self.spacecraftReconfig.onTimeOutMsg) # Need to change spacecraftReconfig related here to sth like thrForceMapping
+            self.thrustOnTimeFiring.onTimeOutMsg)
+        # # Code stop working here -> need implementation on Thrust-Force-to-On-Time:
+        # SimBase.DynModels[self.spacecraftIndex].thrusterDynamicEffector.cmdsInMsg.subscribeTo(
+        #     self.spacecraftReconfig.onTimeOutMsg) # Need to change spacecraftReconfig related here to sth like thrForceMapping
 
     def zeroGateWayMsgs(self):
         """Zero all the FSW gateway message payloads"""

@@ -42,7 +42,8 @@ class BSKDynamicModels:
     Defines the Dynamics class.
     """
     def __init__(self, SimBase, dynRate, spacecraftIndex, includeExtDisturbances=False, includeSubsystems=False):
-        self.I_sc = None
+        self.I_sc = None # moment of inertia [3x3 matrix, kg*m^2] 
+        self.m_sc = None # mass [kg]
         self.solarPanelAxis = None
         self.numRW = 4 # change RW number when needed
         self.numThr = None # change Thruster number when needed
@@ -111,6 +112,7 @@ class BSKDynamicModels:
         self.scObject = scConfig.createSC(scName="astrobee")
         self.scObject.ModelTag = "sat-" + str(self.spacecraftIndex) # Update model tag in accordance to SC index
         self.I_sc = self.scObject.hub.IHubPntBc_B
+        self.m_sc = self.scObject.hub.mHub # Taken from spacecraft.Spacecraft() module!
 
     def SetGravityBodies(self, SimBase):
         """
