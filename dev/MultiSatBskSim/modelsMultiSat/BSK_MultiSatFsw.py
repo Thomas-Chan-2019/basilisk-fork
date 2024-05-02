@@ -197,7 +197,9 @@ class BSKFswModels:
                                 "self.FSWModels[" + str(spacecraftIndex) + "].zeroGateWayMsgs()",
                                 "self.enableTask('inertialPointTask" + str(spacecraftIndex) + "')",
                                 "self.enableTask('trackingErrorTask" + str(spacecraftIndex) + "')",
-                                "self.enableTask('mrpFeedbackRWsTask" + str(spacecraftIndex) + "')",
+                                "self.enableTask('transErrorTask" + str(spacecraftIndex) + "')",
+                                "self.enableTask('transControllerTask" + str(spacecraftIndex) + "')",
+                                # "self.enableTask('mrpFeedbackRWsTask" + str(spacecraftIndex) + "')",
                                 "self.setAllButCurrentEventActivity('initiateInertialPointing_" + str(spacecraftIndex) +
                                 "', True, useIndex=True)"])
 
@@ -237,8 +239,8 @@ class BSKFswModels:
         Defines the inertial pointing guidance module.
         """
         # Pend change -> this is hardcoded
-        self.inertial3DPoint.sigma_R0N = [0.0, 0.0, 0.0] # No attitude difference for now, can define an attitude trajectory later for monitoring!
-        # self.inertial3DPoint.sigma_R0N = [0.1, 0.2, -0.3]
+        # self.inertial3DPoint.sigma_R0N = [0.0, 0.0, 0.0] # No attitude difference for now, can define an attitude trajectory later for monitoring!
+        self.inertial3DPoint.sigma_R0N = [0.1, 0.2, -0.3]
         messaging.AttRefMsg_C_addAuthor(self.inertial3DPoint.attRefOutMsg, self.attRefMsg)
 
     def SetSunPointGuidance(self, SimBase):

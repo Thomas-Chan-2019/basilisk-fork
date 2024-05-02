@@ -30,12 +30,13 @@ class transError(sysModel.SysModel):
         super(transError, self).__init__()
 
         # Input translational structure message from SCState
-        self.targetTransInMsg = messaging.NavTransMsg()
-        self.chaserTransInMsg = messaging.NavTransMsg()
-        self.transRefInMsg = messaging.TransRefMsg()
+        self.targetTransInMsg = messaging.NavTransMsgReader()
+        self.chaserTransInMsg = messaging.NavTransMsgReader()
+        self.transRefInMsg = messaging.TransRefMsgReader()
         
         # Output body torque message name
-        self.transGuidOutMsg = messaging.TransGuidMsg()
+        self.transGuidOutMsg = messaging.TransGuidMsg_C() # Dirty fix to allow C_addAuthor to work. Need to review!
+        # self.transGuidOutMsg = messaging.TransGuidMsg()
         
 
     def Reset(self, CurrentSimNanos):

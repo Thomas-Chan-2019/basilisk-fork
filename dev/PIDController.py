@@ -40,11 +40,11 @@ class PIDController(sysModel.SysModel):
         self.P_rot = 0
         
         # Input guidance structure message: Translational
-        self.transGuidInMsg = messaging.TransGuidMsg()
+        self.transGuidInMsg = messaging.TransGuidMsgReader()
         # Input guidance structure message: Rotational
-        self.attGuidInMsg = messaging.AttGuidMsg()
+        self.attGuidInMsg = messaging.AttGuidMsgReader()
         # For mass & moment of inertia
-        self.vehConfigInMsg = messaging.VehicleConfigMsg()
+        self.vehConfigInMsg = messaging.VehicleConfigMsgReader()
         
         # # Include thruster & RW arrays configs:
         # self.thrParamsInMsg = messaging.THRArrayConfigMsg()
