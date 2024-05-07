@@ -33,6 +33,7 @@ viz = vizSupport.enableUnityVisualization(scSim, simTaskName, scList
 
 ## Useful Basilisk modules (from `Basilisk.utilities` or `Basilisk.architecture`):
 - [macros.py](dist3/Basilisk/utilities/macros.py): time (e.g. day, hour, second conversions to nanosec), degree-to-radian, RPM conversions
+- [unitTestSupport.py](dist3/Basilisk/utilities/unitTestSupport.py): unit test supports including Vector/Value comparisons, pass-fail and `np2EigenMatrix3D()` used in spacecraft hub for moment of inertia. (see [scConfig.py](dev/scConfig.py) at `.createSC()`: `scObject.hub.IHubPntBc_B = unitTestSupport.np2EigenMatrix3d(sc.IHub)`)
 - [RigidBodyKinematics.py](dist3/Basilisk/utilities/RigidBodyKinematics.py): EP, Gibbs vector (or Classical Rodrigues Parameters), MRP, RV, Euler angles conversions***
 - [orbitalMotion.py](dist3/Basilisk/utilities/orbitalMotion.py): planetary constants, state r,v to element & vice versa, Atmospheric Drag functions (need c_D, area, mass inputs), J-Perturbations of Earth & diff. planets, Solar Radiation pressure {***Mind the units when use them, some uses km/s^2 !}, Orbital Element conversions (classicial <=> equinoctial <=> hill frame <=> RV): ![rv2hill](./ref-images/rv2hill_hill.gpg.jpeg)
 - [astroFunctions.py](dist3/Basilisk/utilities/astroFunctions.py): 

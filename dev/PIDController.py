@@ -1,5 +1,5 @@
 from Basilisk.architecture import sysModel, messaging
-from Basilisk.utilities import orbitalMotion, RigidBodyKinematics as RBK # Import for Hill-frame conversion & control if necessary
+from Basilisk.utilities import orbitalMotion, unitTestSupport as UAT, RigidBodyKinematics as RBK # Import for Hill-frame conversion & control if necessary
 import numpy as np
 
 # See https://hanspeterschaub.info/basilisk/Learn/makingModules/pyModules.html for Python Module creation original example.
@@ -96,6 +96,7 @@ class PIDController(sysModel.SysModel):
         # read input message
         transGuidMsgBuffer = self.transGuidInMsg()
         attGuidMsgBuffer = self.attGuidInMsg()
+        vehConfigMsgBuffer = self.vehConfigInMsg()
 
         # create output message buffer
         forceOutMsgBuffer = messaging.CmdForceBodyMsgPayload()
@@ -113,7 +114,11 @@ class PIDController(sysModel.SysModel):
 
         # compute ATT control solution
         omega_BR_B_Tilde = RBK.v3Tilde(attGuidMsgBuffer.omega_BR_B)
-        lrCmd = np.array(attGuidMsgBuffer.sigma_BR) * self.K_rot + np.array(attGuidMsgBuffer.omega_BR_B) * self.P_rot + np.array(omega_BR_B_Tilde) * np.array(self.vehConfigInMsg.ISCPntB_B) * np.array(attGuidMsgBuffer.omega_BR_B)
+        # omega_BR_B_Tilde = np.array(omega_BR_B_Tilde) # this is unnecessary!
+        Isc = np.array(vehConfigMsgBuffer.ISCPntB_B).reshape(3,3) # From vehConfig ISCPntB_B[9] to Isc[3][3] np array.
+        wTilde_I_w = omega_BR_B_Tilde @ Isc @ np.array(attGuidMsgBuffer.omega_BR_B).reshape(3,1) # [omegaTilde]*[I]*omega term; reshaping of omega[3] to a np column vector for matrix multiplication (@ operator). 
+        lrCmd = np.array(attGuidMsgBuffer.sigma_BR) * self.K_rot + np.array(attGuidMsgBuffer.omega_BR_B) * self.P_rot + wTilde_I_w.reshape(1,3).squeeze()
+        # lrCmd = np.array(attGuidMsgBuffer.sigma_BR) * self.K_rot + np.array(attGuidMsgBuffer.omega_BR_B) * self.P_rot
         # To add reference trajectory related terms (e.g. omega_r, sigma_r) when needed:
         # PD Form:
         # u = -[K]*sigma - [P]*(omega - omega_r) + [I]*(omegaDot_r - [omegaTilde]*omega_r) + [omegaTilde]*[I]*omega - L

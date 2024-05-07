@@ -189,7 +189,7 @@ class BSKDynamicModels:
         self.numRW = self.rwFactory.getNumOfDevices()
         self.rwFactory.addToSpacecraft("RWArray" + str(self.spacecraftIndex), self.rwStateEffector, self.scObject)
         
-        print(self.rwFactory.getConfigMessage()) # To figure out how to check config
+        # print(self.rwFactory.getConfigMessage()) # To figure out how to check config
         
 
     # We should redefine the axis of the Thrusters!
@@ -219,7 +219,7 @@ class BSKDynamicModels:
         # create thruster object container and tie to spacecraft object
         self.thrusterFactory.addToSpacecraft("thrusterFactory", self.thrusterDynamicEffector, self.scObject)
         
-        print(self.thrusterFactory.getConfigMessage()) # To figure out how to check config
+        # print(self.thrusterFactory.getConfigMessage()) # To figure out how to check config
 
     def SetFuelTank(self):
         """
