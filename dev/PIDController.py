@@ -61,12 +61,12 @@ class PIDController(sysModel.SysModel):
         # self.cmdTorqueOutMsg = messaging.CmdTorqueBodyMsg()
 
     def Reset(self, CurrentSimNanos):
-        # Proportional gain term used in control
-        self.K_trans = 0
-        self.K_rot = 0
-        # Derivative gain term used in control
-        self.P_trans = 0
-        self.P_rot = 0
+        # # Proportional gain term used in control
+        # self.K_trans = 0
+        # self.K_rot = 0
+        # # Derivative gain term used in control
+        # self.P_trans = 0
+        # self.P_rot = 0
         
         # TODO: Add back Reset() actions in accordance to mrpFeedback.c, basically:
         # 1) Message subscription check -> throw BSK log error if not linked;

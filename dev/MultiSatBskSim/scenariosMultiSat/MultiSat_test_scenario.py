@@ -561,7 +561,9 @@ def run(showPlots, numberSpacecraft, relativeNavigation):
     # Configure a scenario in the base simulation
     TheScenario = MultiSat_test_scenario(numberSpacecraft, relativeNavigation)
     runScenario(TheScenario, relativeNavigation)
-    figureList = TheScenario.pull_outputs(showPlots, relativeNavigation, 1)
+    # figureList = TheScenario.pull_outputs(showPlots, relativeNavigation, 1)
+    figureList = TheScenario.pull_outputs(showPlots, relativeNavigation, 2)
+    
 
     return figureList
 

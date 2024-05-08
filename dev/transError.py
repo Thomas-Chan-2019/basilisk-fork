@@ -107,9 +107,12 @@ class transError(sysModel.SysModel):
         # # accessed from sysModel
         # if False:
         #     """Sample Python module method"""
-        #     self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"Time: {CurrentSimNanos * 1.0E-9} s")
-        #     self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"TorqueRequestBody: {torqueOutMsgBuffer.torqueRequestBody}")
-        #     self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"sigma_BR: {guidMsgBuffer.sigma_BR}")
-        #     self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"omega_BR_B: {guidMsgBuffer.omega_BR_B}")
-
+        self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"Time: {CurrentSimNanos * 1.0E-9} s")
+        self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"targetTransInMsgBuffer.r_BN_N: {targetTransInMsgBuffer.r_BN_N}")
+        self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"targetTransInMsgBuffer.v_BN_N: {targetTransInMsgBuffer.v_BN_N}")
+        self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"chaserTransInMsgBuffer.r_BN_N: {chaserTransInMsgBuffer.r_BN_N}")
+        self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"chaserTransInMsgBuffer.v_BN_N: {chaserTransInMsgBuffer.v_BN_N}")
+        self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"transGuidOutMsgBuffer.r_BR_B: {transGuidOutMsgBuffer.r_BR_B}")
+        self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"transGuidOutMsgBuffer.v_BR_B: {transGuidOutMsgBuffer.v_BR_B}")
+    
         return
