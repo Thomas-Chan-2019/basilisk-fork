@@ -106,7 +106,7 @@ void Update_forceTorqueThrForceMapping(forceTorqueThrForceMappingConfig *configD
         cmdForceInMsgBuffer = CmdForceBodyMsg_C_zeroMsgPayload();
     }
 
-
+    // REMOVE WHEN DEBUGGING FINISHED
     printf("cmdForceInMsgBuffer: \n");
     int numElements = sizeof(cmdForceInMsgBuffer.forceRequestBody) / sizeof(cmdForceInMsgBuffer.forceRequestBody[0]);
     for (int i = 0; i < numElements; i++) {
@@ -114,6 +114,7 @@ void Update_forceTorqueThrForceMapping(forceTorqueThrForceMappingConfig *configD
         printf("%.3f ", cmdForceInMsgBuffer.forceRequestBody[i]);
     }
     printf("\n");
+    // REMOVE WHEN DEBUGGING FINISHED 
     
     /* Initialize variables */
     double DG[6][MAX_EFF_CNT];
@@ -210,6 +211,7 @@ void Update_forceTorqueThrForceMapping(forceTorqueThrForceMappingConfig *configD
     vCopy(forceSubtracted_B, configData->numThrusters, thrForceCmdOutMsgBuffer.thrForce);
     THRArrayCmdForceMsg_C_write(&thrForceCmdOutMsgBuffer, &configData->thrForceCmdOutMsg, moduleID, callTime);
 
+    // REMOVE WHEN DEBUGGING FINISHED
     // Stopped here, we see all zeros in the Thrust Cmd force... 
     printf("thrForceCmdOutMsg: \n");
     int num = sizeof(thrForceCmdOutMsgBuffer.thrForce) / sizeof(thrForceCmdOutMsgBuffer.thrForce[0]);
@@ -218,5 +220,6 @@ void Update_forceTorqueThrForceMapping(forceTorqueThrForceMappingConfig *configD
         printf("%.3f ", thrForceCmdOutMsgBuffer.thrForce[i]);
     }
     printf("\n");
+    // REMOVE WHEN DEBUGGING FINISHED
 }
 
