@@ -106,6 +106,15 @@ void Update_forceTorqueThrForceMapping(forceTorqueThrForceMappingConfig *configD
         cmdForceInMsgBuffer = CmdForceBodyMsg_C_zeroMsgPayload();
     }
 
+
+    printf("cmdForceInMsgBuffer: \n");
+    int numElements = sizeof(cmdForceInMsgBuffer.forceRequestBody) / sizeof(cmdForceInMsgBuffer.forceRequestBody[0]);
+    for (int i = 0; i < numElements; i++) {
+        // Print each float followed by a space
+        printf("%.3f ", cmdForceInMsgBuffer.forceRequestBody[i]);
+    }
+    printf("\n");
+    
     /* Initialize variables */
     double DG[6][MAX_EFF_CNT];
     double rThrusterRelCOM_B[MAX_EFF_CNT][3];
@@ -200,5 +209,14 @@ void Update_forceTorqueThrForceMapping(forceTorqueThrForceMappingConfig *configD
     /* Write to the output messages */
     vCopy(forceSubtracted_B, configData->numThrusters, thrForceCmdOutMsgBuffer.thrForce);
     THRArrayCmdForceMsg_C_write(&thrForceCmdOutMsgBuffer, &configData->thrForceCmdOutMsg, moduleID, callTime);
+
+    // Stopped here, we see all zeros in the Thrust Cmd force... 
+    printf("thrForceCmdOutMsg: \n");
+    int num = sizeof(thrForceCmdOutMsgBuffer.thrForce) / sizeof(thrForceCmdOutMsgBuffer.thrForce[0]);
+    for (int i = 0; i < num; i++) {
+        // Print each float followed by a space
+        printf("%.3f ", thrForceCmdOutMsgBuffer.thrForce[i]);
+    }
+    printf("\n");
 }
 

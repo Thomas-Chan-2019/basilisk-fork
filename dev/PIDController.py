@@ -41,6 +41,7 @@ class PIDController(sysModel.SysModel):
         
         # Input guidance structure message: Translational
         self.transGuidInMsg = messaging.TransGuidMsgReader()
+        # self.transGuidInMsg = messaging.TransGuidMsg_C()
         # Input guidance structure message: Rotational
         self.attGuidInMsg = messaging.AttGuidMsgReader()
         # For mass & moment of inertia
@@ -70,6 +71,13 @@ class PIDController(sysModel.SysModel):
         
         # TODO: Add back Reset() actions in accordance to mrpFeedback.c, basically:
         # 1) Message subscription check -> throw BSK log error if not linked;
+        if not self.transGuidInMsg.isLinked():
+            self.bskLogger.bskLog(sysModel.BSK_ERROR, f"Error: transController.transGuidInMsg wasn't connected.")
+        if not self.attGuidInMsg.isLinked():
+            self.bskLogger.bskLog(sysModel.BSK_ERROR, f"Error: transController.attGuidInMsg wasn't connected.")
+        if not self.vehConfigInMsg.isLinked():
+            self.bskLogger.bskLog(sysModel.BSK_ERROR, f"Error: transController.vehConfigInMsg wasn't connected.")
+            
         # 2) Read `VehicleConfigMsgPayload` for I_sc (also m_SC);
         # 3) Reset control gains or constraints for MPC controllers when implemented.
         
@@ -128,11 +136,16 @@ class PIDController(sysModel.SysModel):
         # All Python SysModels have self.bskLogger available
         # The logger level flags (i.e. BSK_INFORMATION) may be
         # accessed from sysModel
-        if False:
+        if 1:
+            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"------ TransController Module ------")
             """Sample Python module method"""
             self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"Time: {CurrentSimNanos * 1.0E-9} s")
+            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"transGuidMsgBuffer.r_BR_B: {transGuidMsgBuffer.r_BR_B}")
+            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"transGuidMsgBuffer.v_BR_B: {transGuidMsgBuffer.v_BR_B}")
+            
+            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"ForceRequestBody: {forceOutMsgBuffer.forceRequestBody}")
             self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"TorqueRequestBody: {torqueOutMsgBuffer.torqueRequestBody}")
-            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"sigma_BR: {guidMsgBuffer.sigma_BR}")
-            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"omega_BR_B: {guidMsgBuffer.omega_BR_B}")
-
+            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"Written Msg - ForceRequestBody: {self.cmdForceOutMsg.read().forceRequestBody}")
+            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"Written Msg - TorqueRequestBody: {self.cmdTorqueOutMsg.read().torqueRequestBody}")
+            
         return

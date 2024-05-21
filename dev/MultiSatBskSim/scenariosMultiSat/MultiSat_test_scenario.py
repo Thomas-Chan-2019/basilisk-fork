@@ -197,6 +197,9 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
 
         # declare empty containers for orbital elements
         self.oe = []
+        
+        # transGuidMsg logs:
+        self.transGuidLog = []
 
         # Set initial conditions and record the relevant messages
         self.configure_initial_conditions()
@@ -320,6 +323,9 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
             self.attErrorLog.append(FswModels[spacecraft].attGuidMsg.recorder(self.samplingTime))
             self.AddModelToTask(DynModels[spacecraft].taskName, self.attErrorLog[spacecraft])
 
+            self.transGuidLog.append(FswModels[spacecraft].transGuidOutMsg.recorder(self.samplingTime))
+            self.AddModelToTask(DynModels[spacecraft].taskName, self.transGuidLog[spacecraft])
+
             # log the RW torque messages
             self.rwMotorLog.append(
                 FswModels[spacecraft].rwMotorTorque.rwMotorTorqueOutMsg.recorder(self.samplingTime))
@@ -354,6 +360,7 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
                 self.AddModelToTask(DynModels[spacecraft].taskName, self.thrLogs[spacecraft][item])
 
     def pull_outputs(self, showPlots, relativeNavigation, spacecraftIndex):
+        print("SC Index: ", spacecraftIndex)
         # Process outputs
         DynModels = self.get_DynModel()
         EnvModel = self.get_EnvModel()
@@ -370,6 +377,8 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
         dataSigmaRN = self.attRefLog[spacecraftIndex].sigma_RN
         dataOmegaRN_N = self.attRefLog[spacecraftIndex].omega_RN_N
         # dataFuelMass = self.fuelLog[spacecraftIndex].fuelMass
+
+        dataTransGuid = self.transGuidLog[spacecraftIndex].r_BR_B
 
         # Save RW information
         dataRW = []
@@ -455,6 +464,10 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
         # Compute the orbit period - Kepler's 3rd Law
         T = 2*math.pi*math.sqrt(self.oe[spacecraftIndex].a ** 3 / EnvModel.mu)
 
+        # Print outputs: # Debug from here... 20240514
+        print(dr.__sizeof__())
+        print(dr)
+        print(dataTransGuid)
         #
         # Plot results
         #
@@ -495,8 +508,11 @@ def runScenario(scenario, relativeNavigation):
     # Get the environment model
     EnvModel = scenario.get_EnvModel()
 
-    # Configure initial FSW attitude modes
+    # Configure initial FSW attitude modes, later iterate through a for-loop?
     scenario.FSWModels[0].modeRequest = "inertialPointing"
+    scenario.FSWModels[1].modeRequest = "inertialPointing" # We need to turn on all S/C tasks!
+    scenario.FSWModels[2].modeRequest = "inertialPointing" # We need to turn on all S/C tasks!
+    
     # scenario.FSWModels[1].modeRequest = "sunPointing"
     # scenario.FSWModels[2].modeRequest = "locationPointing"
 
@@ -535,10 +551,25 @@ def runScenario(scenario, relativeNavigation):
     # Configure run time and execute simulation
     simulationTime = macros.hour2nano(1.)
     scenario.ConfigureStopTime(simulationTime)
+    # print(scenario.FSWModels[0].transRefInMsg.read().r_RN_N)
+    # print(scenario.FSWModels[1].transRefInMsg.read().r_RN_N)
+    # print(scenario.FSWModels[2].transRefInMsg.read().r_RN_N)
+    print(scenario.FSWModels[0].transError.transRefStatic_r_RN_N)
+    print(scenario.FSWModels[1].transError.transRefStatic_r_RN_N)
+    print(scenario.FSWModels[2].transError.transRefStatic_r_RN_N)
+    
+    scenario.TotalSim.SingleStepProcesses() 
+    print(scenario.FSWModels[0].transError.transRefStatic_r_RN_N)
+    print(scenario.FSWModels[1].transError.transRefStatic_r_RN_N)
+    print(scenario.FSWModels[2].transError.transRefStatic_r_RN_N)
+    
     scenario.ExecuteSimulation()
+    # return
 
     # Reconfigure FSW attitude modes
     scenario.FSWModels[0].modeRequest = "inertialPointing"
+    scenario.FSWModels[1].modeRequest = "inertialPointing"
+    scenario.FSWModels[2].modeRequest = "inertialPointing"
     # scenario.FSWModels[1].modeRequest = "locationPointing"
     # scenario.FSWModels[2].modeRequest = "sunPointing"
 
@@ -561,9 +592,8 @@ def run(showPlots, numberSpacecraft, relativeNavigation):
     # Configure a scenario in the base simulation
     TheScenario = MultiSat_test_scenario(numberSpacecraft, relativeNavigation)
     runScenario(TheScenario, relativeNavigation)
-    # figureList = TheScenario.pull_outputs(showPlots, relativeNavigation, 1)
+    # figureList = TheScenario.pull_outputs(showPlots, relativeNavigation, 0)
     figureList = TheScenario.pull_outputs(showPlots, relativeNavigation, 2)
-    
 
     return figureList
 

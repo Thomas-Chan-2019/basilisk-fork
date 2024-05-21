@@ -232,3 +232,6 @@ def SetThrusterDynEffector(self):
         self.thrusterFactory.addToSpacecraft("thrusterFactory", self.thrusterDynamicEffector, self.scObject)
         
 ```
+
+# Current issues:
+- Force mapping issues with the `forceTorqueThrForceMapping` module, see [test_forceTorqueThrForceMapping.py](src/fswAlgorithms/effectorInterfaces/forceTorqueThrForceMapping/_UnitTest/test_forceTorqueThrForceMapping.py) & standalone test [try_forceTorqueThrForceMapping.py](src/fswAlgorithms/effectorInterfaces/forceTorqueThrForceMapping/_UnitTest/try_forceTorqueThrForceMapping.py); link to module from [BSK net](https://hanspeterschaub.info/basilisk/Documentation/fswAlgorithms/effectorInterfaces/forceTorqueThrForceMapping/forceTorqueThrForceMapping.html?highlight=thrarraycmdforce); some thruster configurations are based on general location/unit vector definitions or scenarios like [scenarioFormationReconfig.py](dev/template-examples/scenarioFormationReconfig.py) (but without the `forceTorqueThrForceMapping` module used here) 

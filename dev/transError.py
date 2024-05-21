@@ -32,7 +32,9 @@ class transError(sysModel.SysModel):
         # Input translational structure message from SCState
         self.targetTransInMsg = messaging.NavTransMsgReader()
         self.chaserTransInMsg = messaging.NavTransMsgReader()
-        self.transRefInMsg = messaging.TransRefMsgReader()
+        self.transRefInMsg = messaging.TransRefMsgReader() # skipping for now, keep it here!
+        self.transRefStatic_r_RN_N = [0., 0., 0.]
+        self.transRefStatic_v_RN_N = [0., 0., 0.]
         
         # Output body torque message name
         self.transGuidOutMsg = messaging.TransGuidMsg_C() # Dirty fix to allow C_addAuthor to work. Need to review!
@@ -48,17 +50,18 @@ class transError(sysModel.SysModel):
         :return: none
         """
         # This is in accordance to attTrackingError.c ("src/fswAlgorithms/attGuidance/attTrackingError/attTrackingError.c")
-        logger = bskLogging.BSKLogger() # Pend remove if self.bskLogger works!
+        # logger = bskLogging.BSKLogger() # Pend remove if self.bskLogger works!
         if not self.targetTransInMsg.isLinked():
             # bskLogging._bskLog(logger, bskLogging.BSK_ERROR, "Error: transError.targetTransInMsg wasn't connected.")
             self.bskLogger.bskLog(sysModel.BSK_ERROR, f"Error: transError.targetTransInMsg wasn't connected.")
         if not self.chaserTransInMsg.isLinked():
             # bskLogging._bskLog(logger, bskLogging.BSK_ERROR, "Error: transError.chaserTransInMsg wasn't connected.")
             self.bskLogger.bskLog(sysModel.BSK_ERROR, f"Error: transError.chaserTransInMsg wasn't connected.")
-        if not self.transRefInMsg.isLinked():
-            # bskLogging._bskLog(logger, bskLogging.BSK_ERROR, "Error: transError.transRefInMsg wasn't connected.")
-            self.bskLogger.bskLog(sysModel.BSK_ERROR, f"Error: transError.transRefInMsg wasn't connected.")
-
+        
+        # Static `transRefInStatic` allowed, skip this check for now unless we create another module to pass "dynamic" transRefInMsg from a dedicated processing module!
+        # if not self.transRefInMsg.isLinked():
+        #     # bskLogging._bskLog(logger, bskLogging.BSK_ERROR, "Error: transError.transRefInMsg wasn't connected.")
+        #     self.bskLogger.bskLog(sysModel.BSK_ERROR, f"Error: transError.transRefInMsg wasn't connected.")
         
         return
 
@@ -76,24 +79,30 @@ class transError(sysModel.SysModel):
         # read input message
         targetTransInMsgBuffer = self.targetTransInMsg()
         chaserTransInMsgBuffer = self.chaserTransInMsg()
-        transRefInMsgBuffer = self.transRefInMsg()
+        transRefInMsgBuffer = self.transRefInMsg() # skipping for now, keep it here!
 
         # create output message buffer
         # Need a new message type?
         transGuidOutMsgBuffer = messaging.TransGuidMsgPayload()
 
-
+        # print("Check transRefInMsg", np.array(transRefInMsgBuffer.r_RN_N))
+        print("Check transRefInStatic: r_RN_N = ", np.array(self.transRefStatic_r_RN_N), "; v_RN_N = ", np.array(self.transRefStatic_v_RN_N))
+        
         # Simple subtraction for error:
-        transErr1 = np.array(targetTransInMsgBuffer.r_BN_N) - np.array(chaserTransInMsgBuffer.r_BN_N)
-        transErr2 = transErr1 - np.array(transRefInMsgBuffer.r_RN_N)
-        
+        dR = np.array(chaserTransInMsgBuffer.r_BN_N) - np.array(targetTransInMsgBuffer.r_BN_N)
         # Also log velocity error in case we need it
-        vErr1 = np.array(targetTransInMsgBuffer.v_BN_N) - np.array(chaserTransInMsgBuffer.v_BN_N)
-        vErr2 = vErr1 - np.array(transRefInMsgBuffer.v_RN_N)
+        dV = np.array(chaserTransInMsgBuffer.v_BN_N) - np.array(targetTransInMsgBuffer.v_BN_N)
         
-        transGuidOutMsgBuffer.r_BR_B = transErr2.tolist()
-        transGuidOutMsgBuffer.v_BR_B = vErr2.tolist()
+        if self.transRefInMsg.isLinked():
+            print("TransRefMsg is linked.")
+            dR_err = dR - np.array(transRefInMsgBuffer.r_RN_N)
+            dV_err = dV - np.array(transRefInMsgBuffer.v_RN_N)            
+        else: # Use static transRef:
+            dR_err = dR - np.array(self.transRefStatic_r_RN_N)
+            dV_err = dV - np.array(self.transRefStatic_v_RN_N)   
         
+        transGuidOutMsgBuffer.r_BR_B = dR_err.tolist()
+        transGuidOutMsgBuffer.v_BR_B = dV_err.tolist()
         self.transGuidOutMsg.write(transGuidOutMsgBuffer, CurrentSimNanos, self.moduleID)
         
         # # compute control solution
@@ -105,14 +114,25 @@ class transError(sysModel.SysModel):
         # # All Python SysModels have self.bskLogger available
         # # The logger level flags (i.e. BSK_INFORMATION) may be
         # # accessed from sysModel
-        # if False:
-        #     """Sample Python module method"""
-        self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"Time: {CurrentSimNanos * 1.0E-9} s")
-        self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"targetTransInMsgBuffer.r_BN_N: {targetTransInMsgBuffer.r_BN_N}")
-        self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"targetTransInMsgBuffer.v_BN_N: {targetTransInMsgBuffer.v_BN_N}")
-        self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"chaserTransInMsgBuffer.r_BN_N: {chaserTransInMsgBuffer.r_BN_N}")
-        self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"chaserTransInMsgBuffer.v_BN_N: {chaserTransInMsgBuffer.v_BN_N}")
-        self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"transGuidOutMsgBuffer.r_BR_B: {transGuidOutMsgBuffer.r_BR_B}")
-        self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"transGuidOutMsgBuffer.v_BR_B: {transGuidOutMsgBuffer.v_BR_B}")
-    
+        if 1:
+            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"------ TransError Module ------")
+            """Sample Python module method"""
+            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"Time: {CurrentSimNanos * 1.0E-9} s")
+            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"Static transRef r_RN_N: {self.transRefStatic_r_RN_N}")
+            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"Static transRef v_RN_N: {self.transRefStatic_v_RN_N}")
+            
+            if self.transRefInMsg.isLinked():
+                self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"transRefInMsgBuffer.r_RN_N: {transRefInMsgBuffer.r_RN_N}")
+                self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"transRefInMsgBuffer.v_RN_N: {transRefInMsgBuffer.v_RN_N}")
+                
+            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"targetTransInMsgBuffer.r_BN_N: {targetTransInMsgBuffer.r_BN_N}")
+            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"targetTransInMsgBuffer.v_BN_N: {targetTransInMsgBuffer.v_BN_N}")
+            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"chaserTransInMsgBuffer.r_BN_N: {chaserTransInMsgBuffer.r_BN_N}")
+            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"chaserTransInMsgBuffer.v_BN_N: {chaserTransInMsgBuffer.v_BN_N}")
+            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"transGuidOutMsgBuffer.r_BR_B: {transGuidOutMsgBuffer.r_BR_B}")
+            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"transGuidOutMsgBuffer.v_BR_B: {transGuidOutMsgBuffer.v_BR_B}")
+            # This below proves that the messaage is actually written!
+            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"self.transGuidOutMsg.read().r_BR_B: {self.transGuidOutMsg.read().r_BR_B}")
+            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"self.transGuidOutMsg.read().v_BR_B: {self.transGuidOutMsg.read().v_BR_B}")
+            
         return

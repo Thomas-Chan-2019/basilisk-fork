@@ -283,11 +283,18 @@ class BSKFswModels:
 
     # Setup `transRefInMsg` via hardcoded manner for now. Notice that `transRefInMsg` is defined here as:
     # Delta distance (dr) between the target & chaser spacecraft! Refer to "dev/transError.py" Line 87 for details.
-    def SetTransRefMsg(self):
-        self.transRefInMsg.r_RN_N = [1.0, 0.0, 0.0] # Random hardcoded delta distance
-        self.transRefInMsg.v_RN_N = [0.0, 0.0, 0.0] # Random hardcoded delta velocity
-        # messaging.TransGuidMsg_C_addAuthor(self.{someModule.transRefOutMsg}, self.transRefInMsg) 
-        # # this .transRefOutMsg has to be defined in a new module if we have it later!
+    def SetTransRef(self):
+        if False: # If we need a module to dynamically update the transRefInMsg then we need the following with Msg_C_addAuthor(), otherwise skip it and keep it hardcoded for now.
+            transRefMsgBuffer = messaging.TransRefMsgPayload()
+            transRefMsgBuffer.r_RN_N = [100.0, 0.0, 0.0] # Random hardcoded delta distance
+            transRefMsgBuffer.v_RN_N = [0.0, 0.0, 0.0] # Random hardcoded delta velocity
+            # self.transRefInMsg.r_RN_N = [100.0, 0.0, 0.0] # Random hardcoded delta distance
+            # self.transRefInMsg.v_RN_N = [0.0, 0.0, 0.0] # Random hardcoded delta velocity
+            # # this .transRefOutMsg has to be defined in a new module if we have it later!
+            # messaging.TransRefMsg_C_addAuthor(self.{someModule.transRefOutMsg}, self.transRefInMsg) 
+            messaging.TransRefMsg_C_addAuthor(transRefMsgTemp, self.transRefInMsg)
+            self.transRefInMsg.write(transRefMsgBuffer)
+            print("Set TransRef: ", self.transRefInMsg.read().r_RN_N)
 
     # New setup transError.py module:
     def SetTransError(self, SimBase):
@@ -298,7 +305,12 @@ class BSKFswModels:
         self.transError.chaserTransInMsg.subscribeTo(
             SimBase.DynModels[self.spacecraftIndex].simpleNavObject.transOutMsg)
         # Trans reference:
-        self.transError.transRefInMsg.subscribeTo(self.transRefInMsg)
+        self.transError.transRefStatic_r_RN_N = [100.0, 0.0, 0.0]
+        self.transError.transRefStatic_v_RN_N = [0.0, 0.0, 0.0]
+        if False:
+            self.transError.transRefInMsg.subscribeTo(self.transRefInMsg)
+            
+        # self.transGuidOutMsg = self.transError.transGuidOutMsg
         # The following line might not be necessary for now due to the fact that we only have one single module to find the transError.
         messaging.TransGuidMsg_C_addAuthor(self.transError.transGuidOutMsg, self.transGuidOutMsg)
         # `self.transGuidOutMsg` has been set in function setupGatewayMsgs() with C addAuthor() 
@@ -317,7 +329,8 @@ class BSKFswModels:
             SimBase.DynModels[self.spacecraftIndex].I_sc)
         
         # Unlike the `mrpFeedback.py` module, we first ignore the RW inertial effects and do not import the RW params in the EOM.
-        self.transController.transGuidInMsg.subscribeTo(self.transGuidOutMsg)
+        # self.transController.transGuidInMsg.subscribeTo(self.transGuidOutMsg)
+        self.transController.transGuidInMsg.subscribeTo(self.transError.transGuidOutMsg)
         self.transController.attGuidInMsg.subscribeTo(self.attGuidMsg)
         self.transController.vehConfigInMsg.subscribeTo(SimBase.DynModels[self.spacecraftIndex].simpleMassPropsObject.vehicleConfigOutMsg)
     
@@ -419,7 +432,7 @@ class BSKFswModels:
         Initializes all FSW objects.
         """
         self.SetInertial3DPointGuidance()
-        self.SetTransRefMsg() # Translational dr dv setting (hardcoded for now)
+        self.SetTransRef() # Translational dr dv setting (hardcoded for now)
         # self.SetSunPointGuidance(SimBase)
         # self.SetLocationPointGuidance(SimBase)
         self.SetAttitudeTrackingError(SimBase)
@@ -442,6 +455,7 @@ class BSKFswModels:
         # Add translational message first, need to figure out what is "Gateway Messages"
         self.transRefInMsg = messaging.TransRefMsg_C()
         self.transGuidOutMsg = messaging.TransGuidMsg_C()
+        # self.transGuidOutMsg = messaging.TransGuidMsg()
         
         self.zeroGateWayMsgs()
 
@@ -464,135 +478,4 @@ class BSKFswModels:
         self.transRefInMsg.write(messaging.TransRefMsgPayload())
         self.transGuidOutMsg.write(messaging.TransGuidMsgPayload())
 
-    @property
-    def inertial3DPointData(self):
-        return self.inertial3DPoint
-
-    inertial3DPointData = deprecated.DeprecatedProperty(
-        "2024/07/30",
-        "Due to the new C module syntax, refer to inertial3DPointData as inertial3DPoint",
-        inertial3DPointData)
-
-    @property
-    def inertial3DPointWrap(self):
-        return self.inertial3DPoint
-
-    inertial3DPointWrap = deprecated.DeprecatedProperty(
-        "2024/07/30",
-        "Due to the new C module syntax, refer to inertial3DPointWrap as inertial3DPoint",
-        inertial3DPointWrap)
-
-
-    @property
-    def sunPointData(self):
-        return self.sunPoint
-
-    sunPointData = deprecated.DeprecatedProperty(
-        "2024/07/30",
-        "Due to the new C module syntax, refer to sunPointData as sunPoint",
-        sunPointData)
-
-    @property
-    def sunPointWrap(self):
-        return self.sunPoint
-
-    sunPointWrap = deprecated.DeprecatedProperty(
-        "2024/07/30",
-        "Due to the new C module syntax, refer to sunPointWrap as sunPoint",
-        sunPointWrap)
-
-
-    @property
-    def locPointData(self):
-        return self.locPoint
-
-    locPointData = deprecated.DeprecatedProperty(
-        "2024/07/30",
-        "Due to the new C module syntax, refer to locPointData as locPoint",
-        locPointData)
-
-    @property
-    def locPointWrap(self):
-        return self.locPoint
-
-    locPointWrap = deprecated.DeprecatedProperty(
-        "2024/07/30",
-        "Due to the new C module syntax, refer to locPointWrap as locPoint",
-        locPointWrap)
-
-
-    @property
-    def spacecraftReconfigData(self):
-        return self.spacecraftReconfig
-
-    spacecraftReconfigData = deprecated.DeprecatedProperty(
-        "2024/07/30",
-        "Due to the new C module syntax, refer to spacecraftReconfigData as spacecraftReconfig",
-        spacecraftReconfigData)
-
-    @property
-    def spacecraftReconfigWrap(self):
-        return self.spacecraftReconfig
-
-    spacecraftReconfigWrap = deprecated.DeprecatedProperty(
-        "2024/07/30",
-        "Due to the new C module syntax, refer to spacecraftReconfigWrap as spacecraftReconfig",
-        spacecraftReconfigWrap)
-
-
-    @property
-    def trackingErrorData(self):
-        return self.trackingError
-
-    trackingErrorData = deprecated.DeprecatedProperty(
-        "2024/07/30",
-        "Due to the new C module syntax, refer to trackingErrorData as trackingError",
-        trackingErrorData)
-
-    @property
-    def trackingErrorWrap(self):
-        return self.trackingError
-
-    trackingErrorWrap = deprecated.DeprecatedProperty(
-        "2024/07/30",
-        "Due to the new C module syntax, refer to trackingErrorWrap as trackingError",
-        trackingErrorWrap)
-
-
-    @property
-    def mrpFeedbackRWsData(self):
-        return self.mrpFeedbackRWs
-
-    mrpFeedbackRWsData = deprecated.DeprecatedProperty(
-        "2024/07/30",
-        "Due to the new C module syntax, refer to mrpFeedbackRWsData as mrpFeedbackRWs",
-        mrpFeedbackRWsData)
-
-    @property
-    def mrpFeedbackRWsWrap(self):
-        return self.mrpFeedbackRWs
-
-    mrpFeedbackRWsWrap = deprecated.DeprecatedProperty(
-        "2024/07/30",
-        "Due to the new C module syntax, refer to mrpFeedbackRWsWrap as mrpFeedbackRWs",
-        mrpFeedbackRWsWrap)
-
-
-    @property
-    def rwMotorTorqueData(self):
-        return self.rwMotorTorque
-
-    rwMotorTorqueData = deprecated.DeprecatedProperty(
-        "2024/07/30",
-        "Due to the new C module syntax, refer to rwMotorTorqueData as rwMotorTorque",
-        rwMotorTorqueData)
-
-    @property
-    def rwMotorTorqueWrap(self):
-        return self.rwMotorTorque
-
-    rwMotorTorqueWrap = deprecated.DeprecatedProperty(
-        "2024/07/30",
-        "Due to the new C module syntax, refer to rwMotorTorqueWrap as rwMotorTorque",
-        rwMotorTorqueWrap)
     

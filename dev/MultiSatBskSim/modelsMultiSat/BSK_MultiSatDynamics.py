@@ -212,7 +212,8 @@ class BSKDynamicModels:
 
         # create the thruster devices by specifying the thruster type and its location and direction
         for pos_B, dir_B in zip(location, direction):
-            self.thrusterFactory.create('TEST_Thruster', pos_B, dir_B, useMinPulseTime=False)
+            # self.thrusterFactory.create('TEST_Thruster', pos_B, dir_B, useMinPulseTime=False)
+            self.thrusterFactory.create('MOOG_Monarc_5', pos_B, dir_B, useMinPulseTime=False)
 
         self.numThr = self.thrusterFactory.getNumOfDevices()
 
