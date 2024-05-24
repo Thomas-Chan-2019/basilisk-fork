@@ -77,6 +77,103 @@ void Reset_forceTorqueThrForceMapping(forceTorqueThrForceMappingConfig *configDa
 }
 
 
+/*! This method reallocates the thruster inputs to ensure non-negative values
+    while satisfying the desired force/torque outputs.
+ @return void
+ @param DG The configuration matrix relating thruster inputs to force/torque outputs
+ @param rows The number of rows in the DG matrix
+ @param cols The number of columns in the DG matrix
+ @param force_B The original thruster input vector (can contain negative values)
+ @param forceTorque_B The desired force/torque output vector
+ @param force_B_mod The modified thruster input vector (non-negative values)
+*/
+void reallocate_thrusters(double DG[][MAX_EFF_CNT], size_t rows, size_t cols, double *force_B, double *forceTorque_B, double *force_B_mod) {
+    double adjustment = 0.0;
+
+    // Initialize force_B_mod to be the same as force_B
+    for (uint32_t i = 0; i < cols; i++) {
+        force_B_mod[i] = force_B[i];
+    }
+
+    // Identify and accumulate the negative values
+    for (uint32_t i = 0; i < cols; i++) {
+        if (force_B_mod[i] < 1e-6) {
+            adjustment += -force_B_mod[i];
+            force_B_mod[i] = 0;  // Set negative values to zero
+        }
+    }
+
+    // Redistribute the accumulated adjustment to non-negative values proportionally
+    uint32_t num_positive = 0;
+    for (uint32_t i = 0; i < cols; i++) {
+        if (force_B_mod[i] > 0) {
+            num_positive++;
+        }
+    }
+
+    if (num_positive > 0) {
+        for (uint32_t i = 0; i < cols; i++) {
+            if (force_B_mod[i] > 0) {
+                force_B_mod[i] += adjustment / num_positive;
+            }
+        }
+    }
+
+    // Verify the adjusted values satisfy the system equation
+    double result[MAX_EFF_CNT] = {0};
+    for (uint32_t i = 0; i < rows; i++) {
+        for (uint32_t j = 0; j < cols; j++) {
+            result[i] += DG[i][j] * force_B_mod[j];
+        }
+    }
+
+    // Array to store the indices sorted by descending order of force_B_mod
+    uint32_t idx[MAX_EFF_CNT];
+    for (uint32_t i = 0; i < cols; i++) {
+        idx[i] = i;
+    }
+    for (uint32_t i = 0; i < cols - 1; i++) {
+        for (uint32_t j = 0; j < cols - 1 - i; j++) {
+            if (force_B_mod[idx[j]] < force_B_mod[idx[j + 1]]) {
+                // Swap indices
+                uint32_t temp = idx[j];
+                idx[j] = idx[j + 1];
+                idx[j + 1] = temp;
+            }
+        }
+    }
+
+    // Adjust manually to match the exact desired output
+    uint32_t len_idx = cols;
+    for (uint32_t i = 0; i < rows; i++) {
+        double discrepancy = forceTorque_B[i] - result[i];
+        if (discrepancy != 0) {
+            // Try to find thrusters that can adjust to match the discrepancy
+            for (uint32_t j = 0; j < len_idx; j++) {
+                uint32_t index = idx[j];
+                if (DG[i][index] != 0 && force_B_mod[index] + discrepancy / DG[i][index] >= 0) {
+                    force_B_mod[index] += discrepancy / DG[i][index];
+                    // Recalculate the result
+                    for (uint32_t k = 0; k < rows; k++) {
+                        result[k] = 0;
+                        for (uint32_t l = 0; l < cols; l++) {
+                            result[k] += DG[k][l] * force_B_mod[l];
+                        }
+                    }
+
+                    // Remove element j from idx
+                    for (size_t k = j; k < len_idx; k++) {
+                        idx[k] = idx[k + 1];
+                    }
+                    len_idx--;
+                    break;
+                }
+            }
+        }
+    }
+}
+
+
 /*! Add a description of what this main Update() routine does for this module
  @return void
  @param configData The configuration data associated with the module
@@ -191,21 +288,31 @@ void Update_forceTorqueThrForceMapping(forceTorqueThrForceMappingConfig *configD
     double DGT_DGDGT_inv[6*6];
     mMinimumNormInverse(DG_full, (size_t) 6-numZeroes, (size_t) MAX_EFF_CNT, DGT_DGDGT_inv);
 
-    /* Compute the force for each thruster */
-    mMultV(DGT_DGDGT_inv, (size_t) configData->numThrusters, (size_t) 6-numZeroes, forceTorque_B, force_B);
-
-    /* Find the minimum force */
-    double min_force = force_B[0];
-    for(uint32_t i = 1; i < configData->numThrusters; i++) {
-        if (force_B[i] < min_force){
-            min_force = force_B[i];
+    /* Add the computed pseudoinverse values back into the correct positions*/
+    double DG_inv_full[6 * MAX_EFF_CNT];
+    vSetZero(DG_inv_full, (size_t) 6*MAX_EFF_CNT);
+    uint32_t colIndex = 0;
+    for (uint32_t i = 0; i < 6; ++i) {
+        if (!zeroRows[i]) {
+            for (uint32_t j = 0; j < 6; ++j) {
+                DG_inv_full[j * configData->numThrusters + i] = DGT_DGDGT_inv[j * (configData->numThrusters - numZeroes) + colIndex];
+            }
+            colIndex++;
         }
     }
 
-    /* Subtract the minimum force */
-    for(uint32_t i = 0; i < configData->numThrusters; i++) {
-        forceSubtracted_B[i] = force_B[i] - min_force;
-    }
+    /* Compute the force for each thruster */
+    // mMultV(DGT_DGDGT_inv, (size_t) configData->numThrusters, (size_t) 6-numZeroes, forceTorque_B, force_B);
+    mMultV(DG_inv_full, (size_t) configData->numThrusters, (size_t) 6, forceTorque_B, force_B);
+
+    // /* Subtract the minimum force */
+    // for(uint32_t i = 0; i < configData->numThrusters; i++) {
+    //     forceSubtracted_B[i] = force_B[i] - min_force;
+    // }
+
+    // Elias: Reallocate thrusters to ensure non-negative values
+    // Reallocate thrusters to ensure non-negative values
+    reallocate_thrusters(DG, (size_t) 6, (size_t) configData->numThrusters, force_B, forceTorque_B, forceSubtracted_B);
 
     /* Write to the output messages */
     vCopy(forceSubtracted_B, configData->numThrusters, thrForceCmdOutMsgBuffer.thrForce);
