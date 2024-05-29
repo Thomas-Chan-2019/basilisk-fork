@@ -16,9 +16,12 @@
 #  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 import numpy as np
 from Basilisk.utilities import macros
 from Basilisk.utilities import unitTestSupport
+
+plt.rcParams['font.size'] = 24
 
 # --------------------------------- COMPONENTS & SUBPLOT HANDLING ----------------------------------------------- #
 
@@ -267,14 +270,20 @@ def plot_orbits(r_BN, numberSpacecraft, id=None):
     ax.legend(loc=2)
     return
 
+# Added animated plot to relative orbits:
 def plot_relative_orbits(r_BN, numberSpacecraft, id=None):
     """Plot the spacecraft inertial orbits."""
-    plt.figure(id, figsize=(6, 5))
-    ax = plt.axes(projection='3d')
+    fig = plt.figure(id, figsize=(6, 5))
+    # ax = plt.axes(projection='3d')
+    ax = fig.add_subplot(111, projection='3d')
+    
+    # Initialize the lines for each spacecraft
+    lines = []
     for i in range(numberSpacecraft):
-        ax.plot(r_BN[i][:, 0] * m2km, r_BN[i][:, 1] * m2km, r_BN[i][:, 2] * m2km,
+        line, = ax.plot(r_BN[i][:, 0] * m2km, r_BN[i][:, 1] * m2km, r_BN[i][:, 2] * m2km,
                 label="Spacecraft " + str(i),
                 c=unitTestSupport.getLineColor(i, numberSpacecraft))
+        lines.append(line)
     ax.set_box_aspect((np.ptp(r_BN[i][:, 0]), np.ptp(r_BN[i][:, 1]), np.ptp(r_BN[i][:, 2])))
     ax.scatter(0, 0, 0, c=color_x)
     ax.set_title('Spacecraft Relative Orbits in Hill Frame')
@@ -282,7 +291,27 @@ def plot_relative_orbits(r_BN, numberSpacecraft, id=None):
     ax.set_ylabel(r'$i_{\theta}$ [km]')
     ax.set_zlabel('$i_h$ [km]')
     ax.legend(loc=2)
-    return
+    
+    # Initialization function
+    def init():
+        for line in lines:
+            line.set_data([], [])
+            line.set_3d_properties([])
+        return lines
+    
+    # Update function for animation
+    def update(frame):
+        for i, line in enumerate(lines):
+            # Update the data of the line
+            line.set_data(r_BN[i][:frame, 0] * m2km, r_BN[i][:frame, 1] * m2km)
+            line.set_3d_properties(r_BN[i][:frame, 2] * m2km)
+        return lines
+    
+    interval = r_BN[0].shape[0]/1000
+    # Create the animation
+    ani = FuncAnimation(fig, update, frames=r_BN[0].shape[0], init_func=init, blit=False, interval=interval)
+    return ani
+    # plt.show()
 
 def plot_orbital_element_differences(timeData, oed, id=None):
     """Plot the orbital element difference between the chief and another spacecraft."""

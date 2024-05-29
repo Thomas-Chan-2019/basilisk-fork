@@ -1,9 +1,13 @@
 from Basilisk.architecture import sysModel, messaging, bskLogging
+from Basilisk.utilities import orbitalMotion
 import numpy as np
 
 # This controller should have I/O messages from:
 # Input: VehicleConfigMsgPayload, AttGuidMsgReader (if control att.), 
 class transError(sysModel.SysModel):
+    # Temporary flag to decide if we use the transRefMsg.
+    global useTransRef
+    useTransRef = False
     """
     This class inherits from the `SysModel` available in the ``Basilisk.architecture.sysModel`` module.
     The `SysModel` is the parent class which your Python BSK modules must inherit.
@@ -32,9 +36,10 @@ class transError(sysModel.SysModel):
         # Input translational structure message from SCState
         self.targetTransInMsg = messaging.NavTransMsgReader()
         self.chaserTransInMsg = messaging.NavTransMsgReader()
-        self.transRefInMsg = messaging.TransRefMsgReader() # skipping for now, keep it here!
-        self.transRefStatic_r_RN_N = [0., 0., 0.]
-        self.transRefStatic_v_RN_N = [0., 0., 0.]
+        if useTransRef:
+            self.transRefInMsg = messaging.TransRefMsgReader() # skipping for now, keep it here!
+        self.transRefStatic_r_RN_N = [0., 0., 0.] # Default reference distance -> 0.
+        self.transRefStatic_v_RN_N = [0., 0., 0.] # Default reference velocity -> 0.
         
         # Output body torque message name
         self.transGuidOutMsg = messaging.TransGuidMsg_C() # Dirty fix to allow C_addAuthor to work. Need to review!
@@ -79,7 +84,8 @@ class transError(sysModel.SysModel):
         # read input message
         targetTransInMsgBuffer = self.targetTransInMsg()
         chaserTransInMsgBuffer = self.chaserTransInMsg()
-        transRefInMsgBuffer = self.transRefInMsg() # skipping for now, keep it here!
+        if useTransRef:
+            transRefInMsgBuffer = self.transRefInMsg() # skipping for now, keep it here!
 
         # create output message buffer
         # Need a new message type?
@@ -88,12 +94,16 @@ class transError(sysModel.SysModel):
         # print("Check transRefInMsg", np.array(transRefInMsgBuffer.r_RN_N))
         print("Check transRefInStatic: r_RN_N = ", np.array(self.transRefStatic_r_RN_N), "; v_RN_N = ", np.array(self.transRefStatic_v_RN_N))
         
-        # Simple subtraction for error:
-        dR = np.array(chaserTransInMsgBuffer.r_BN_N) - np.array(targetTransInMsgBuffer.r_BN_N)
-        # Also log velocity error in case we need it
-        dV = np.array(chaserTransInMsgBuffer.v_BN_N) - np.array(targetTransInMsgBuffer.v_BN_N)
+        # # Simple subtraction for error:
+        # dR = np.array(chaserTransInMsgBuffer.r_BN_N) - np.array(targetTransInMsgBuffer.r_BN_N)
+        # # Also log velocity error in case we need it
+        # dV = np.array(chaserTransInMsgBuffer.v_BN_N) - np.array(targetTransInMsgBuffer.v_BN_N)
         
-        if self.transRefInMsg.isLinked():
+        # Obtain the hill frame position & velocity difference:
+        dR, dV = orbitalMotion.rv2hill(np.array(targetTransInMsgBuffer.r_BN_N), np.array(targetTransInMsgBuffer.v_BN_N),
+                                       np.array(chaserTransInMsgBuffer.r_BN_N), np.array(chaserTransInMsgBuffer.v_BN_N))
+        
+        if useTransRef and self.transRefInMsg.isLinked():
             print("TransRefMsg is linked.")
             dR_err = dR - np.array(transRefInMsgBuffer.r_RN_N)
             dV_err = dV - np.array(transRefInMsgBuffer.v_RN_N)            
@@ -121,14 +131,16 @@ class transError(sysModel.SysModel):
             self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"Static transRef r_RN_N: {self.transRefStatic_r_RN_N}")
             self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"Static transRef v_RN_N: {self.transRefStatic_v_RN_N}")
             
-            if self.transRefInMsg.isLinked():
+            if useTransRef and self.transRefInMsg.isLinked():
                 self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"transRefInMsgBuffer.r_RN_N: {transRefInMsgBuffer.r_RN_N}")
                 self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"transRefInMsgBuffer.v_RN_N: {transRefInMsgBuffer.v_RN_N}")
-                
-            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"targetTransInMsgBuffer.r_BN_N: {targetTransInMsgBuffer.r_BN_N}")
-            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"targetTransInMsgBuffer.v_BN_N: {targetTransInMsgBuffer.v_BN_N}")
-            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"chaserTransInMsgBuffer.r_BN_N: {chaserTransInMsgBuffer.r_BN_N}")
-            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"chaserTransInMsgBuffer.v_BN_N: {chaserTransInMsgBuffer.v_BN_N}")
+            
+            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"Hill frame targer-chaser rho_H: {dR}")
+            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"Hill frame targer-chaser rhoPrime_H: {dV}")
+            # self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"targetTransInMsgBuffer.r_BN_N: {targetTransInMsgBuffer.r_BN_N}")
+            # self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"targetTransInMsgBuffer.v_BN_N: {targetTransInMsgBuffer.v_BN_N}")
+            # self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"chaserTransInMsgBuffer.r_BN_N: {chaserTransInMsgBuffer.r_BN_N}")
+            # self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"chaserTransInMsgBuffer.v_BN_N: {chaserTransInMsgBuffer.v_BN_N}")
             self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"transGuidOutMsgBuffer.r_BR_B: {transGuidOutMsgBuffer.r_BR_B}")
             self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"transGuidOutMsgBuffer.v_BR_B: {transGuidOutMsgBuffer.v_BR_B}")
             # This below proves that the messaage is actually written!

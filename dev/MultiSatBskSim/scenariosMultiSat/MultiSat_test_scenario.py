@@ -240,8 +240,8 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
             #     gsList.append([batteryPanel, tankPanel])
 
             viz = vizSupport.enableUnityVisualization(self, self.DynModels[0].taskName, DynModelsList
-                                                      # , saveFile=__file__
-                                                      # , liveStream=True
+                                                      , saveFile=__file__
+                                                    #   , liveStream=True
                                                       , rwEffectorList=rwStateEffectorList
                                                       , thrEffectorList=thDynamicEffectorList
                                                     #   , genericStorageList=gsList
@@ -261,7 +261,8 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
         # Configure initial conditions for spacecraft 0
         self.oe.append(orbitalMotion.ClassicElements())
         self.oe[0].a = 1.4*EnvModel.planetRadius  # meters
-        self.oe[0].e = 0.2
+        # self.oe[0].e = 0.2
+        self.oe[0].e = 0
         self.oe[0].i = 45.0 * macros.D2R
         self.oe[0].Omega = 48.2 * macros.D2R
         self.oe[0].omega = 347.8 * macros.D2R
@@ -275,7 +276,7 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
 
         # Configure initial conditions for spacecraft 1
         self.oe.append(copy.deepcopy(self.oe[0]))
-        self.oe[1].f *= 1.001 # Slightly deviate from s/c 0 by true anomaly v
+        self.oe[1].f *= 1.00001 # Slightly deviate from s/c 0 by true anomaly v
         rN2, vN2 = orbitalMotion.elem2rv(EnvModel.mu, self.oe[1])
         orbitalMotion.rv2elem(EnvModel.mu, rN2, vN2)
         DynModels[1].scObject.hub.r_CN_NInit = rN2  # m   - r_CN_N
@@ -285,7 +286,7 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
 
         # Configure initial conditions for spacecraft 2
         self.oe.append(copy.deepcopy(self.oe[0]))
-        self.oe[2].f *= 0.999 # Slightly deviate from s/c 0 true anomaly v
+        self.oe[2].f *= 0.99999 # Slightly deviate from s/c 0 true anomaly v
         rN3, vN3 = orbitalMotion.elem2rv(EnvModel.mu, self.oe[2])
         orbitalMotion.rv2elem(EnvModel.mu, rN3, vN3)
         DynModels[2].scObject.hub.r_CN_NInit = rN3  # m   - r_CN_N
@@ -465,9 +466,12 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
         T = 2*math.pi*math.sqrt(self.oe[spacecraftIndex].a ** 3 / EnvModel.mu)
 
         # Print outputs: # Debug from here... 20240514
-        print(dr.__sizeof__())
-        print(dr)
-        print(dataTransGuid)
+        # print(dr.__sizeof__())
+        # print(dr)
+        # print(dataTransGuid)
+        # Print thrust # Debug from here... 20240528
+        # print(dataThrust)
+        
         #
         # Plot results
         #
@@ -482,10 +486,13 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
         plt.plot_rw_motor_torque(timeLineSetMin, dataUsReq, dataRW, DynModels[spacecraftIndex].numRW, 7)
         # plt.plot_rw_speeds(timeLineSetMin, dataOmegaRW, DynModels[spacecraftIndex].numRW, 8)
         plt.plot_orbits(r_BN_N, self.numberSpacecraft, 9)
-        plt.plot_relative_orbits(dr, len(dr), 10)
+        
+        # Added animated plot to relative orbits, keep `ani` there!
+        _ = plt.plot_relative_orbits(dr, len(dr), 10)
         plt.plot_orbital_element_differences(timeLineSetSec / T, oed, 11)
         # plt.plot_power(timeLineSetMin, netData, supplyData, sinkData, 12)
         # plt.plot_fuel(timeLineSetMin, dataFuelMass, 13)
+        plt.plot_thrust(timeLineSetMin, dataThrust, DynModels[spacecraftIndex].numThr, 13)
         plt.plot_thrust_percentage(timeLineSetMin, dataThrustPercentage, DynModels[spacecraftIndex].numThr, 14)
 
         figureList = {}
@@ -550,6 +557,7 @@ def runScenario(scenario, relativeNavigation):
 
     # Configure run time and execute simulation
     simulationTime = macros.hour2nano(1.)
+    # simulationTime = macros.sec2nano(5.)
     scenario.ConfigureStopTime(simulationTime)
     # print(scenario.FSWModels[0].transRefInMsg.read().r_RN_N)
     # print(scenario.FSWModels[1].transRefInMsg.read().r_RN_N)

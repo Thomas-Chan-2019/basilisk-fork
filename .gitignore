@@ -57,3 +57,7 @@ venv/
 # Python packaging
 *.egg-info
 build/
+
+dev/MultiSatBskSim/ResultData
+dev/MultiSatBskSim/ResultPlots
+dev/MultiSatBskSim/ResultPlotsMATLAB

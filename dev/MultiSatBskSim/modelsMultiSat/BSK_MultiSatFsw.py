@@ -19,10 +19,13 @@
 import itertools
 
 import numpy as np
+import math
+import scipy.signal as ss
+
 from Basilisk.architecture import messaging
 from Basilisk.fswAlgorithms import (inertial3D, locationPointing, attTrackingError, mrpFeedback,
                                     rwMotorTorque, spacecraftReconfig, thrForceMapping, forceTorqueThrForceMapping, thrFiringSchmitt) # most of the pointing/controller/feedback modules are not used
-from Basilisk.utilities import (macros as mc, fswSetupThrusters, fswSetupRW) # need the fswSetupRW module?
+from Basilisk.utilities import (macros as mc, fswSetupThrusters, fswSetupRW, orbitalMotion) # need the fswSetupRW module?
 from Basilisk.utilities import deprecated
 
 import inspect, os, sys
@@ -292,7 +295,7 @@ class BSKFswModels:
             # self.transRefInMsg.v_RN_N = [0.0, 0.0, 0.0] # Random hardcoded delta velocity
             # # this .transRefOutMsg has to be defined in a new module if we have it later!
             # messaging.TransRefMsg_C_addAuthor(self.{someModule.transRefOutMsg}, self.transRefInMsg) 
-            messaging.TransRefMsg_C_addAuthor(transRefMsgTemp, self.transRefInMsg)
+            # messaging.TransRefMsg_C_addAuthor(transRefMsgTemp, self.transRefInMsg)
             self.transRefInMsg.write(transRefMsgBuffer)
             print("Set TransRef: ", self.transRefInMsg.read().r_RN_N)
 
@@ -305,9 +308,11 @@ class BSKFswModels:
         self.transError.chaserTransInMsg.subscribeTo(
             SimBase.DynModels[self.spacecraftIndex].simpleNavObject.transOutMsg)
         # Trans reference:
-        self.transError.transRefStatic_r_RN_N = [100.0, 0.0, 0.0]
-        self.transError.transRefStatic_v_RN_N = [0.0, 0.0, 0.0]
-        if False:
+        if not self.spacecraftIndex == self.targetSCIndex: # Only set transRef if the target and chaser are DIFFERENT S/C, otherwise keep it as default!
+            self.transError.transRefStatic_r_RN_N = [100.0, 0.0, 0.0]
+            self.transError.transRefStatic_v_RN_N = [0.0, 0.0, 0.0]
+            
+        if False: # Leave this here for now until we use transRefMsg for trans trajectory
             self.transError.transRefInMsg.subscribeTo(self.transRefInMsg)
             
         # self.transGuidOutMsg = self.transError.transGuidOutMsg
@@ -317,16 +322,31 @@ class BSKFswModels:
         # -> Check why, probably because the original structure would switch between control modules (SpacecraftReconfig, Local Pointing, Sun Pointing etc.)
     
     def SetTransController(self, SimBase):
-        self.decayTime = 50 # copy from MRP Feedback module
-        self.xi = 0.9 # copy from MRP Feedback module only
         # TODO - Maybe set controller gains via a JSON file separately, or define via `scConfig.py`?
-        self.transController.P_trans = 2 * SimBase.DynModels[self.spacecraftIndex].m_sc / self.decayTime
+        # Feedback Linearization trial:
+        mu_Earth = orbitalMotion.MU_EARTH * math.pow(1000,3) # Convert to S.I.: m^3/s^2
+        h_alt = 100e3 # Hardcoded for now, orbital altitude
+        r = 1.4 * orbitalMotion.REQ_EARTH * 1e3 # Orbital radius
+        w = math.sqrt(mu_Earth / math.pow(r,3))
+        # k1, k2, k3, k4, k5, k6 = .1, .2, .3, .4, .5, .6
+        k1, k2, k3, k4, k5, k6 = 1, 2, 3, 4, 5, 6
+        Kp_trans = np.array([[0,0,0],[0,-3*math.pow(w,2),0],[0,0,math.pow(w,2)]]) + np.array([[-k1,0,0],[0,-k2,0],[0,0,-k3]]) 
+        Kd_trans = np.array([[-1,-2*w,0],[2*w,-1,0],[0,0,-1]]) + np.array([[-k4,0,0],[0,-k5,0],[0,0,-k6]])
+        self.transController.Kp_trans = Kp_trans
+        self.transController.Kd_trans = Kd_trans
+        # self.transController.Kp_trans = SimBase.DynModels[self.spacecraftIndex].m_sc * 1
+        # self.transController.Kd_trans = SimBase.DynModels[self.spacecraftIndex].m_sc * 1
+
+        self.decayTime = 50 # copy from MRP Feedback module
+        self.xi = 0.9 # copy from MRP Feedback module
+        ### To tune rotational PD controller from a CONSTANT to 3x3 matrix:
         self.transController.P_rot = 2 * np.max(SimBase.DynModels[self.spacecraftIndex].I_sc) / self.decayTime
-        self.transController.K_trans = (self.transController.P_trans / self.xi) * \
-                                    (self.transController.P_trans / self.xi) / SimBase.DynModels[self.spacecraftIndex].m_sc
         self.transController.K_rot = (self.transController.P_rot / self.xi) * \
                                     (self.transController.P_rot / self.xi) / np.max(
             SimBase.DynModels[self.spacecraftIndex].I_sc)
+        # Based on linearised assumptions and modified to constant (see SD2910 Notes P.707):
+        # decayTime = 2 * I_SC * inv(P)
+        # xi = P * inv[sqrt(K * I_SC)]
         
         # Unlike the `mrpFeedback.py` module, we first ignore the RW inertial effects and do not import the RW params in the EOM.
         # self.transController.transGuidInMsg.subscribeTo(self.transGuidOutMsg)
@@ -432,7 +452,9 @@ class BSKFswModels:
         Initializes all FSW objects.
         """
         self.SetInertial3DPointGuidance()
-        self.SetTransRef() # Translational dr dv setting (hardcoded for now)
+        # self.SetTransRef() # Translational dr dv setting (hardcoded for now)
+        # Skip this setup function for now until we implement modules to generate translational reference messages.
+        
         # self.SetSunPointGuidance(SimBase)
         # self.SetLocationPointGuidance(SimBase)
         self.SetAttitudeTrackingError(SimBase)

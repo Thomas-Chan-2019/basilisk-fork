@@ -32,12 +32,19 @@ class PIDController(sysModel.SysModel):
     def __init__(self):
         super(PIDController, self).__init__()
 
-        # Proportional gain term used in control
-        self.K_trans = 0
-        self.K_rot = 0
-        # Derivative gain term used in control
-        self.P_trans = 0
-        self.P_rot = 0
+        # Translational Gains Initialization:
+        self.Kp_trans = np.array([[0,0,0],
+                                 [0,0,0],
+                                 [0,0,0]]
+                                ) # Proportional gain
+        self.Kd_trans = np.array([[0,0,0],
+                                 [0,0,0],
+                                 [0,0,0]]
+                                ) # Derivative gain
+        
+        # Rotational Gains Initialization:
+        self.K_rot = 0 # Proportional gain
+        self.P_rot = 0 # Derivative gain
         
         # Input guidance structure message: Translational
         self.transGuidInMsg = messaging.TransGuidMsgReader()
@@ -63,10 +70,10 @@ class PIDController(sysModel.SysModel):
 
     def Reset(self, CurrentSimNanos):
         # # Proportional gain term used in control
-        # self.K_trans = 0
+        # self.Kp_trans = 0
         # self.K_rot = 0
         # # Derivative gain term used in control
-        # self.P_trans = 0
+        # self.Kd_trans = 0
         # self.P_rot = 0
         
         # TODO: Add back Reset() actions in accordance to mrpFeedback.c, basically:
@@ -116,7 +123,8 @@ class PIDController(sysModel.SysModel):
         # `hill2rv(rc_N, vc_N, rho_H, rhoPrime_H)`
         
         # compute TRANS control solution
-        FrCmd = np.array(transGuidMsgBuffer.r_BR_B) * self.K_trans + np.array(transGuidMsgBuffer.v_BR_B) * self.P_trans
+        FrCmd = self.Kp_trans @ np.array(transGuidMsgBuffer.r_BR_B) + self.Kd_trans @ np.array(transGuidMsgBuffer.v_BR_B)
+        # FrCmd = np.array(transGuidMsgBuffer.r_BR_B) * self.Kd_trans + np.array(transGuidMsgBuffer.v_BR_B) * self.Kp_trans
         forceOutMsgBuffer.forceRequestBody = (-FrCmd).tolist()
         self.cmdForceOutMsg.write(forceOutMsgBuffer, CurrentSimNanos, self.moduleID)
 
