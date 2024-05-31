@@ -104,12 +104,12 @@ class BSKDynamicModels:
     # ------------------------------------------------------------------------------------------- #
     # These are module-initialization methods
 
-    def SetSpacecraftHub(self): # Modified from original to support self-developped scConfig module.
+    def SetSpacecraftHub(self, scName="Astrobee"): # Modified from original to support self-developped scConfig module.
         """
         Defines the spacecraft object properties.
         """
         # See dev/scConfig.py for details on creating a S/C, based on Astrobee config for now.
-        self.scObject = scConfig.createSC(scName="astrobee")
+        self.scObject = scConfig.createSC(scName)
         self.scObject.ModelTag = "sat-" + str(self.spacecraftIndex) # Update model tag in accordance to SC index
         self.I_sc = self.scObject.hub.IHubPntBc_B
         self.m_sc = self.scObject.hub.mHub # Taken from spacecraft.Spacecraft() module!

@@ -1,0 +1,20 @@
+{
+    "SCConfig": [
+            {
+                "scName": "Astrobee",
+                "mHub":9.4,
+                "IHub": [0.153, 0.0, 0.0,
+                0.0, 0.143, 0.0,
+                0.0, 0.0, 0.162],
+                "ModelTag": "astrobee"
+            },
+            {
+                "scName": "Prisma",
+                "mHub":100.5,
+                "IHub": [10.153, 0.0, 0.0,
+                0.0, 10.143, 0.0,
+                0.0, 0.0, 10.162],
+                "ModelTag": "prisma"
+            }
+    ]
+}

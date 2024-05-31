@@ -125,7 +125,8 @@ class PIDController(sysModel.SysModel):
         # compute TRANS control solution
         FrCmd = self.Kp_trans @ np.array(transGuidMsgBuffer.r_BR_B) + self.Kd_trans @ np.array(transGuidMsgBuffer.v_BR_B)
         # FrCmd = np.array(transGuidMsgBuffer.r_BR_B) * self.Kd_trans + np.array(transGuidMsgBuffer.v_BR_B) * self.Kp_trans
-        forceOutMsgBuffer.forceRequestBody = (-FrCmd).tolist()
+        # forceOutMsgBuffer.forceRequestBody = (-FrCmd).tolist()
+        forceOutMsgBuffer.forceRequestBody = (FrCmd).tolist() # Set the negative sign when using the module!!!
         self.cmdForceOutMsg.write(forceOutMsgBuffer, CurrentSimNanos, self.moduleID)
 
         # compute ATT control solution

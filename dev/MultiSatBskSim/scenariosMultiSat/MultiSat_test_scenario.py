@@ -248,7 +248,7 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
                                                       )
             viz.settings.showSpacecraftLabels = True
             viz.settings.orbitLinesOn = 2  # show osculating relative orbit trajectories
-            viz.settings.mainCameraTarget = "sat-1"
+            viz.settings.mainCameraTarget = "sat-0"
             viz.liveSettings.relativeOrbitChief = "sat-0"  # set the chief for relative orbit trajectory
             for i in range(self.numberSpacecraft):
                 vizSupport.setInstrumentGuiSetting(viz, spacecraftName=self.DynModels[i].scObject.ModelTag,
@@ -276,7 +276,7 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
 
         # Configure initial conditions for spacecraft 1
         self.oe.append(copy.deepcopy(self.oe[0]))
-        self.oe[1].f *= 1.00001 # Slightly deviate from s/c 0 by true anomaly v
+        self.oe[1].f *= 1.000001 # Slightly deviate from s/c 0 by true anomaly v
         rN2, vN2 = orbitalMotion.elem2rv(EnvModel.mu, self.oe[1])
         orbitalMotion.rv2elem(EnvModel.mu, rN2, vN2)
         DynModels[1].scObject.hub.r_CN_NInit = rN2  # m   - r_CN_N
@@ -286,7 +286,7 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
 
         # Configure initial conditions for spacecraft 2
         self.oe.append(copy.deepcopy(self.oe[0]))
-        self.oe[2].f *= 0.99999 # Slightly deviate from s/c 0 true anomaly v
+        self.oe[2].f *= 0.999999 # Slightly deviate from s/c 0 true anomaly v
         rN3, vN3 = orbitalMotion.elem2rv(EnvModel.mu, self.oe[2])
         orbitalMotion.rv2elem(EnvModel.mu, rN3, vN3)
         DynModels[2].scObject.hub.r_CN_NInit = rN3  # m   - r_CN_N
@@ -477,19 +477,19 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
         #
         plt.clear_all_plots()
 
-        plt.plot_attitude(timeLineSetMin, dataSigmaBN, 1)
-        plt.plot_rate(timeLineSetMin, dataOmegaBN_B, 2)
-        plt.plot_attitude_error(timeLineSetMin, dataSigmaBR, 3)
-        plt.plot_rate_error(timeLineSetMin, dataOmegaBR, 4)
-        plt.plot_attitude_reference(timeLineSetMin, dataSigmaRN, 5)
-        plt.plot_rate_reference(timeLineSetMin, dataOmegaRN_B, 6)
-        plt.plot_rw_motor_torque(timeLineSetMin, dataUsReq, dataRW, DynModels[spacecraftIndex].numRW, 7)
-        # plt.plot_rw_speeds(timeLineSetMin, dataOmegaRW, DynModels[spacecraftIndex].numRW, 8)
+        # plt.plot_attitude(timeLineSetMin, dataSigmaBN, 1)
+        # plt.plot_rate(timeLineSetMin, dataOmegaBN_B, 2)
+        # plt.plot_attitude_error(timeLineSetMin, dataSigmaBR, 3)
+        # plt.plot_rate_error(timeLineSetMin, dataOmegaBR, 4)
+        # plt.plot_attitude_reference(timeLineSetMin, dataSigmaRN, 5)
+        # plt.plot_rate_reference(timeLineSetMin, dataOmegaRN_B, 6)
+        # plt.plot_rw_motor_torque(timeLineSetMin, dataUsReq, dataRW, DynModels[spacecraftIndex].numRW, 7)
+        # plt.plot_rw_speeds(timeLineSetMin, dataOmegaRW, DynModels[spacecraftIndex].numRW, 8)        
         plt.plot_orbits(r_BN_N, self.numberSpacecraft, 9)
         
         # Added animated plot to relative orbits, keep `ani` there!
         _ = plt.plot_relative_orbits(dr, len(dr), 10)
-        plt.plot_orbital_element_differences(timeLineSetSec / T, oed, 11)
+        # plt.plot_orbital_element_differences(timeLineSetSec / T, oed, 11)
         # plt.plot_power(timeLineSetMin, netData, supplyData, sinkData, 12)
         # plt.plot_fuel(timeLineSetMin, dataFuelMass, 13)
         plt.plot_thrust(timeLineSetMin, dataThrust, DynModels[spacecraftIndex].numThr, 13)
@@ -556,8 +556,8 @@ def runScenario(scenario, relativeNavigation):
     scenario.InitializeSimulation()
 
     # Configure run time and execute simulation
-    simulationTime = macros.hour2nano(1.)
-    # simulationTime = macros.sec2nano(5.)
+    # simulationTime = macros.hour2nano(1.)
+    simulationTime = macros.sec2nano(5.)
     scenario.ConfigureStopTime(simulationTime)
     # print(scenario.FSWModels[0].transRefInMsg.read().r_RN_N)
     # print(scenario.FSWModels[1].transRefInMsg.read().r_RN_N)

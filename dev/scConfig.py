@@ -2,50 +2,105 @@
 # Defines: 
 # - S/C geometry -> mass, moment of inertia, centre of mass
 # - Actuators -> thrusters (impulsive/continuous burn modes), reaction wheels
-import sys
+import sys, json
 from Basilisk.simulation import spacecraft
 from Basilisk.utilities import unitTestSupport, macros  # general support file with common unit test functions
 
+sc_config_path = "dev/sc_config.json"
+
 class SCConfig(object): # TODO - Add RW & Thruster configs
-    def __init__(self, mHub, IHub, ModelTag="spacecraftBody", 
+    def __init__(self, mHub, IHub, scName="bskSC", ModelTag="spacecraftBody", 
                  r_BcB_B=[[0.0], [0.0], [0.0]], 
                  RW_gsHat_B_Matrix=[[1, 0, 0],[0, 1, 0],[0, 0, 1]],
                  THR_gsHat_B_Matrix=[[1, 0, 0],[0, 1, 0],[0, 0, 1]]
                  ):
         self.mHub = mHub
         self.IHub = IHub
+        self.scName = scName
         self.ModelTag = ModelTag
         self.r_BcB_B=r_BcB_B
         self.RW_gsHat_B_Matrix = RW_gsHat_B_Matrix
         self.THR_gsHat_B_Matrix = THR_gsHat_B_Matrix
-        
-        
-# Astrobee Config:
-Astrobee = SCConfig(
-    mHub=9.4,
-    IHub=[0.153, 0., 0.,
-     0., 0.143, 0.,
-     0., 0., 0.162],
-    ModelTag="astrobee"
-    # TODO - add RW & Thrusters config!
-)
 
-# Prisma Config:
+# @params:
+# TODO        
+def loadConfig(file_path):
+    with open(file_path, 'r') as file:
+        data = json.load(file)
+    
+    sc_configs = [SCConfig(**config) for config in data.get('SCConfig', [])]
+    # other_configs1 = [OtherConfig1(**config) for config in data.get('OtherConfigs1', [])]
+    # other_configs2 = [OtherConfig2(**config) for config in data.get('OtherConfigs2', [])]
+    
+    return sc_configs
+
+# @params:
 # TODO
+def getObject(objects, key, value):
+    for obj in objects:
+        if hasattr(obj, key) and getattr(obj, key) == value:
+            return obj
+    print("\Object with", key, "=", value, "not found in config JSON. Please revise your search key/value.")
+    raise ValueError(f"No object found with {key} = {value}")
+
+# Load SC or other configs:
+json_config = loadConfig(sc_config_path)
+
+# # Astrobee Config:
+# Astrobee = SCConfig(
+#     mHub=9.4,
+#     IHub=[0.153, 0., 0.,
+#      0., 0.143, 0.,
+#      0., 0., 0.162],
+#     ModelTag="astrobee"
+#     # TODO - add RW & Thrusters config!
+# )
+
+# # Prisma Config:
+# # TODO
+
+# # @params:
+# # m - [kg] mass
+# # I - [kg*m^2, 3x3 array] moment of inertia
+# # ModelTag - simulation model tag for model mapping
+# # r_BcB_B - [m, 1x3 array] position vector of body-fixed point B relative to CM
+# def createSC_old(scName="astrobee", RWConfig=None, THRConfig=None):
+#     if scName=="astrobee":
+#         sc = Astrobee
+#         print("Astrobee selected.")
+#     else: 
+#         print('Error: S/C not implemented')
+#         exit(1)
+    
+#     # initialize spacecraft object and set properties
+#     scObject = spacecraft.Spacecraft()
+#     scObject.ModelTag = sc.ModelTag
+#     # define the simulation inertia
+#     scObject.hub.mHub = sc.mHub  # kg - spacecraft mass
+#     scObject.hub.IHubPntBc_B = unitTestSupport.np2EigenMatrix3d(sc.IHub)
+#     scObject.hub.r_BcB_B = sc.r_BcB_B  # m - position vector of body-fixed point B relative to CM
+    
+#     if RWConfig != None:
+#         # TODO - Implement RWConfig and pass it out, possibly a `create RW call?`
+#         pass
+    
+#     if THRConfig != None:
+#         # TODO - Implement RWConfig and pass it out, possibly a `create Thruster call?`
+#         # Do not add it to SC yet, perhaps pass it out when we return the scObject
+#         pass
 
 # @params:
 # m - [kg] mass
 # I - [kg*m^2, 3x3 array] moment of inertia
 # ModelTag - simulation model tag for model mapping
 # r_BcB_B - [m, 1x3 array] position vector of body-fixed point B relative to CM
-def createSC(scName="astrobee", RWConfig=None, THRConfig=None):
-    if scName=="astrobee":
-        sc = Astrobee
-        print("Astrobee selected.")
-    else: 
-        print('Error: S/C not implemented')
-        exit(1)
-    
+def createSC(scName="Astrobee", RWConfig=None, THRConfig=None):
+    try:
+        sc = getObject(json_config, "scName", scName) 
+    except ValueError as e:
+        print("\nError: ", e)
+    #     print('Error: S/C not implemented')
+    #     exit(1)
     # initialize spacecraft object and set properties
     scObject = spacecraft.Spacecraft()
     scObject.ModelTag = sc.ModelTag
@@ -65,7 +120,6 @@ def createSC(scName="astrobee", RWConfig=None, THRConfig=None):
     
     
     return scObject # TODO - pass out created RWs & thrusters!
-    
 
 ### Example RW:
 
@@ -124,5 +178,7 @@ def Honeywell_HR16(self, RW):
 #     a = Astrobee
 #     print(a.IHub)
 
-# if __name__ == "__main__":
-#     run()
+if __name__ == "__main__":
+    sc = createSC(scName="Prima", RWConfig=None, THRConfig=None)
+    print("SC ModelTag: ",sc.ModelTag)
+    print("SC Mass: ",sc.hub.mHub)
