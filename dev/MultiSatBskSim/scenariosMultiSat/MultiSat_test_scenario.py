@@ -365,7 +365,8 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
         # Process outputs
         DynModels = self.get_DynModel()
         EnvModel = self.get_EnvModel()
-
+        FswModels = self.get_FswModel()
+        targetSCIndex = FswModels[spacecraftIndex].targetSCIndex
         #
         #   Retrieve the logged data
         #
@@ -489,12 +490,19 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
         
         # Added animated plot to relative orbits, keep `ani` there!
         _ = plt.plot_relative_orbits(dr, len(dr), 10)
+        print(dr, len(dr))
+        if spacecraftIndex is not 0:
+            plt.orbit_xyz_time_series(timeLineSetMin, dr, spacecraftIndex - 1) # Subtract by 1 
+        elif spacecraftIndex == 0 and spacecraftIndex is not targetSCIndex:
+            plt.orbit_xyz_time_series(timeLineSetMin, dr, 0) # Subtract by 1 
+            
         # plt.plot_orbital_element_differences(timeLineSetSec / T, oed, 11)
         # plt.plot_power(timeLineSetMin, netData, supplyData, sinkData, 12)
         # plt.plot_fuel(timeLineSetMin, dataFuelMass, 13)
         plt.plot_thrust(timeLineSetMin, dataThrust, DynModels[spacecraftIndex].numThr, 13)
         plt.plot_thrust_percentage(timeLineSetMin, dataThrustPercentage, DynModels[spacecraftIndex].numThr, 14)
 
+        
         figureList = {}
         if showPlots:
             plt.show_all_plots()
@@ -516,9 +524,9 @@ def runScenario(scenario, relativeNavigation):
     EnvModel = scenario.get_EnvModel()
 
     # Configure initial FSW attitude modes, later iterate through a for-loop?
-    scenario.FSWModels[0].modeRequest = "inertialPointing"
+    # scenario.FSWModels[0].modeRequest = "inertialPointing"
     scenario.FSWModels[1].modeRequest = "inertialPointing" # We need to turn on all S/C tasks!
-    scenario.FSWModels[2].modeRequest = "inertialPointing" # We need to turn on all S/C tasks!
+    # scenario.FSWModels[2].modeRequest = "inertialPointing" # We need to turn on all S/C tasks!
     
     # scenario.FSWModels[1].modeRequest = "sunPointing"
     # scenario.FSWModels[2].modeRequest = "locationPointing"
@@ -556,8 +564,8 @@ def runScenario(scenario, relativeNavigation):
     scenario.InitializeSimulation()
 
     # Configure run time and execute simulation
-    # simulationTime = macros.hour2nano(1.)
-    simulationTime = macros.sec2nano(5.)
+    simulationTime = macros.hour2nano(.2)
+    # simulationTime = macros.sec2nano(5.)
     scenario.ConfigureStopTime(simulationTime)
     # print(scenario.FSWModels[0].transRefInMsg.read().r_RN_N)
     # print(scenario.FSWModels[1].transRefInMsg.read().r_RN_N)
@@ -601,7 +609,7 @@ def run(showPlots, numberSpacecraft, relativeNavigation):
     TheScenario = MultiSat_test_scenario(numberSpacecraft, relativeNavigation)
     runScenario(TheScenario, relativeNavigation)
     # figureList = TheScenario.pull_outputs(showPlots, relativeNavigation, 0)
-    figureList = TheScenario.pull_outputs(showPlots, relativeNavigation, 2)
+    figureList = TheScenario.pull_outputs(showPlots, relativeNavigation,1)
 
     return figureList
 

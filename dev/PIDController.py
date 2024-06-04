@@ -109,7 +109,7 @@ class PIDController(sysModel.SysModel):
         :return: none
         """
         # read input message
-        transGuidMsgBuffer = self.transGuidInMsg()
+        transGuidMsgBuffer = self.transGuidInMsg() # transGuidMsg r,v are in Hill-frame.
         attGuidMsgBuffer = self.attGuidInMsg()
         vehConfigMsgBuffer = self.vehConfigInMsg()
 
@@ -123,8 +123,16 @@ class PIDController(sysModel.SysModel):
         # `hill2rv(rc_N, vc_N, rho_H, rhoPrime_H)`
         
         # compute TRANS control solution
-        FrCmd = self.Kp_trans @ np.array(transGuidMsgBuffer.r_BR_B) + self.Kd_trans @ np.array(transGuidMsgBuffer.v_BR_B)
+        rc_H = np.array(transGuidMsgBuffer.r_BR_B)
+        vc_H = np.array(transGuidMsgBuffer.v_BR_B)
+        FrCmd_hill = self.Kp_trans @ rc_H + self.Kd_trans @ vc_H
         # FrCmd = np.array(transGuidMsgBuffer.r_BR_B) * self.Kd_trans + np.array(transGuidMsgBuffer.v_BR_B) * self.Kp_trans
+        # Convert the Hill-frame control force to Body frames
+        DCM_NH = orbitalMotion.hillFrame(rc_H, vc_H)
+        print("Hill-frame Cmd Force: ", FrCmd_hill)
+        print("DCM Inertial from Hill: ", DCM_NH)
+        FrCmd = DCM_NH @ FrCmd_hill
+        print("Cmd Force: ", FrCmd)
         # forceOutMsgBuffer.forceRequestBody = (-FrCmd).tolist()
         forceOutMsgBuffer.forceRequestBody = (FrCmd).tolist() # Set the negative sign when using the module!!!
         self.cmdForceOutMsg.write(forceOutMsgBuffer, CurrentSimNanos, self.moduleID)

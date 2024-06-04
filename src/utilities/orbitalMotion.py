@@ -1140,9 +1140,15 @@ def hillFrame(rc_N, vc_N):
     :param vc_N: inertial velocity vector
     :return: HN: DCM that maps from the inertial frame N to the Hill (i.e. orbit) frame H
     """
-    ir = rc_N/la.norm(rc_N)
+    if la.norm(rc_N)>=1e-9:
+        ir = rc_N/la.norm(rc_N)
+    else: 
+        ir = np.array([0, 0, 0])
     h = np.cross(rc_N, vc_N)
-    ih = h / la.norm(h)
+    if la.norm(h)>=1e-9:
+        ih = h / la.norm(h)
+    else:
+        ih = np.array([0, 0, 0])
     itheta = np.cross(ih, ir)
 
     return np.array([ir, itheta, ih])

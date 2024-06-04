@@ -251,6 +251,25 @@ def plot_orbit(r_BN, id=None):
     ax.legend(loc=2)
     return
 
+def orbit_xyz_time_series(timeData, r_BN, SCIndex):
+    fig, axs = plt.subplots(3,1)
+    fig.suptitle('Spacecraft Inertial Cartesian Position $r_{BN}$')
+    axs[0].plot(timeData, r_BN[SCIndex][:, 0] * m2km)
+    axs[1].plot(timeData, r_BN[SCIndex][:, 1] * m2km)
+    axs[2].plot(timeData, r_BN[SCIndex][:, 2] * m2km)
+    
+    axs[0].set_title('x-axis')
+    axs[1].set_title('y-axis')
+    axs[2].set_title('z-axis')
+
+    for ax in axs.flat:
+        ax.set(xlabel='time', ylabel='km')
+
+    # Hide x labels and tick labels for top plots and y ticks for right plots.
+    for ax in axs.flat:
+        ax.label_outer()
+    return
+
 def plot_orbits(r_BN, numberSpacecraft, id=None):
     """Plot the spacecraft inertial orbits."""
     plt.figure(id, figsize=(6, 5))
