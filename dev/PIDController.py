@@ -128,10 +128,14 @@ class PIDController(sysModel.SysModel):
         FrCmd_hill = self.Kp_trans @ rc_H + self.Kd_trans @ vc_H
         # FrCmd = np.array(transGuidMsgBuffer.r_BR_B) * self.Kd_trans + np.array(transGuidMsgBuffer.v_BR_B) * self.Kp_trans
         # Convert the Hill-frame control force to Body frames
-        DCM_NH = orbitalMotion.hillFrame(rc_H, vc_H)
+        DCM_NH = orbitalMotion.hillFrame(rc_H, vc_H).transpose()
+        DCM_BN = RBK.MRP2C(np.array(attGuidMsgBuffer.sigma_BR)) # .transpose()
+        FrCmd_N = DCM_NH @ FrCmd_hill
         print("Hill-frame Cmd Force: ", FrCmd_hill)
+        print("Inertial Cmd Force: ", FrCmd_N)
         print("DCM Inertial from Hill: ", DCM_NH)
-        FrCmd = DCM_NH @ FrCmd_hill
+        print("DCM Body from Inertial: ", DCM_BN)
+        FrCmd = DCM_BN @ DCM_NH @ FrCmd_hill
         print("Cmd Force: ", FrCmd)
         # forceOutMsgBuffer.forceRequestBody = (-FrCmd).tolist()
         forceOutMsgBuffer.forceRequestBody = (FrCmd).tolist() # Set the negative sign when using the module!!!

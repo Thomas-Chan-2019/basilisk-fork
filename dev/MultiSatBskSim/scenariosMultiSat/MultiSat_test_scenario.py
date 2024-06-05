@@ -564,8 +564,8 @@ def runScenario(scenario, relativeNavigation):
     scenario.InitializeSimulation()
 
     # Configure run time and execute simulation
-    simulationTime = macros.hour2nano(.2)
-    # simulationTime = macros.sec2nano(5.)
+    # simulationTime = macros.hour2nano(.2)
+    simulationTime = macros.sec2nano(5.)
     scenario.ConfigureStopTime(simulationTime)
     # print(scenario.FSWModels[0].transRefInMsg.read().r_RN_N)
     # print(scenario.FSWModels[1].transRefInMsg.read().r_RN_N)
