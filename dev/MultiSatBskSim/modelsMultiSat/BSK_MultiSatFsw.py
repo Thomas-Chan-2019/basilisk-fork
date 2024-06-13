@@ -352,13 +352,13 @@ class BSKFswModels:
 
         self.decayTime = 50 # copy from MRP Feedback module
         self.xi = 0.9 # copy from MRP Feedback module
-        ### To tune rotational PD controller from a CONSTANT to 3x3 matrix:
-        # self.transController.P_rot = 2 * np.max(SimBase.DynModels[self.spacecraftIndex].I_sc) / self.decayTime
-        # self.transController.K_rot = (self.transController.P_rot / self.xi) * \
-        #                             (self.transController.P_rot / self.xi) / np.max(
-        #     SimBase.DynModels[self.spacecraftIndex].I_sc)
-        self.transController.P_rot = 0.
-        self.transController.K_rot = 0.
+        ## To tune rotational PD controller from a CONSTANT to 3x3 matrix:
+        self.transController.P_rot = 2 * np.max(SimBase.DynModels[self.spacecraftIndex].I_sc) / self.decayTime
+        self.transController.K_rot = (self.transController.P_rot / self.xi) * \
+                                    (self.transController.P_rot / self.xi) / np.max(
+            SimBase.DynModels[self.spacecraftIndex].I_sc)
+        # self.transController.P_rot = 0.
+        # self.transController.K_rot = 0.
         # Based on linearised assumptions and modified to constant (see SD2910 Notes P.707):
         # decayTime = 2 * I_SC * inv(P)
         # xi = P * inv[sqrt(K * I_SC)]
@@ -367,6 +367,10 @@ class BSKFswModels:
         # self.transController.transGuidInMsg.subscribeTo(self.transGuidOutMsg)
         self.transController.transGuidInMsg.subscribeTo(self.transError.transGuidOutMsg)
         self.transController.attGuidInMsg.subscribeTo(self.attGuidMsg)
+        self.transController.transNavInMsg.subscribeTo(
+            SimBase.DynModels[self.spacecraftIndex].simpleNavObject.transOutMsg)
+        self.transController.attNavInMsg.subscribeTo(
+            SimBase.DynModels[self.spacecraftIndex].simpleNavObject.attOutMsg)
         self.transController.vehConfigInMsg.subscribeTo(SimBase.DynModels[self.spacecraftIndex].simpleMassPropsObject.vehicleConfigOutMsg)
     
     def SetAttitudeTrackingError(self, SimBase):

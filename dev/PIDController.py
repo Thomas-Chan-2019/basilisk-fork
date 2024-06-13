@@ -53,6 +53,8 @@ class PIDController(sysModel.SysModel):
         self.attGuidInMsg = messaging.AttGuidMsgReader()
         # For mass & moment of inertia
         self.vehConfigInMsg = messaging.VehicleConfigMsgReader()
+        self.transNavInMsg = messaging.NavTransMsgReader()
+        self.attNavInMsg = messaging.NavAttMsgReader()
         
         # # Include thruster & RW arrays configs:
         # self.thrParamsInMsg = messaging.THRArrayConfigMsg()
@@ -84,6 +86,11 @@ class PIDController(sysModel.SysModel):
             self.bskLogger.bskLog(sysModel.BSK_ERROR, f"Error: transController.attGuidInMsg wasn't connected.")
         if not self.vehConfigInMsg.isLinked():
             self.bskLogger.bskLog(sysModel.BSK_ERROR, f"Error: transController.vehConfigInMsg wasn't connected.")
+        
+        if not self.transNavInMsg.isLinked():
+            self.bskLogger.bskLog(sysModel.BSK_ERROR, f"Error: transController.transNavInMsg wasn't connected.")
+        if not self.attNavInMsg.isLinked():
+            self.bskLogger.bskLog(sysModel.BSK_ERROR, f"Error: transController.attNavInMsg wasn't connected.")
             
         # 2) Read `VehicleConfigMsgPayload` for I_sc (also m_SC);
         # 3) Reset control gains or constraints for MPC controllers when implemented.
@@ -112,7 +119,8 @@ class PIDController(sysModel.SysModel):
         transGuidMsgBuffer = self.transGuidInMsg() # transGuidMsg r,v are in Hill-frame.
         attGuidMsgBuffer = self.attGuidInMsg()
         vehConfigMsgBuffer = self.vehConfigInMsg()
-
+        transInMsgBuffer = self.transNavInMsg()
+        attNavInMsgBuffer = self.attNavInMsg()
         # create output message buffer
         forceOutMsgBuffer = messaging.CmdForceBodyMsgPayload()
         torqueOutMsgBuffer = messaging.CmdTorqueBodyMsgPayload()
@@ -126,10 +134,14 @@ class PIDController(sysModel.SysModel):
         rc_H = np.array(transGuidMsgBuffer.r_BR_B)
         vc_H = np.array(transGuidMsgBuffer.v_BR_B)
         FrCmd_hill = self.Kp_trans @ rc_H + self.Kd_trans @ vc_H
-        # FrCmd = np.array(transGuidMsgBuffer.r_BR_B) * self.Kd_trans + np.array(transGuidMsgBuffer.v_BR_B) * self.Kp_trans
+        
         # Convert the Hill-frame control force to Body frames
-        DCM_NH = orbitalMotion.hillFrame(rc_H, vc_H).transpose()
-        DCM_BN = RBK.MRP2C(np.array(attGuidMsgBuffer.sigma_BR)) # .transpose()
+        r_BN_N = np.array(transInMsgBuffer.r_BN_N)
+        v_BN_N = np.array(transInMsgBuffer.v_BN_N)
+        # Retrive DCM from hill H frame to inertial N frame, notice the transpose.
+        DCM_NH = orbitalMotion.hillFrame(r_BN_N, v_BN_N).transpose()
+        # Retrive DCM from inertial N frame to body B frame via its own attitude from attNavInMsg of simpleNav module.
+        DCM_BN = RBK.MRP2C(np.array(attNavInMsgBuffer.sigma_BN)) # .transpose()
         FrCmd_N = DCM_NH @ FrCmd_hill
         print("Hill-frame Cmd Force: ", FrCmd_hill)
         print("Inertial Cmd Force: ", FrCmd_N)
