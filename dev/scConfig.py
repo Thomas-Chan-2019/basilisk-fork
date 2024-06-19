@@ -2,11 +2,12 @@
 # Defines: 
 # - S/C geometry -> mass, moment of inertia, centre of mass
 # - Actuators -> thrusters (impulsive/continuous burn modes), reaction wheels
-import sys, json
+import sys, json, copy, math, numpy as np
 from Basilisk.simulation import spacecraft
-from Basilisk.utilities import unitTestSupport, macros  # general support file with common unit test functions
+from Basilisk.utilities import unitTestSupport, macros, orbitalMotion  # general support file with common unit test functions
 
 sc_config_path = "dev/sc_config.json"
+init_config_path = "dev/init_config.json"
 
 class SCConfig(object): # TODO - Add RW & Thruster configs
     def __init__(self, mHub, IHub, scName="bskSC", ModelTag="spacecraftBody", 
@@ -22,17 +23,52 @@ class SCConfig(object): # TODO - Add RW & Thruster configs
         self.RW_gsHat_B_Matrix = RW_gsHat_B_Matrix
         self.THR_gsHat_B_Matrix = THR_gsHat_B_Matrix
 
+class InitConfig(object):
+    def __init__(self, isTarget, scName, init_dr_hill, init_dv_hill, target_dr_hill, target_dv_hill, oe,
+                 sigma_BNInit = [[0.0],[0.0],[0.0]], omega_BN_BInit = [[0.0],[0.0],[0.0]]):
+        self.isTarget = isTarget
+        self.scName = scName
+        self.sigma_BNInit = sigma_BNInit
+        self.omega_BN_BInit = omega_BN_BInit
+        self.init_dr_hill = init_dr_hill
+        self.init_dv_hill = init_dv_hill
+        self.target_dr_hill = target_dr_hill
+        self.target_dv_hill = target_dv_hill
+        self.oe = oe
+
 # @params:
 # TODO        
-def loadConfig(file_path):
-    with open(file_path, 'r') as file:
+def loadSCConfig(sc_config_path):
+    with open(sc_config_path, 'r') as file:
         data = json.load(file)
-    
     sc_configs = [SCConfig(**config) for config in data.get('SCConfig', [])]
     # other_configs1 = [OtherConfig1(**config) for config in data.get('OtherConfigs1', [])]
     # other_configs2 = [OtherConfig2(**config) for config in data.get('OtherConfigs2', [])]
-    
     return sc_configs
+
+# @params:
+# TODO        
+def loadInitConfig(init_config_path):
+    with open(init_config_path, 'r') as file2:
+        try:
+            data2 = json.load(file2)
+        except Exception as e:
+            print("\nInit Config not found (with error ", e, "), please check the path again.")
+    
+    # Process target OE:
+    targetOE_raw = data2.get('targetOE')
+    targetOE = orbitalMotion.ClassicElements()
+    targetOE.a = targetOE_raw[0] # [m]
+    targetOE.e = targetOE_raw[1]
+    targetOE.i = targetOE_raw[2] * macros.D2R
+    targetOE.Omega = targetOE_raw[3] * macros.D2R
+    targetOE.omega = targetOE_raw[4] * macros.D2R
+    targetOE.f = targetOE_raw[5] * macros.D2R
+    
+    # Process initConfig:
+    init_configs = [InitConfig(**config) for config in data2.get('InitConfig', [])]
+    
+    return targetOE, init_configs
 
 # @params:
 # TODO
@@ -44,51 +80,45 @@ def getObject(objects, key, value):
     raise ValueError(f"No object found with {key} = {value}")
 
 # Load SC or other configs:
-json_config = loadConfig(sc_config_path)
+sc_configs = loadSCConfig(sc_config_path)
 
-# # Astrobee Config:
-# Astrobee = SCConfig(
-#     mHub=9.4,
-#     IHub=[0.153, 0., 0.,
-#      0., 0.143, 0.,
-#      0., 0., 0.162],
-#     ModelTag="astrobee"
-#     # TODO - add RW & Thrusters config!
-# )
-
-# # Prisma Config:
-# # TODO
-
-# # @params:
-# # m - [kg] mass
-# # I - [kg*m^2, 3x3 array] moment of inertia
-# # ModelTag - simulation model tag for model mapping
-# # r_BcB_B - [m, 1x3 array] position vector of body-fixed point B relative to CM
-# def createSC_old(scName="astrobee", RWConfig=None, THRConfig=None):
-#     if scName=="astrobee":
-#         sc = Astrobee
-#         print("Astrobee selected.")
-#     else: 
-#         print('Error: S/C not implemented')
-#         exit(1)
+# @params: TODO
+# May change to pass the "initConfig" directly instead of path...
+def setInitialCondition(EnvModel, DynModels, targetOE, init_configs):
+    # targetOE_raw, init_configs = loadInitConfig(init_config_path)
+    # targetOE, init_configs = loadInitConfig(init_config_path)
+    oe_list = []
     
-#     # initialize spacecraft object and set properties
-#     scObject = spacecraft.Spacecraft()
-#     scObject.ModelTag = sc.ModelTag
-#     # define the simulation inertia
-#     scObject.hub.mHub = sc.mHub  # kg - spacecraft mass
-#     scObject.hub.IHubPntBc_B = unitTestSupport.np2EigenMatrix3d(sc.IHub)
-#     scObject.hub.r_BcB_B = sc.r_BcB_B  # m - position vector of body-fixed point B relative to CM
+    mu_Earth = orbitalMotion.MU_EARTH * math.pow(1000,3) # Convert to S.I.: m^3/s^2
+    omega_earth_rot = math.sqrt(mu_Earth / math.pow(targetOE.a,3))
     
-#     if RWConfig != None:
-#         # TODO - Implement RWConfig and pass it out, possibly a `create RW call?`
-#         pass
+    # Get RV for initialization & position deviation preparation:
+    rN0, vN0 = orbitalMotion.elem2rv(EnvModel.mu, targetOE)
+    orbitalMotion.rv2elem(EnvModel.mu, rN0, vN0)
+    DCM_NH = orbitalMotion.hillFrame(rN0, vN0).transpose()
+    for spacecraftIndex in range(len(DynModels)):
+        # if config.isTarget == 1:
+        #     pass
+        # else:
+        #     pass:
+        omega_earth_rot_vec = np.array([0,0,omega_earth_rot])
+        dr_hill = init_configs[spacecraftIndex].init_dr_hill
+        dv_hill = init_configs[spacecraftIndex].init_dv_hill
+        dv_hill += np.cross(omega_earth_rot_vec, dr_hill) # Add dv = omega x r_hill term!
+        dr = DCM_NH @ dr_hill
+        dv = DCM_NH @ dv_hill
+        rN = rN0 + dr
+        vN = vN0 + dv
+        orbitalMotion.rv2elem(EnvModel.mu, rN, vN)
+        
+        oe_list.append(copy.deepcopy(targetOE))
+        DynModels[spacecraftIndex].scObject.hub.r_CN_NInit = rN  # m   - r_CN_N
+        DynModels[spacecraftIndex].scObject.hub.v_CN_NInit = vN  # m/s - v_CN_N
+        DynModels[spacecraftIndex].scObject.hub.sigma_BNInit = init_configs[spacecraftIndex].sigma_BNInit  # sigma_BN_B
+        DynModels[spacecraftIndex].scObject.hub.omega_BN_BInit = init_configs[spacecraftIndex].omega_BN_BInit  # rad/s - omega_BN_B
     
-#     if THRConfig != None:
-#         # TODO - Implement RWConfig and pass it out, possibly a `create Thruster call?`
-#         # Do not add it to SC yet, perhaps pass it out when we return the scObject
-#         pass
-
+    return oe_list
+    
 # @params:
 # m - [kg] mass
 # I - [kg*m^2, 3x3 array] moment of inertia
@@ -96,7 +126,7 @@ json_config = loadConfig(sc_config_path)
 # r_BcB_B - [m, 1x3 array] position vector of body-fixed point B relative to CM
 def createSC(scName="Astrobee", RWConfig=None, THRConfig=None):
     try:
-        sc = getObject(json_config, "scName", scName) 
+        sc = getObject(sc_configs, "scName", scName) 
     except ValueError as e:
         print("\nError: ", e)
     #     print('Error: S/C not implemented')
@@ -116,8 +146,7 @@ def createSC(scName="Astrobee", RWConfig=None, THRConfig=None):
     if THRConfig != None:
         # TODO - Implement RWConfig and pass it out, possibly a `create Thruster call?`
         # Do not add it to SC yet, perhaps pass it out when we return the scObject
-        pass
-    
+        pass    
     
     return scObject # TODO - pass out created RWs & thrusters!
 

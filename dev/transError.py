@@ -38,6 +38,8 @@ class transError(sysModel.SysModel):
         self.chaserTransInMsg = messaging.NavTransMsgReader()
         if useTransRef:
             self.transRefInMsg = messaging.TransRefMsgReader() # skipping for now, keep it here!
+        
+        # This static translational reference should be defined in Hill Frame when initialized!
         self.transRefStatic_r_RN_N = [0., 0., 0.] # Default reference distance -> 0.
         self.transRefStatic_v_RN_N = [0., 0., 0.] # Default reference velocity -> 0.
         

@@ -135,20 +135,18 @@ spacecraft is plotted per simulation.
 
 """
 
-import copy
 # Get current file path
-import inspect
-import math
-import os
-import sys
+import inspect, math, os, sys, copy, numpy as np
+filename = inspect.getframeinfo(inspect.currentframe()).filename
+path = os.path.dirname(os.path.abspath(filename))
 
-import numpy as np
+# Import master classes: simulation base class and scenario base class
+sys.path.append(path + '/../..') # For importing scConfig
+import scConfig
+
 from Basilisk.architecture import messaging
 # Import utilities
 from Basilisk.utilities import orbitalMotion, macros, vizSupport, RigidBodyKinematics as rbk
-
-filename = inspect.getframeinfo(inspect.currentframe()).filename
-path = os.path.dirname(os.path.abspath(filename))
 
 # Import master classes: simulation base class and scenario base class
 sys.path.append(path + '/../')
@@ -166,12 +164,13 @@ import BSK_MultiSatPlotting as plt
 
 # class shall Inherits BSK_MultiSatMasters.BSKSim & .BSKScenario
 class MultiSat_test_scenario(BSKSim, BSKScenario): 
-    def __init__(self, numberSpacecraft, relativeNavigation):
+    def __init__(self, numberSpacecraft, targetOE, initConfigs , relativeNavigation):
         # This below is initializing the scenario itself using the class structure defined in 
         super(MultiSat_test_scenario, self).__init__(
-            numberSpacecraft, relativeNavigation=relativeNavigation, fswRate=1, dynRate=1, envRate=1, relNavRate=1)
+            numberSpacecraft, targetOE, initConfigs, relativeNavigation=relativeNavigation, fswRate=1, dynRate=1, envRate=1, relNavRate=1)
         self.name = 'MultiSat_test_scenario'
-
+        # self.initConfigPath = initConfigPath
+        
         # Connect the environment, dynamics and FSW classes. It is crucial that these are set in the order specified, as
         # some connects made imply that some modules already exist
         self.set_EnvModel(BSK_EnvironmentEarth)
@@ -254,14 +253,25 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
                 vizSupport.setInstrumentGuiSetting(viz, spacecraftName=self.DynModels[i].scObject.ModelTag,
                                                    showGenericStoragePanel=True)
 
+    ## Orbital elements initiailization:
     def configure_initial_conditions(self): # Set Orbital Elements here!
         EnvModel = self.get_EnvModel()
         DynModels = self.get_DynModel()
 
+        oe_list = scConfig.setInitialCondition(EnvModel, DynModels, self.targetOE, self.initConfigs)
+        # targetOE, oe_list = scConfig.setInitialCondition(EnvModel, DynModels, self.initConfigPath)
+        # self.targetOE = targetOE
+        self.oe = oe_list
+        
+        return
+        
+        ## RV initiailization:
+        # TODO - take omega for calculating 
+        mu_Earth = orbitalMotion.MU_EARTH * math.pow(1000,3) # Convert to S.I.: m^3/s^2
+        # r = 1.4 * orbitalMotion.REQ_EARTH * 1e3 # Orbital radius
         # Configure initial conditions for spacecraft 0
         self.oe.append(orbitalMotion.ClassicElements())
         self.oe[0].a = 1.4*EnvModel.planetRadius  # meters
-        # self.oe[0].e = 0.2
         self.oe[0].e = 0
         self.oe[0].i = 45.0 * macros.D2R
         self.oe[0].Omega = 48.2 * macros.D2R
@@ -275,9 +285,19 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
         DynModels[0].scObject.hub.omega_BN_BInit = [[0.0], [0.0], [0.0]]  # rad/s - omega_BN_B
 
         # Configure initial conditions for spacecraft 1
+        omega = math.sqrt(mu_Earth / math.pow(self.oe[0].a,3))
         self.oe.append(copy.deepcopy(self.oe[0]))
-        self.oe[1].f *= 1.00001 # Slightly deviate from s/c 0 by true anomaly v
-        rN2, vN2 = orbitalMotion.elem2rv(EnvModel.mu, self.oe[1])
+        # self.oe[1].f *= 1.00001 # Slightly deviate from s/c 0 by true anomaly v
+        # rN2, vN2 = orbitalMotion.elem2rv(EnvModel.mu, self.oe[1])
+        DCM_NH = orbitalMotion.hillFrame(rN, vN).transpose()
+        # Hardcoded for now:
+        dr2_hill = [0.0, 100.0, 0.0]
+        dv2_hill = [0.0, 0.0, 0.0]
+        dr2 = DCM_NH @ np.array(dr2_hill)
+        dv2 = DCM_NH @ np.array(dv2_hill)
+        rN2 = rN + dr2 
+        omega_vec = np.array([0,0,omega])
+        vN2 = vN + dv2 # + np.cross(rN2, omega_vec) # Add back the r x v term in velocity with omega 
         orbitalMotion.rv2elem(EnvModel.mu, rN2, vN2)
         DynModels[1].scObject.hub.r_CN_NInit = rN2  # m   - r_CN_N
         DynModels[1].scObject.hub.v_CN_NInit = vN2  # m/s - v_CN_N
@@ -286,8 +306,14 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
 
         # Configure initial conditions for spacecraft 2
         self.oe.append(copy.deepcopy(self.oe[0]))
-        self.oe[2].f *= 0.99999 # Slightly deviate from s/c 0 true anomaly v
-        rN3, vN3 = orbitalMotion.elem2rv(EnvModel.mu, self.oe[2])
+        # self.oe[2].f *= 0.99999 # Slightly deviate from s/c 0 true anomaly v
+        # rN3, vN3 = orbitalMotion.elem2rv(EnvModel.mu, self.oe[2])
+        dr3_hill = [0.0, -100.0, 0.0]
+        dv3_hill = [0.0, 0.0, 0.0]
+        dr3 = DCM_NH @ np.array(dr3_hill)
+        dv3 = DCM_NH @ np.array(dv3_hill)
+        rN3 = rN + dr3
+        vN3 = vN + dv3
         orbitalMotion.rv2elem(EnvModel.mu, rN3, vN3)
         DynModels[2].scObject.hub.r_CN_NInit = rN3  # m   - r_CN_N
         DynModels[2].scObject.hub.v_CN_NInit = vN3  # m/s - v_CN_N
@@ -527,38 +553,12 @@ def runScenario(scenario, relativeNavigation):
     # scenario.FSWModels[0].modeRequest = "inertialPointing"
     scenario.FSWModels[1].modeRequest = "inertialPointing" # We need to turn on all S/C tasks!
     scenario.FSWModels[2].modeRequest = "inertialPointing" # We need to turn on all S/C tasks!
+    scenario.FSWModels[2].modeRequest = "inertialPointing" # We need to turn on all S/C tasks!
+    
+    scenario.FSWModels[2].modeRequest = "inertialPointing" # We need to turn on all S/C tasks!    
     
     # scenario.FSWModels[1].modeRequest = "sunPointing"
     # scenario.FSWModels[2].modeRequest = "locationPointing"
-
-    # Below should be irrelevant to the test scenario (keeping for now from the original station-keeping scenario using SpacecraftReconfig module):
-    # # Configure station keeping module
-    # for spacecraft in range(scenario.numberSpacecraft):
-    #     if relativeNavigation:
-    #         scenario.relativeNavigationModule.addSpacecraftToModel(
-    #             scenario.DynModels[spacecraft].simpleNavObject.transOutMsg,
-    #             scenario.DynModels[spacecraft].simpleMassPropsObject.vehicleConfigOutMsg)
-    #         # scenario.FSWModels[spacecraft].spacecraftReconfig.chiefTransInMsg.subscribeTo(
-    #         #     scenario.relativeNavigationModule.transOutMsg)
-    #     else:
-    #         # scenario.FSWModels[spacecraft].spacecraftReconfig.chiefTransInMsg.subscribeTo(
-    #         #     scenario.DynModels[0].simpleNavObject.transOutMsg)
-    #         scenario.FSWModels[spacecraft].spacecraftReconfig.chiefTransInMsg.subscribeTo(
-    #             scenario.DynModels[0].simpleNavObject.transOutMsg)
-
-    # # Configure the relative navigation module
-    # if relativeNavigation:
-    #     scenario.relativeNavigationModule.useOrbitalElements = False
-    #     scenario.relativeNavigationModule.mu = EnvModel.mu
-
-    # # Set up the station keeping requirements
-    # if relativeNavigation:
-    #     scenario.FSWModels[0].stationKeeping = "ON"
-    #     scenario.FSWModels[0].spacecraftReconfig.targetClassicOED = [0.0000, -0.005, -0.001, 0.0000, 0.0000, 0.000]
-    # scenario.FSWModels[1].stationKeeping = "ON"
-    # scenario.FSWModels[1].spacecraftReconfig.targetClassicOED = [0.0000, 0.005, 0.0000, 0.0000, 0.0000, -0.003]
-    # scenario.FSWModels[2].stationKeeping = "ON"
-    # scenario.FSWModels[2].spacecraftReconfig.targetClassicOED = [0.0000, 0.000, 0.001, 0.0000, 0.0000, 0.003]
 
     # Initialize simulation
     scenario.InitializeSimulation()
@@ -567,17 +567,12 @@ def runScenario(scenario, relativeNavigation):
     simulationTime = macros.hour2nano(1.)
     # simulationTime = macros.sec2nano(5.)
     scenario.ConfigureStopTime(simulationTime)
-    # print(scenario.FSWModels[0].transRefInMsg.read().r_RN_N)
-    # print(scenario.FSWModels[1].transRefInMsg.read().r_RN_N)
-    # print(scenario.FSWModels[2].transRefInMsg.read().r_RN_N)
-    print(scenario.FSWModels[0].transError.transRefStatic_r_RN_N)
-    print(scenario.FSWModels[1].transError.transRefStatic_r_RN_N)
-    print(scenario.FSWModels[2].transError.transRefStatic_r_RN_N)
-    
+    # scenario.TotalSim.SingleStepProcesses() 
     # scenario.TotalSim.SingleStepProcesses() 
     
+    # scenario.TotalSim.SingleStepProcesses()
+    
     scenario.ExecuteSimulation()
-    # return
 
     # Reconfigure FSW attitude modes
     # scenario.FSWModels[0].modeRequest = "inertialPointing"
@@ -603,10 +598,19 @@ def run(showPlots, numberSpacecraft, relativeNavigation):
     """
 
     # Configure a scenario in the base simulation
-    TheScenario = MultiSat_test_scenario(numberSpacecraft, relativeNavigation)
+    # initConfigPath = "/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/init_config.json"
+    # initConfigPath = ".././scenariosMultiSat/simInitConfig/init_config.json"
+    # initConfigPath = "../../init_config.json"
+    # initConfigPath = "../../.././dev/init_config.json"
+    initConfigPath = "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/init_config.json"
+    targetOE, initConfigs = scConfig.loadInitConfig(initConfigPath)
+    
+    # TODO 20240614: remove "numberSpacecraft" and pass "target_dr_hill" to FSW
+    # TheScenario = MultiSat_test_scenario(numberSpacecraft, initConfigPath, relativeNavigation)
+    TheScenario = MultiSat_test_scenario(numberSpacecraft, targetOE, initConfigs, relativeNavigation)
     runScenario(TheScenario, relativeNavigation)
     # figureList = TheScenario.pull_outputs(showPlots, relativeNavigation, 0)
-    figureList = TheScenario.pull_outputs(showPlots, relativeNavigation,2)
+    figureList = TheScenario.pull_outputs(showPlots, relativeNavigation,1)
 
     return figureList
 

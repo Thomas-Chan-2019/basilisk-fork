@@ -37,10 +37,13 @@ import transError, PIDController # self developed modules
 
 class BSKFswModels:
     """Defines the FSW class"""
-    def __init__(self, SimBase, fswRate, spacecraftIndex):
+    def __init__(self, SimBase, fswRate, spacecraftIndex, targetOE, initConfigs):
         # define empty class variables
         self.targetSCIndex = 0 # Set target SC index among ALL created SC at 0, can move to scenario creation later!
         self.spacecraftIndex = spacecraftIndex
+        self.initConfig = initConfigs[spacecraftIndex] # Init config from json file.
+        self.targetOE = targetOE
+        
         self.decayTime = None # control decay time
         self.xi = None # damping ratio
         self.modeRequest = "standby"
@@ -309,8 +312,10 @@ class BSKFswModels:
             SimBase.DynModels[self.spacecraftIndex].simpleNavObject.transOutMsg)
         # Trans reference:
         if not self.spacecraftIndex == self.targetSCIndex: # Only set transRef if the target and chaser are DIFFERENT S/C, otherwise keep it as default!
-            self.transError.transRefStatic_r_RN_N = [100.0, 0.0, 0.0]
-            self.transError.transRefStatic_v_RN_N = [0.0, 0.0, 0.0]
+            # self.transError.transRefStatic_r_RN_N = [0.0, 0.0, 0.0]
+            # self.transError.transRefStatic_v_RN_N = [0.0, 0.0, 0.0]
+            self.transError.transRefStatic_r_RN_N = self.initConfig.target_dr_hill
+            self.transError.transRefStatic_v_RN_N = self.initConfig.target_dv_hill
             
         if False: # Leave this here for now until we use transRefMsg for trans trajectory
             self.transError.transRefInMsg.subscribeTo(self.transRefInMsg)
@@ -327,8 +332,7 @@ class BSKFswModels:
         # Translational controller PID tuning: 
         # Feedback Linearization trial:
         mu_Earth = orbitalMotion.MU_EARTH * math.pow(1000,3) # Convert to S.I.: m^3/s^2
-        h_alt = 100e3 # Hardcoded for now, orbital altitude
-        r = 1.4 * orbitalMotion.REQ_EARTH * 1e3 # Orbital radius
+        r = self.targetOE.a # Orbital radius
         w = math.sqrt(mu_Earth / math.pow(r,3))
         # k1, k2, k3, k4, k5, k6 = .1, .2, .3, .4, .5, .6
         k1, k2, k3, k4, k5, k6 = 10, 10, 10, 0.1, 0.1, 0.1 # Hard-coded PID gains

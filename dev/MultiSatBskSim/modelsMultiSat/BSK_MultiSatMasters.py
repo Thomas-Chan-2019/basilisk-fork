@@ -17,9 +17,7 @@
 #
 
 # Get current file path
-import inspect
-import os
-import sys
+import inspect, os, sys
 
 from Basilisk import __path__
 from Basilisk.fswAlgorithms import formationBarycenter
@@ -27,11 +25,14 @@ from Basilisk.fswAlgorithms import formationBarycenter
 from Basilisk.utilities import SimulationBaseClass, macros as mc
 
 filename = inspect.getframeinfo(inspect.currentframe()).filename
-path = os.path.dirname(os.path.abspath(filename))
+path = os.path.dirname(os.path.abspath(filename)) # Basilisk absolute path
 bskPath = __path__[0]
 
 # Import Dynamics and FSW models
 sys.path.append(path + '/models')
+sys.path.append(path + '/../..')
+
+import scConfig
 
 
 class BSKSim(SimulationBaseClass.SimBaseClass):
@@ -48,13 +49,19 @@ class BSKSim(SimulationBaseClass.SimBaseClass):
 
     """
 
-    def __init__(self, numberSpacecraft, relativeNavigation=False, fswRate=0.1, dynRate=0.1, envRate=0.1, relNavRate=0.1):
+    def __init__(self, numberSpacecraft, targetOE, initConfigs, relativeNavigation=False, fswRate=0.1, dynRate=0.1, envRate=0.1, relNavRate=0.1):
         self.dynRate = dynRate
         self.fswRate = fswRate
         self.envRate = envRate
         self.relNavRate = relNavRate
         self.numberSpacecraft = numberSpacecraft
 
+        # Init. config implementations:
+        # self.initConfigPath = initConfigPath
+        # _, initConfigs = scConfig.loadInitConfig(initConfigPath)
+        self.targetOE = targetOE
+        self.initConfigs = initConfigs
+        
         # Create a sim module as an empty container
         SimulationBaseClass.SimBaseClass.__init__(self)
         self.SetProgressBar(True)
@@ -103,7 +110,7 @@ class BSKSim(SimulationBaseClass.SimBaseClass):
         for spacecraftIndex in range(self.numberSpacecraft):
             self.DynamicsProcessName.append("DynamicsProcess" + str(spacecraftIndex))  # Create simulation process name
             self.dynProc.append(self.CreateNewProcess(self.DynamicsProcessName[spacecraftIndex], 200))  # Create process
-            self.DynModels.append(dynModel[spacecraftIndex].BSKDynamicModels(self, self.dynRate, spacecraftIndex))
+            self.DynModels.append(dynModel[spacecraftIndex].BSKDynamicModels(self, self.dynRate, spacecraftIndex, self.initConfigs))
 
     def get_FswModel(self):
         assert (self.fsw_added is True), "A flight software model has not been added yet"
@@ -116,7 +123,7 @@ class BSKSim(SimulationBaseClass.SimBaseClass):
         for spacecraftIndex in range(self.numberSpacecraft):
             self.FSWProcessName.append("FSWProcess" + str(spacecraftIndex))  # Create simulation process name
             self.fswProc.append(self.CreateNewProcess(self.FSWProcessName[spacecraftIndex], 100))  # Create process
-            self.FSWModels.append(fswModel[spacecraftIndex].BSKFswModels(self, self.fswRate, spacecraftIndex))
+            self.FSWModels.append(fswModel[spacecraftIndex].BSKFswModels(self, self.fswRate, spacecraftIndex, self.targetOE, self.initConfigs))
 
     def add_relativeNavigation(self):
         processName = "RelativeNavigation"

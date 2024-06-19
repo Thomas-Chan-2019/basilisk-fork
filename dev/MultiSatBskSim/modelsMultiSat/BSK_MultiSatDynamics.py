@@ -41,7 +41,7 @@ class BSKDynamicModels:
     """
     Defines the Dynamics class.
     """
-    def __init__(self, SimBase, dynRate, spacecraftIndex, includeExtDisturbances=False, includeSubsystems=False):
+    def __init__(self, SimBase, dynRate, spacecraftIndex, initConfigs, includeExtDisturbances=False, includeSubsystems=False):
         self.I_sc = None # moment of inertia [3x3 matrix, kg*m^2] 
         self.m_sc = None # mass [kg]
         self.solarPanelAxis = None
@@ -49,7 +49,8 @@ class BSKDynamicModels:
         self.numThr = None # change Thruster number when needed
         self.tankModel = None
         self.spacecraftIndex = spacecraftIndex
-
+        self.initConfig = initConfigs[spacecraftIndex] # Init config from json file.
+        
         # Define process name, task name and task time-step
         self.taskName = "DynamicsTask" + str(spacecraftIndex)
         self.processTasksTimeStep = mc.sec2nano(dynRate)
@@ -104,12 +105,13 @@ class BSKDynamicModels:
     # ------------------------------------------------------------------------------------------- #
     # These are module-initialization methods
 
-    def SetSpacecraftHub(self, scName="Astrobee"): # Modified from original to support self-developped scConfig module.
+    def SetSpacecraftHub(self): # Modified from original to support self-developped scConfig module.
         """
         Defines the spacecraft object properties.
         """
         # See dev/scConfig.py for details on creating a S/C, based on Astrobee config for now.
-        self.scObject = scConfig.createSC(scName)
+
+        self.scObject = scConfig.createSC(self.initConfig.scName)
         self.scObject.ModelTag = "sat-" + str(self.spacecraftIndex) # Update model tag in accordance to SC index
         self.I_sc = self.scObject.hub.IHubPntBc_B
         self.m_sc = self.scObject.hub.mHub # Taken from spacecraft.Spacecraft() module!

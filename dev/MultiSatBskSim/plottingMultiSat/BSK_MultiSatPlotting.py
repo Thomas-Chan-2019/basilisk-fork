@@ -307,7 +307,7 @@ def plot_relative_orbits(r_BN, numberSpacecraft, id=None):
     ax.scatter(0, 0, 0, c=color_x)
     ax.set_title('Spacecraft Relative Orbits in Hill Frame')
     ax.set_xlabel('$i_r$ [km]')
-    ax.set_ylabel(r'$i_{\theta}$ [km]')
+    ax.set_ylabel('$i_{\theta}$ [km]')
     ax.set_zlabel('$i_h$ [km]')
     ax.legend(loc=2)
     
@@ -326,7 +326,7 @@ def plot_relative_orbits(r_BN, numberSpacecraft, id=None):
             line.set_3d_properties(r_BN[i][:frame, 2] * m2km)
         return lines
     
-    interval = r_BN[0].shape[0]/1000
+    interval = r_BN[0].shape[0]/100
     # Create the animation
     ani = FuncAnimation(fig, update, frames=r_BN[0].shape[0], init_func=init, blit=False, interval=interval)
     return ani
