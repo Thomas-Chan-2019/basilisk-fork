@@ -11,6 +11,19 @@ init_config_path = "dev/init_config.json"
 
 class SCConfig(object): # TODO - Add RW & Thruster configs
     def __init__(self, mHub, IHub, scName="bskSC", ModelTag="spacecraftBody", 
+                 thrLocation=[[0.0, 0.0, 0.0], 
+                            [0.0, 0.0, 0.0], 
+                            [0.0, 0.0, 0.0], 
+                            [0.0, 0.0, 0.0], 
+                            [0.0, 0.0, 0.0], 
+                            [0.0, 0.0, 0.0]], 
+                 thrDirection = [[1.0, 0.0, 0.0], 
+                                [-1.0, 0.0, 0.0], 
+                                [0.0, 1.0, 0.0], 
+                                [0.0, -1.0, 0.0], 
+                                [0.0, 0.0, 1.0], 
+                                [0.0, 0.0, -1.0]],
+                 MaxThrust = 4.5, 
                  r_BcB_B=[[0.0], [0.0], [0.0]], 
                  RW_gsHat_B_Matrix=[[1, 0, 0],[0, 1, 0],[0, 0, 1]],
                  THR_gsHat_B_Matrix=[[1, 0, 0],[0, 1, 0],[0, 0, 1]]
@@ -19,6 +32,11 @@ class SCConfig(object): # TODO - Add RW & Thruster configs
         self.IHub = IHub
         self.scName = scName
         self.ModelTag = ModelTag
+        # Thruster implementation:
+        self.MaxThrust = MaxThrust
+        self.thrLocation = thrLocation
+        self.thrDirection = thrDirection
+        
         self.r_BcB_B=r_BcB_B
         self.RW_gsHat_B_Matrix = RW_gsHat_B_Matrix
         self.THR_gsHat_B_Matrix = THR_gsHat_B_Matrix
@@ -79,9 +97,6 @@ def getObject(objects, key, value):
     print("\Object with", key, "=", value, "not found in config JSON. Please revise your search key/value.")
     raise ValueError(f"No object found with {key} = {value}")
 
-# Load SC or other configs:
-sc_configs = loadSCConfig(sc_config_path)
-
 # @params: TODO
 # May change to pass the "initConfig" directly instead of path...
 def setInitialCondition(EnvModel, DynModels, targetOE, init_configs):
@@ -119,6 +134,11 @@ def setInitialCondition(EnvModel, DynModels, targetOE, init_configs):
     
     return oe_list
     
+    
+# The following is necessary!
+# Load SC or other configs:
+sc_configs = loadSCConfig(sc_config_path)
+
 # @params:
 # m - [kg] mass
 # I - [kg*m^2, 3x3 array] moment of inertia
@@ -126,18 +146,18 @@ def setInitialCondition(EnvModel, DynModels, targetOE, init_configs):
 # r_BcB_B - [m, 1x3 array] position vector of body-fixed point B relative to CM
 def createSC(scName="Astrobee", RWConfig=None, THRConfig=None):
     try:
-        sc = getObject(sc_configs, "scName", scName) 
+        sc_config = getObject(sc_configs, "scName", scName) 
     except ValueError as e:
         print("\nError: ", e)
     #     print('Error: S/C not implemented')
     #     exit(1)
     # initialize spacecraft object and set properties
     scObject = spacecraft.Spacecraft()
-    scObject.ModelTag = sc.ModelTag
+    scObject.ModelTag = sc_config.ModelTag
     # define the simulation inertia
-    scObject.hub.mHub = sc.mHub  # kg - spacecraft mass
-    scObject.hub.IHubPntBc_B = unitTestSupport.np2EigenMatrix3d(sc.IHub)
-    scObject.hub.r_BcB_B = sc.r_BcB_B  # m - position vector of body-fixed point B relative to CM
+    scObject.hub.mHub = sc_config.mHub  # kg - spacecraft mass
+    scObject.hub.IHubPntBc_B = unitTestSupport.np2EigenMatrix3d(sc_config.IHub)
+    scObject.hub.r_BcB_B = sc_config.r_BcB_B  # m - position vector of body-fixed point B relative to CM
     
     if RWConfig != None:
         # TODO - Implement RWConfig and pass it out, possibly a `create RW call?`
@@ -148,7 +168,9 @@ def createSC(scName="Astrobee", RWConfig=None, THRConfig=None):
         # Do not add it to SC yet, perhaps pass it out when we return the scObject
         pass    
     
-    return scObject # TODO - pass out created RWs & thrusters!
+    # scObject - spacecraft.Spacecraft() object for Basilisk SC creation;
+    # sc_config - SCConfig object for Thruster/RW creation.
+    return scObject, sc_config
 
 ### Example RW:
 

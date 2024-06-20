@@ -552,9 +552,6 @@ def runScenario(scenario, relativeNavigation):
     # Configure initial FSW attitude modes, later iterate through a for-loop?
     # scenario.FSWModels[0].modeRequest = "inertialPointing"
     scenario.FSWModels[1].modeRequest = "inertialPointing" # We need to turn on all S/C tasks!
-    scenario.FSWModels[2].modeRequest = "inertialPointing" # We need to turn on all S/C tasks!
-    scenario.FSWModels[2].modeRequest = "inertialPointing" # We need to turn on all S/C tasks!
-    
     scenario.FSWModels[2].modeRequest = "inertialPointing" # We need to turn on all S/C tasks!    
     
     # scenario.FSWModels[1].modeRequest = "sunPointing"
@@ -564,7 +561,7 @@ def runScenario(scenario, relativeNavigation):
     scenario.InitializeSimulation()
 
     # Configure run time and execute simulation
-    simulationTime = macros.hour2nano(1.)
+    simulationTime = macros.hour2nano(2.)
     # simulationTime = macros.sec2nano(5.)
     scenario.ConfigureStopTime(simulationTime)
     # scenario.TotalSim.SingleStepProcesses() 
@@ -574,6 +571,8 @@ def runScenario(scenario, relativeNavigation):
     
     scenario.ExecuteSimulation()
 
+    return
+    
     # Reconfigure FSW attitude modes
     # scenario.FSWModels[0].modeRequest = "inertialPointing"
     scenario.FSWModels[1].modeRequest = "inertialPointing"
@@ -602,15 +601,18 @@ def run(showPlots, numberSpacecraft, relativeNavigation):
     # initConfigPath = ".././scenariosMultiSat/simInitConfig/init_config.json"
     # initConfigPath = "../../init_config.json"
     # initConfigPath = "../../.././dev/init_config.json"
-    initConfigPath = "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/init_config.json"
-    targetOE, initConfigs = scConfig.loadInitConfig(initConfigPath)
+    # initConfigPath = "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/init_config.json"
+    # initConfigPath = "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/ITRL_config.json"
     
+    initConfigPath = sys.argv[1] # Pass python argument from cmdline, argument position 1.
+    
+    targetOE, initConfigs = scConfig.loadInitConfig(initConfigPath)
     # TODO 20240614: remove "numberSpacecraft" and pass "target_dr_hill" to FSW
     # TheScenario = MultiSat_test_scenario(numberSpacecraft, initConfigPath, relativeNavigation)
     TheScenario = MultiSat_test_scenario(numberSpacecraft, targetOE, initConfigs, relativeNavigation)
     runScenario(TheScenario, relativeNavigation)
     # figureList = TheScenario.pull_outputs(showPlots, relativeNavigation, 0)
-    figureList = TheScenario.pull_outputs(showPlots, relativeNavigation,1)
+    figureList = TheScenario.pull_outputs(showPlots, relativeNavigation,2)
 
     return figureList
 

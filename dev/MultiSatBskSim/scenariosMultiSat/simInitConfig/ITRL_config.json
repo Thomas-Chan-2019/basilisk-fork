@@ -3,8 +3,8 @@
     "InitConfig": [
             {
                 "isTarget": 1,
-                "scName": "Astrobee",
-                "sigma_BNInit": [[0.1], [0.6], [-0.8]],
+                "scName": "ITRL",
+                "sigma_BNInit": [[0.0], [0.0], [0.0]],
                 "omega_BN_BInit": [[0.0], [0.0], [0.0]],
                 "init_dr_hill": [0.0, 0.0, 0.0],
                 "init_dv_hill": [0.0, 0.0, 0.0],
@@ -14,10 +14,10 @@
             },
             {
                 "isTarget": 0,
-                "scName": "Astrobee",
-                "sigma_BNInit": [[0.1], [0.6], [-0.8]],
+                "scName": "ITRL",
+                "sigma_BNInit": [[0.0], [0.0], [0.0]],
                 "omega_BN_BInit": [[0.0], [0.0], [0.0]],
-                "init_dr_hill": [0.0, 110.0, 0.0],
+                "init_dr_hill": [0.0, 100.0, 0.0],
                 "init_dv_hill": [0.0, 0.0, 0.0],
                 "target_dr_hill": [0.0, 100.0, 0.0],
                 "target_dv_hill": [0.0, 0.0, 0.0],
@@ -25,8 +25,8 @@
             },
             {
                 "isTarget": 0,
-                "scName": "Astrobee",
-                "sigma_BNInit": [[0.1], [0.6], [-0.8]],
+                "scName": "ITRL",
+                "sigma_BNInit": [[0.0], [0.0], [0.0]],
                 "omega_BN_BInit": [[0.0], [0.0], [0.0]],
                 "init_dr_hill": [0.0, -100.0, 0.0],
                 "init_dv_hill": [0.0, 0.0, 0.0],

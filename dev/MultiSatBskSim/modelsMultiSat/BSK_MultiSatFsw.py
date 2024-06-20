@@ -328,6 +328,7 @@ class BSKFswModels:
     
     def SetTransController(self, SimBase):
         # TODO - Maybe set controller gains via a JSON file separately, or define via `scConfig.py`?
+        # self.initConfig.scName == "ITRL"
         
         # Translational controller PID tuning: 
         # Feedback Linearization trial:

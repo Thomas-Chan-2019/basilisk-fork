@@ -110,11 +110,14 @@ class BSKDynamicModels:
         Defines the spacecraft object properties.
         """
         # See dev/scConfig.py for details on creating a S/C, based on Astrobee config for now.
-
-        self.scObject = scConfig.createSC(self.initConfig.scName)
+        # self.scObject = scConfig.createSC(self.initConfig.scName)
+        scObject, sc_config = scConfig.createSC(self.initConfig.scName)
+        self.scObject = scObject
         self.scObject.ModelTag = "sat-" + str(self.spacecraftIndex) # Update model tag in accordance to SC index
         self.I_sc = self.scObject.hub.IHubPntBc_B
         self.m_sc = self.scObject.hub.mHub # Taken from spacecraft.Spacecraft() module!
+        
+        return sc_config # Return a SCConfig class according to scConfig module for Thruster/RW creation.
 
     def SetGravityBodies(self, SimBase):
         """
@@ -195,27 +198,32 @@ class BSKDynamicModels:
         
 
     # We should redefine the axis of the Thrusters!
-    def SetThrusterDynEffector(self): 
+    def SetThrusterDynEffector(self, sc_config): 
         """
         Defines the thruster state effector.
         """
-        location = [[0.0, 0.0, 0.0], 
-                    [0.0, 0.0, 0.0], 
-                    [0.0, 0.0, 0.0], 
-                    [0.0, 0.0, 0.0], 
-                    [0.0, 0.0, 0.0], 
-                    [0.0, 0.0, 0.0]] # Setting thrusters positions ALL at S/C body centre for now
-        direction = [[1.0, 0.0, 0.0], 
-                     [-1.0, 0.0, 0.0], 
-                     [0.0, 1.0, 0.0], 
-                     [0.0, -1.0, 0.0], 
-                     [0.0, 0.0, 1.0], 
-                     [0.0, 0.0, -1.0], ] # Setting thrusters direction at +/- x,y,z direction of S/C.
+        maxThrust = sc_config.MaxThrust
+        location = sc_config.thrLocation
+        direction = sc_config.thrDirection
+        
+        # location = [[0.0, 0.0, 0.0], 
+        #             [0.0, 0.0, 0.0], 
+        #             [0.0, 0.0, 0.0], 
+        #             [0.0, 0.0, 0.0], 
+        #             [0.0, 0.0, 0.0], 
+        #             [0.0, 0.0, 0.0]] # Setting thrusters positions ALL at S/C body centre for now
+        # direction = [[1.0, 0.0, 0.0], 
+        #              [-1.0, 0.0, 0.0], 
+        #              [0.0, 1.0, 0.0], 
+        #              [0.0, -1.0, 0.0], 
+        #              [0.0, 0.0, 1.0], 
+        #              [0.0, 0.0, -1.0], ] # Setting thrusters direction at +/- x,y,z direction of S/C.
 
         # create the thruster devices by specifying the thruster type and its location and direction
         for pos_B, dir_B in zip(location, direction):
-            # self.thrusterFactory.create('TEST_Thruster', pos_B, dir_B, useMinPulseTime=False)
-            self.thrusterFactory.create('MOOG_Monarc_5', pos_B, dir_B, useMinPulseTime=False)
+            # self.thrusterFactory.create('TEST_Thruster', pos_B, dir_B, useMinPulseTime=False, MaxThrust=maxThrust)
+            self.thrusterFactory.create('MOOG_Monarc_5', pos_B, dir_B, useMinPulseTime=False, MaxThrust=maxThrust)
+            # Decide if choose the thruster type too later!
 
         self.numThr = self.thrusterFactory.getNumOfDevices()
 
@@ -291,10 +299,10 @@ class BSKDynamicModels:
         """
         Initializes all dynamic objects.
         """
-        self.SetSpacecraftHub()
+        sc_config = self.SetSpacecraftHub() # Returned SCConfig class for thruster/RW creation.
         self.SetGravityBodies(SimBase)
         self.SetReactionWheelDynEffector() # TODO - change axis / power
-        self.SetThrusterDynEffector() # TODO - change axis / thrust forces
+        self.SetThrusterDynEffector(sc_config) # TODO - change axis / thrust forces
         
         if includeExtDisturbances:
             self.SetExtForceTorque() # TODO - check if needed at first stage without disturbances
