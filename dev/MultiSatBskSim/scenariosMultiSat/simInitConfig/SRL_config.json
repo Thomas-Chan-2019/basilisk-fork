@@ -3,7 +3,7 @@
     "InitConfig": [
             {
                 "isTarget": 1,
-                "scName": "ITRL",
+                "scName": "SRL",
                 "sigma_BNInit": [[0.0], [0.0], [0.0]],
                 "omega_BN_BInit": [[0.0], [0.0], [0.0]],
                 "init_dr_hill": [0.0, 0.0, 0.0],
@@ -14,7 +14,7 @@
             },
             {
                 "isTarget": 0,
-                "scName": "ITRL",
+                "scName": "SRL",
                 "sigma_BNInit": [[0.0], [0.0], [0.0]],
                 "omega_BN_BInit": [[0.0], [0.0], [0.0]],
                 "init_dr_hill": [0.0, 100.0, 0.0],
@@ -25,7 +25,7 @@
             },
             {
                 "isTarget": 0,
-                "scName": "ITRL",
+                "scName": "SRL",
                 "sigma_BNInit": [[0.0], [0.0], [0.0]],
                 "omega_BN_BInit": [[0.0], [0.0], [0.0]],
                 "init_dr_hill": [0.0, -100.0, 0.0],

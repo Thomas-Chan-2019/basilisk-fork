@@ -561,7 +561,7 @@ def runScenario(scenario, relativeNavigation):
     scenario.InitializeSimulation()
 
     # Configure run time and execute simulation
-    simulationTime = macros.hour2nano(2.)
+    simulationTime = macros.hour2nano(1.)
     # simulationTime = macros.sec2nano(5.)
     scenario.ConfigureStopTime(simulationTime)
     # scenario.TotalSim.SingleStepProcesses() 
@@ -602,7 +602,7 @@ def run(showPlots, numberSpacecraft, relativeNavigation):
     # initConfigPath = "../../init_config.json"
     # initConfigPath = "../../.././dev/init_config.json"
     # initConfigPath = "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/init_config.json"
-    # initConfigPath = "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/ITRL_config.json"
+    # initConfigPath = "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/SRL_config.json"
     
     initConfigPath = sys.argv[1] # Pass python argument from cmdline, argument position 1.
     
