@@ -20,7 +20,7 @@ import itertools
 
 import numpy as np
 import math
-import scipy.signal as ss
+from scipy.signal import place_poles
 
 from Basilisk.architecture import messaging
 from Basilisk.fswAlgorithms import (inertial3D, locationPointing, attTrackingError, mrpFeedback,
@@ -335,21 +335,51 @@ class BSKFswModels:
         mu_Earth = orbitalMotion.MU_EARTH * math.pow(1000,3) # Convert to S.I.: m^3/s^2
         r = self.targetOE.a # Orbital radius
         w = math.sqrt(mu_Earth / math.pow(r,3))
+        
+        # Controller Design:
+        # 1) Pole placement using scipy.signal.place_poles():
+        A = np.array([[0, 0, 0, 1, 0, 0],
+                      [0, 0, 0, 0, 1, 0],
+                      [0, 0, 0, 0, 0, 1],
+                      [0, 0, 0, 0, 2*w, 0],
+                      [0, 3*math.pow(w,2), 0, -2*w, 0, 0],
+                      [0, 0, -math.pow(w,2), 0, 0, 0]]) # 6x6 A-matrix
+        B = np.array([[0, 0, 0],
+                      [0, 0, 0],
+                      [0, 0, 0],
+                      [1, 0, 0],
+                      [0, 1, 0],
+                      [0, 0, 1]]) # 6x3 B-matrix
+        
+        design_poles = np.array([-5.0, -5.0, -5.0, -1.0, -1.0, -1.0])
+        # design_poles = np.array([-1.0, -1.1, -1.2, -0.1, -0.11, -0.12])
+        polePlaceResult = place_poles(A, B, design_poles)
+        K = polePlaceResult.gain_matrix
+        print(K)
+        print(A - B@K)
+        
+        Kp_trans = K[:, :3] # retrieve first 3 columns of K as Kp
+        Kd_trans = K[:, 3:] # retrieve last 3 columns of K as Kd
+        Kp_trans = -Kp_trans # Take -VE to the controller module!
+        Kd_trans = -Kd_trans # Take -VE to the controller module!
+        
+        # 2) Feedback Linearization:
         # k1, k2, k3, k4, k5, k6 = .1, .2, .3, .4, .5, .6
-        k1, k2, k3, k4, k5, k6 = 10, 10, 10, 0.1, 0.1, 0.1 # Hard-coded PID gains
+        # k1, k2, k3, k4, k5, k6 = 10, 10, 10, 0.1, 0.1, 0.1 # Hard-coded PID gains
         # k1, k2, k3, k4, k5, k6 = 5, 5, 5, 0.01, 0.01, 0.01 # Hard-coded PID gains
-        Kp_trans = np.array([[0,0,0],
-                             [0,-3*math.pow(w,2),0],
-                             [0,0,math.pow(w,2)]]) + \
-                   np.array([[-k1,0,0],
-                             [0,-k2,0],
-                             [0,0,-k3]]) 
-        Kd_trans = np.array([[-1,-2*w,0],
-                             [2*w,-1,0],
-                             [0,0,-1]]) + \
-                   np.array([[-k4,0,0],
-                             [0,-k5,0],
-                             [0,0,-k6]])
+        # Kp_trans = np.array([[0,0,0],
+        #                      [0,-3*math.pow(w,2),0],
+        #                      [0,0,math.pow(w,2)]]) + \
+        #            np.array([[-k1,0,0],
+        #                      [0,-k2,0],
+        #                      [0,0,-k3]]) 
+        # Kd_trans = np.array([[-1,-2*w,0],
+        #                      [2*w,-1,0],
+        #                      [0,0,-1]]) + \
+        #            np.array([[-k4,0,0],
+        #                      [0,-k5,0],
+        #                      [0,0,-k6]])
+        
         self.transController.Kp_trans = Kp_trans
         self.transController.Kd_trans = Kd_trans
         # self.transController.Kp_trans = SimBase.DynModels[self.spacecraftIndex].m_sc * 1

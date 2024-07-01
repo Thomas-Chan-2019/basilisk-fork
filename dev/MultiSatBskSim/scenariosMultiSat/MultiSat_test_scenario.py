@@ -518,15 +518,16 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
         _ = plt.plot_relative_orbits(dr, len(dr), 10)
         # print(dr, len(dr))
         if spacecraftIndex != 0:
-            plt.orbit_xyz_time_series(timeLineSetMin, dr, spacecraftIndex - 1) # Subtract by 1 
+            plt.orbit_xyz_time_series(timeLineSetMin, dr, spacecraftIndex - 1, 12) # Subtract by 1 
         elif spacecraftIndex == 0 and spacecraftIndex != targetSCIndex:
-            plt.orbit_xyz_time_series(timeLineSetMin, dr, 0) # Subtract by 1 
+            plt.orbit_xyz_time_series(timeLineSetMin, dr, 0, 12) # Subtract by 1 
             
-        # plt.plot_orbital_element_differences(timeLineSetSec / T, oed, 11)
-        # plt.plot_power(timeLineSetMin, netData, supplyData, sinkData, 12)
-        # plt.plot_fuel(timeLineSetMin, dataFuelMass, 13)
-        # plt.plot_thrust(timeLineSetMin, dataThrust, DynModels[spacecraftIndex].numThr, 13)
-        # plt.plot_thrust_percentage(timeLineSetMin, dataThrustPercentage, DynModels[spacecraftIndex].numThr, 14)
+        plt.plot_orbital_element_differences(timeLineSetSec / T, oed, 13)
+        
+        # plt.plot_power(timeLineSetMin, netData, supplyData, sinkData, 14)
+        # plt.plot_fuel(timeLineSetMin, dataFuelMass, 15)
+        plt.plot_thrust(timeLineSetMin, dataThrust, DynModels[spacecraftIndex].numThr, 16)
+        plt.plot_thrust_percentage(timeLineSetMin, dataThrustPercentage, DynModels[spacecraftIndex].numThr, 17)
 
         
         figureList = {}
@@ -545,7 +546,7 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
         return figureList
 
 
-def runScenario(scenario, relativeNavigation):
+def runScenario(scenario, relativeNavigation, simulationTimeHours):
     # Get the environment model
     EnvModel = scenario.get_EnvModel()
 
@@ -561,7 +562,8 @@ def runScenario(scenario, relativeNavigation):
     scenario.InitializeSimulation()
 
     # Configure run time and execute simulation
-    simulationTime = macros.hour2nano(1.)
+    simulationTime = macros.hour2nano(simulationTimeHours)
+    # simulationTime = macros.hour2nano(1.)
     # simulationTime = macros.sec2nano(5.)
     scenario.ConfigureStopTime(simulationTime)
     # scenario.TotalSim.SingleStepProcesses() 
@@ -585,7 +587,9 @@ def runScenario(scenario, relativeNavigation):
     scenario.ExecuteSimulation()
 
 
-def run(showPlots, numberSpacecraft, relativeNavigation):
+def run(showPlots, numberSpacecraft, relativeNavigation,  
+        defaultInitConfigPath = "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/init_config.json",
+        defaultSimulationTimeHours = 1.):
     """
     The scenarios can be run with the followings setups parameters:
 
@@ -604,15 +608,23 @@ def run(showPlots, numberSpacecraft, relativeNavigation):
     # initConfigPath = "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/init_config.json"
     # initConfigPath = "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/SRL_config.json"
     
-    initConfigPath = sys.argv[1] # Pass python argument from cmdline, argument position 1.
+    if len(sys.argv) > 1:
+        initConfigPath = sys.argv[1] # Pass python argument from cmdline, argument position 1.
+    else:
+        initConfigPath = defaultInitConfigPath
+    
+    if len(sys.argv) > 2:
+        simulationTimeHours = float(sys.argv[2])
+    else:
+        simulationTimeHours = defaultSimulationTimeHours
     
     targetOE, initConfigs = scConfig.loadInitConfig(initConfigPath)
     # TODO 20240614: remove "numberSpacecraft" and pass "target_dr_hill" to FSW
     # TheScenario = MultiSat_test_scenario(numberSpacecraft, initConfigPath, relativeNavigation)
     TheScenario = MultiSat_test_scenario(numberSpacecraft, targetOE, initConfigs, relativeNavigation)
-    runScenario(TheScenario, relativeNavigation)
+    runScenario(TheScenario, relativeNavigation, simulationTimeHours)
     # figureList = TheScenario.pull_outputs(showPlots, relativeNavigation, 0)
-    figureList = TheScenario.pull_outputs(showPlots, relativeNavigation,2)
+    figureList = TheScenario.pull_outputs(showPlots, relativeNavigation,1)
 
     return figureList
 
@@ -620,5 +632,7 @@ def run(showPlots, numberSpacecraft, relativeNavigation):
 if __name__ == "__main__":
     run(showPlots=True,
         numberSpacecraft=3,
-        relativeNavigation=False
+        relativeNavigation=False,
+        defaultInitConfigPath = "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/init_config.json",
+        defaultSimulationTimeHours = 0.5
         )

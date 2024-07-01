@@ -251,8 +251,10 @@ def plot_orbit(r_BN, id=None):
     ax.legend(loc=2)
     return
 
-def orbit_xyz_time_series(timeData, r_BN, SCIndex):
+def orbit_xyz_time_series(timeData, r_BN, SCIndex, id=None):
     fig, axs = plt.subplots(3,1)
+    if id:
+        fig.num = id
     fig.suptitle('Spacecraft Inertial Cartesian Position $r_{BN}$')
     axs[0].plot(timeData, r_BN[SCIndex][:, 0] * m2km)
     axs[1].plot(timeData, r_BN[SCIndex][:, 1] * m2km)
