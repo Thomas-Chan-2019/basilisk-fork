@@ -128,7 +128,6 @@ class BSKFswModels:
         self.transController = PIDController.PIDController()
         self.transController.ModelTag = "transController"
 
-        # <-- PEND ADD Thruster Mapping like Torque Mapping Module `rwMotorTorque`-->
         # self.thrForceMapping = thrForceMapping.thrForceMapping()
         self.thrForceMapping = forceTorqueThrForceMapping.forceTorqueThrForceMapping()
         self.thrForceMapping.ModelTag = "thrForceMapping"

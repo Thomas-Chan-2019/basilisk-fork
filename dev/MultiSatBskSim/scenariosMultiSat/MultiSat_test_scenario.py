@@ -192,6 +192,7 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
         self.rwPowerLogs = [[] for _ in range(self.numberSpacecraft)]
         self.fuelLog = []
         self.thrLogs = [[] for _ in range(self.numberSpacecraft)]
+        self.cmdThrLog = [] # Cmd force log from transController module's `cmdForceOutMsg`.
         self.chiefTransLog = None
 
         # declare empty containers for orbital elements
@@ -295,7 +296,9 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
             self.attErrorLog.append(FswModels[spacecraft].attGuidMsg.recorder(self.samplingTime))
             self.AddModelToTask(DynModels[spacecraft].taskName, self.attErrorLog[spacecraft])
 
-            self.transGuidLog.append(FswModels[spacecraft].transGuidOutMsg.recorder(self.samplingTime))
+            # log transGuidOutMsg -> mind FSW self.transGuidOutMsg (WRONG) v.s. self.transError.transGuidOutMsg (CORRECT)
+            # self.transGuidLog.append(FswModels[spacecraft].transGuidOutMsg.recorder(self.samplingTime))
+            self.transGuidLog.append(FswModels[spacecraft].transError.transGuidOutMsg.recorder(self.samplingTime))
             self.AddModelToTask(DynModels[spacecraft].taskName, self.transGuidLog[spacecraft])
 
             # log the RW torque messages
@@ -328,8 +331,14 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
 
             # log thruster information
             for item in range(DynModels[spacecraft].numThr):
-                self.thrLogs[spacecraft].append(DynModels[spacecraft].thrusterDynamicEffector.thrusterOutMsgs[item].recorder(self.samplingTime))
+                # self.thrLogs[spacecraft].append(DynModels[spacecraft].thrusterDynamicEffector.thrusterOutMsgs[item].recorder(self.samplingTime))
+                self.thrLogs[spacecraft].append(FswModels[spacecraft].thrForceMapping.thrForceCmdOutMsg.recorder(self.samplingTime))
                 self.AddModelToTask(DynModels[spacecraft].taskName, self.thrLogs[spacecraft][item])
+                
+            # log cmd force from transController:
+            self.cmdThrLog.append(
+                FswModels[spacecraft].transController.cmdForceOutMsg.recorder(self.samplingTime))
+            self.AddModelToTask(DynModels[spacecraft].taskName, self.cmdThrLog[spacecraft])
 
     def pull_outputs(self, showPlots, relativeNavigation, spacecraftIndex):
         print("SC Index: ", spacecraftIndex)
@@ -352,6 +361,7 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
         # dataFuelMass = self.fuelLog[spacecraftIndex].fuelMass
 
         dataTransGuid = self.transGuidLog[spacecraftIndex].r_BR_B
+        dataTransGuid_Velocity = self.transGuidLog[spacecraftIndex].v_BR_B
 
         # Save RW information
         dataRW = []
@@ -364,9 +374,13 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
         dataThrust = []
         dataThrustPercentage = []
         for item in range(DynModels[spacecraftIndex].numThr):
-            dataThrust.append(self.thrLogs[spacecraftIndex][item].thrustForce_B)
-            dataThrustPercentage.append(self.thrLogs[spacecraftIndex][item].thrustFactor)
+            dataThrust.append(self.thrLogs[spacecraftIndex][item].thrForce)
+            # dataThrust.append(self.thrLogs[spacecraftIndex][item].thrustForce_B)
+            # dataThrustPercentage.append(self.thrLogs[spacecraftIndex][item].thrustFactor)
 
+        # Save Cmd force data
+        dataCmdForce = self.cmdThrLog[spacecraftIndex].forceRequestBody
+        
         # # Save power info
         # supplyData = self.spLog[spacecraftIndex].netPower
         # sinkData = self.psLog[spacecraftIndex].netPower
@@ -440,9 +454,11 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
         # Print outputs: # Debug from here... 20240514
         # print(dr.__sizeof__())
         # print(dr)
-        # print(dataTransGuid)
+        print(dataTransGuid)
         # Print thrust # Debug from here... 20240528
-        # print(dataThrust)
+        print(dataThrust)
+        print(np.shape(dataThrust))
+        print(dataCmdForce)
         
         #
         # Plot results
@@ -475,8 +491,9 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
         
         # plt.plot_power(timeLineSetMin, netData, supplyData, sinkData, 14)
         # plt.plot_fuel(timeLineSetMin, dataFuelMass, 15)
+        plt.plot_cmd_force(timeLineSetMin, dataCmdForce, 20)
         plt.plot_thrust(timeLineSetMin, dataThrust, DynModels[spacecraftIndex].numThr, 30)
-        plt.plot_thrust_percentage(timeLineSetMin, dataThrustPercentage, DynModels[spacecraftIndex].numThr, 31)
+        # plt.plot_thrust_percentage(timeLineSetMin, dataThrustPercentage, DynModels[spacecraftIndex].numThr, 31)
 
         
         figureList = {}

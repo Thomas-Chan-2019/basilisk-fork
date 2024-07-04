@@ -201,6 +201,15 @@ def plot_rw_temperature(timeData, tempData, numRW, id=None):
     plt.ylabel('RW Temperatures [ºC]')
     return
 
+def plot_cmd_force(timeData, dataCmdForce, id=None):
+    """Plot the energy inside the onboard battery"""
+    plt.figure(id)
+    plt.plot(timeData, dataCmdForce)
+    plt.legend(loc='lower right')
+    plt.xlabel('Time [min]')
+    plt.ylabel('Cmd Force (N) ')
+    return
+
 def plot_thrust(timeData, thrustData, numThr, id=None):
     """Plot the thrusters net force output"""
     plt.figure(id)
