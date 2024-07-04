@@ -21,6 +21,7 @@ import itertools
 import numpy as np
 import math
 from scipy.signal import place_poles
+import copy
 
 from Basilisk.architecture import messaging
 from Basilisk.fswAlgorithms import (inertial3D, locationPointing, attTrackingError, mrpFeedback,
@@ -245,8 +246,8 @@ class BSKFswModels:
         Defines the inertial pointing guidance module.
         """
         # Pend change -> this is hardcoded
-        # self.inertial3DPoint.sigma_R0N = [0.0, 0.0, 0.0] # No attitude difference for now, can define an attitude trajectory later for monitoring!
-        self.inertial3DPoint.sigma_R0N = [0.1, 0.2, -0.3]
+        self.inertial3DPoint.sigma_R0N = [0.0, 0.0, 0.0] # No attitude difference for now, can define an attitude trajectory later for monitoring!
+        # self.inertial3DPoint.sigma_R0N = [0.1, 0.2, -0.3]
         messaging.AttRefMsg_C_addAuthor(self.inertial3DPoint.attRefOutMsg, self.attRefMsg)
 
     def SetSunPointGuidance(self, SimBase):
@@ -326,7 +327,7 @@ class BSKFswModels:
         # `self.transGuidOutMsg` has been set in function setupGatewayMsgs() with C addAuthor() 
         # -> Check why, probably because the original structure would switch between control modules (SpacecraftReconfig, Local Pointing, Sun Pointing etc.)
     
-    def SetTransController(self, SimBase):
+    def SetTransController(self, SimBase, controllerType = 1):
         # TODO - Maybe set controller gains via a JSON file separately, or define via `scConfig.py`?
         # self.initConfig.scName == "ITRL"
         
@@ -336,8 +337,7 @@ class BSKFswModels:
         r = self.targetOE.a # Orbital radius
         w = math.sqrt(mu_Earth / math.pow(r,3))
         
-        # Controller Design:
-        # 1) Pole placement using scipy.signal.place_poles():
+        # Open-loop system of CW-equation:
         A = np.array([[0, 0, 0, 1, 0, 0],
                       [0, 0, 0, 0, 1, 0],
                       [0, 0, 0, 0, 0, 1],
@@ -351,34 +351,59 @@ class BSKFswModels:
                       [0, 1, 0],
                       [0, 0, 1]]) # 6x3 B-matrix
         
-        design_poles = np.array([-5.0, -5.0, -5.0, -1.0, -1.0, -1.0])
+        # Controller Design:
+        # 1) Linearization - Pole placement using scipy.signal.place_poles():
+        design_poles = np.array([-10.0, -10.0, -10.0, -1.0, -1.0, -1.0])
         # design_poles = np.array([-1.0, -1.1, -1.2, -0.1, -0.11, -0.12])
-        polePlaceResult = place_poles(A, B, design_poles)
-        K = polePlaceResult.gain_matrix
-        print(K)
-        print(A - B@K)
+        if controllerType == 1:
+            polePlaceResult = place_poles(A, B, design_poles)
+            K = polePlaceResult.gain_matrix
+            print(K)
+            print(A - B@K)
+            
+            Kp_trans = K[:, :3] # retrieve first 3 columns of K as Kp
+            Kd_trans = K[:, 3:] # retrieve last 3 columns of K as Kd
         
-        Kp_trans = K[:, :3] # retrieve first 3 columns of K as Kp
-        Kd_trans = K[:, 3:] # retrieve last 3 columns of K as Kd
-        Kp_trans = -Kp_trans # Take -VE to the controller module!
-        Kd_trans = -Kd_trans # Take -VE to the controller module!
-        
-        # 2) Feedback Linearization:
-        # k1, k2, k3, k4, k5, k6 = .1, .2, .3, .4, .5, .6
-        # k1, k2, k3, k4, k5, k6 = 10, 10, 10, 0.1, 0.1, 0.1 # Hard-coded PID gains
-        # k1, k2, k3, k4, k5, k6 = 5, 5, 5, 0.01, 0.01, 0.01 # Hard-coded PID gains
-        # Kp_trans = np.array([[0,0,0],
-        #                      [0,-3*math.pow(w,2),0],
-        #                      [0,0,math.pow(w,2)]]) + \
-        #            np.array([[-k1,0,0],
-        #                      [0,-k2,0],
-        #                      [0,0,-k3]]) 
-        # Kd_trans = np.array([[-1,-2*w,0],
-        #                      [2*w,-1,0],
-        #                      [0,0,-1]]) + \
-        #            np.array([[-k4,0,0],
-        #                      [0,-k5,0],
-        #                      [0,0,-k6]])
+        # 2) Feedback Linearization + Pole Placement: # Reuse A, B matrices and poles from 1).
+        if controllerType == 2:
+            # i) Feedback linearization PHI-term to remove non-linearity 
+            phi_p = A[3:,:3] # position nonlinearity - p
+            phi_d = A[3:,3:] # derivative nonlinearity - d
+            # Equivalent to below:
+            # phi_x_p = np.array[[0,0,0],
+            #                    [0,3*math.pow(w,2),0],
+            #                    [0,0,-math.pow(w,2)]] 
+            # phi_x_d = np.array([[0,2*w,0],
+            #                     [-2*w,0,0],
+            #                     [0,0,0]]) 
+            
+            # A[3:,:3] = np.zeros((3,3)) # Remove nonlinearity phi_p
+            # A[3:,3:] = np.zeros((3,3)) # Remove nonlinearity phi_d
+            # (Below is equivalent to set the corresponding part in A equal to zero, but this is kept for clear understanding.)
+            A_tilde = copy.deepcopy(A)
+            A_tilde[3:,:3] = A[3:,:3] - phi_p # Remove nonlinearity phi_p
+            A_tilde[3:,3:] = A[3:,3:] - phi_d # Remove nonlinearity phi_d
+            
+            # ii) Set gain matrices through pole placement:
+            polePlaceResult = place_poles(A_tilde, B, design_poles)
+            K_temp = polePlaceResult.gain_matrix
+            print(K_temp)
+            print(A_tilde - B@K_temp)
+            
+            Kp_trans = phi_p + K_temp[:, :3] # retrieve first 3 columns of K as Kp
+            Kd_trans = phi_d + K_temp[:, 3:] # retrieve last 3 columns of K as Kd
+            # Kp_trans = np.array([[0,0,0],
+            #                      [0,-3*math.pow(w,2),0],
+            #                      [0,0,math.pow(w,2)]]) + \
+            #            np.array([[-k1,0,0],
+            #                      [0,-k2,0],
+            #                      [0,0,-k3]]) 
+            # Kd_trans = np.array([[-1,-2*w,0],
+            #                      [2*w,-1,0],
+            #                      [0,0,-1]]) + \
+            #            np.array([[-k4,0,0],
+            #                      [0,-k5,0],
+            #                      [0,0,-k6]])
         
         self.transController.Kp_trans = Kp_trans
         self.transController.Kd_trans = Kd_trans

@@ -164,10 +164,10 @@ import BSK_MultiSatPlotting as plt
 
 # class shall Inherits BSK_MultiSatMasters.BSKSim & .BSKScenario
 class MultiSat_test_scenario(BSKSim, BSKScenario): 
-    def __init__(self, numberSpacecraft, targetOE, initConfigs , relativeNavigation):
+    def __init__(self, numberSpacecraft, targetOE, initConfigs, simRate, dataSamplingTimeSec, relativeNavigation):
         # This below is initializing the scenario itself using the class structure defined in 
         super(MultiSat_test_scenario, self).__init__(
-            numberSpacecraft, targetOE, initConfigs, relativeNavigation=relativeNavigation, fswRate=1, dynRate=1, envRate=1, relNavRate=1)
+            numberSpacecraft, targetOE, initConfigs, relativeNavigation=relativeNavigation, fswRate=simRate, dynRate=simRate, envRate=simRate, relNavRate=simRate)
         self.name = 'MultiSat_test_scenario'
         # self.initConfigPath = initConfigPath
         
@@ -202,7 +202,7 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
 
         # Set initial conditions and record the relevant messages
         self.configure_initial_conditions()
-        self.log_outputs(relativeNavigation)
+        self.log_outputs(relativeNavigation, dataSamplingTimeSec)
 
         if vizSupport.vizFound:
             # if this scenario is to interface with the BSK Viz, uncomment the following line
@@ -262,71 +262,16 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
         # targetOE, oe_list = scConfig.setInitialCondition(EnvModel, DynModels, self.initConfigPath)
         # self.targetOE = targetOE
         self.oe = oe_list
-        
         return
-        
-        ## RV initiailization:
-        # TODO - take omega for calculating 
-        mu_Earth = orbitalMotion.MU_EARTH * math.pow(1000,3) # Convert to S.I.: m^3/s^2
-        # r = 1.4 * orbitalMotion.REQ_EARTH * 1e3 # Orbital radius
-        # Configure initial conditions for spacecraft 0
-        self.oe.append(orbitalMotion.ClassicElements())
-        self.oe[0].a = 1.4*EnvModel.planetRadius  # meters
-        self.oe[0].e = 0
-        self.oe[0].i = 45.0 * macros.D2R
-        self.oe[0].Omega = 48.2 * macros.D2R
-        self.oe[0].omega = 347.8 * macros.D2R
-        self.oe[0].f = 85.3 * macros.D2R
-        rN, vN = orbitalMotion.elem2rv(EnvModel.mu, self.oe[0])
-        orbitalMotion.rv2elem(EnvModel.mu, rN, vN)
-        DynModels[0].scObject.hub.r_CN_NInit = rN  # m   - r_CN_N
-        DynModels[0].scObject.hub.v_CN_NInit = vN  # m/s - v_CN_N
-        DynModels[0].scObject.hub.sigma_BNInit = [[0.1], [0.6], [-0.8]]  # sigma_BN_B
-        DynModels[0].scObject.hub.omega_BN_BInit = [[0.0], [0.0], [0.0]]  # rad/s - omega_BN_B
 
-        # Configure initial conditions for spacecraft 1
-        omega = math.sqrt(mu_Earth / math.pow(self.oe[0].a,3))
-        self.oe.append(copy.deepcopy(self.oe[0]))
-        # self.oe[1].f *= 1.00001 # Slightly deviate from s/c 0 by true anomaly v
-        # rN2, vN2 = orbitalMotion.elem2rv(EnvModel.mu, self.oe[1])
-        DCM_NH = orbitalMotion.hillFrame(rN, vN).transpose()
-        # Hardcoded for now:
-        dr2_hill = [0.0, 100.0, 0.0]
-        dv2_hill = [0.0, 0.0, 0.0]
-        dr2 = DCM_NH @ np.array(dr2_hill)
-        dv2 = DCM_NH @ np.array(dv2_hill)
-        rN2 = rN + dr2 
-        omega_vec = np.array([0,0,omega])
-        vN2 = vN + dv2 # + np.cross(rN2, omega_vec) # Add back the r x v term in velocity with omega 
-        orbitalMotion.rv2elem(EnvModel.mu, rN2, vN2)
-        DynModels[1].scObject.hub.r_CN_NInit = rN2  # m   - r_CN_N
-        DynModels[1].scObject.hub.v_CN_NInit = vN2  # m/s - v_CN_N
-        DynModels[1].scObject.hub.sigma_BNInit = [[0.1], [0.6], [-0.8]]  # sigma_BN_B
-        DynModels[1].scObject.hub.omega_BN_BInit = [[0.0], [0.0], [0.0]]  # rad/s - omega_BN_B
-
-        # Configure initial conditions for spacecraft 2
-        self.oe.append(copy.deepcopy(self.oe[0]))
-        # self.oe[2].f *= 0.99999 # Slightly deviate from s/c 0 true anomaly v
-        # rN3, vN3 = orbitalMotion.elem2rv(EnvModel.mu, self.oe[2])
-        dr3_hill = [0.0, -100.0, 0.0]
-        dv3_hill = [0.0, 0.0, 0.0]
-        dr3 = DCM_NH @ np.array(dr3_hill)
-        dv3 = DCM_NH @ np.array(dv3_hill)
-        rN3 = rN + dr3
-        vN3 = vN + dv3
-        orbitalMotion.rv2elem(EnvModel.mu, rN3, vN3)
-        DynModels[2].scObject.hub.r_CN_NInit = rN3  # m   - r_CN_N
-        DynModels[2].scObject.hub.v_CN_NInit = vN3  # m/s - v_CN_N
-        DynModels[2].scObject.hub.sigma_BNInit = [[0.1], [0.6], [-0.8]]  # sigma_BN_B
-        DynModels[2].scObject.hub.omega_BN_BInit = [[0.0], [0.0], [0.0]]  # rad/s - omega_BN_B
-
-    def log_outputs(self, relativeNavigation):
+    def log_outputs(self, relativeNavigation, dataSamplingTimeSec):
         # Process outputs
         DynModels = self.get_DynModel()
         FswModels = self.get_FswModel()
 
         # Set the sampling time
-        self.samplingTime = macros.sec2nano(10)
+        # self.samplingTime = macros.sec2nano(10)
+        self.samplingTime = macros.sec2nano(dataSamplingTimeSec)
 
         # Log the barycentre's position and velocity
         if relativeNavigation:
@@ -517,17 +462,21 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
         # Added animated plot to relative orbits, keep `ani` there!
         _ = plt.plot_relative_orbits(dr, len(dr), 10)
         # print(dr, len(dr))
-        if spacecraftIndex != 0:
-            plt.orbit_xyz_time_series(timeLineSetMin, dr, spacecraftIndex - 1, 12) # Subtract by 1 
-        elif spacecraftIndex == 0 and spacecraftIndex != targetSCIndex:
-            plt.orbit_xyz_time_series(timeLineSetMin, dr, 0, 12) # Subtract by 1 
+        # print(range(0, self.numberSpacecraft - 1))
+        for scIndex in range(0, self.numberSpacecraft):
+            # print("add", scIndex)
+            if scIndex != targetSCIndex:
+                if scIndex != 0:
+                    plt.orbit_xyz_time_series(timeLineSetMin, dr, scIndex - 1, 12 + scIndex) # Subtract by 1 
+                elif scIndex == 0:
+                    plt.orbit_xyz_time_series(timeLineSetMin, dr, 0, 12 + scIndex) # Subtract by 1 
             
-        plt.plot_orbital_element_differences(timeLineSetSec / T, oed, 13)
+        # plt.plot_orbital_element_differences(timeLineSetSec / T, oed, 13)
         
         # plt.plot_power(timeLineSetMin, netData, supplyData, sinkData, 14)
         # plt.plot_fuel(timeLineSetMin, dataFuelMass, 15)
-        plt.plot_thrust(timeLineSetMin, dataThrust, DynModels[spacecraftIndex].numThr, 16)
-        plt.plot_thrust_percentage(timeLineSetMin, dataThrustPercentage, DynModels[spacecraftIndex].numThr, 17)
+        plt.plot_thrust(timeLineSetMin, dataThrust, DynModels[spacecraftIndex].numThr, 30)
+        plt.plot_thrust_percentage(timeLineSetMin, dataThrustPercentage, DynModels[spacecraftIndex].numThr, 31)
 
         
         figureList = {}
@@ -588,8 +537,11 @@ def runScenario(scenario, relativeNavigation, simulationTimeHours):
 
 
 def run(showPlots, numberSpacecraft, relativeNavigation,  
-        defaultInitConfigPath = "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/init_config.json",
-        defaultSimulationTimeHours = 1.):
+        initConfigPath = "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/init_config.json",
+        simulationTimeHours = 1.,
+        simRate = 0.1,
+        dataSamplingTimeSec = 1 # Define simulation rate (for dynamics, FSW & environment models) & data sampling rate.
+        ):
     """
     The scenarios can be run with the followings setups parameters:
 
@@ -600,31 +552,23 @@ def run(showPlots, numberSpacecraft, relativeNavigation,
 
     """
 
-    # Configure a scenario in the base simulation
-    # initConfigPath = "/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/init_config.json"
-    # initConfigPath = ".././scenariosMultiSat/simInitConfig/init_config.json"
-    # initConfigPath = "../../init_config.json"
-    # initConfigPath = "../../.././dev/init_config.json"
+    # Configure a scenario in the base simulation - keep for later use for now.
     # initConfigPath = "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/init_config.json"
     # initConfigPath = "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/SRL_config.json"
     
     if len(sys.argv) > 1:
         initConfigPath = sys.argv[1] # Pass python argument from cmdline, argument position 1.
-    else:
-        initConfigPath = defaultInitConfigPath
     
     if len(sys.argv) > 2:
         simulationTimeHours = float(sys.argv[2])
-    else:
-        simulationTimeHours = defaultSimulationTimeHours
     
     targetOE, initConfigs = scConfig.loadInitConfig(initConfigPath)
     # TODO 20240614: remove "numberSpacecraft" and pass "target_dr_hill" to FSW
     # TheScenario = MultiSat_test_scenario(numberSpacecraft, initConfigPath, relativeNavigation)
-    TheScenario = MultiSat_test_scenario(numberSpacecraft, targetOE, initConfigs, relativeNavigation)
+    TheScenario = MultiSat_test_scenario(numberSpacecraft, targetOE, initConfigs, simRate, dataSamplingTimeSec, relativeNavigation)
     runScenario(TheScenario, relativeNavigation, simulationTimeHours)
     # figureList = TheScenario.pull_outputs(showPlots, relativeNavigation, 0)
-    figureList = TheScenario.pull_outputs(showPlots, relativeNavigation,1)
+    figureList = TheScenario.pull_outputs(showPlots, relativeNavigation,2)
 
     return figureList
 
@@ -633,6 +577,8 @@ if __name__ == "__main__":
     run(showPlots=True,
         numberSpacecraft=3,
         relativeNavigation=False,
-        defaultInitConfigPath = "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/init_config.json",
-        defaultSimulationTimeHours = 0.5
+        initConfigPath = "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/init_config.json",
+        simulationTimeHours = 0.5,
+        simRate = 0.1,
+        dataSamplingTimeSec = 0.1
         )

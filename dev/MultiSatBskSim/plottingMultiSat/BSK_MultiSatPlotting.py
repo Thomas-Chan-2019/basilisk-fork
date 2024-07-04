@@ -251,14 +251,14 @@ def plot_orbit(r_BN, id=None):
     ax.legend(loc=2)
     return
 
-def orbit_xyz_time_series(timeData, r_BN, SCIndex, id=None):
+def orbit_xyz_time_series(timeData, r_BH, SCIndex, id=None):
     fig, axs = plt.subplots(3,1)
     if id:
         fig.num = id
-    fig.suptitle('Spacecraft Inertial Cartesian Position $r_{BN}$')
-    axs[0].plot(timeData, r_BN[SCIndex][:, 0] * m2km)
-    axs[1].plot(timeData, r_BN[SCIndex][:, 1] * m2km)
-    axs[2].plot(timeData, r_BN[SCIndex][:, 2] * m2km)
+    fig.suptitle('Spacecraft Hill-frame Relative Position from Target $r_{BH}$: SC Index ' + str(SCIndex))
+    axs[0].plot(timeData, r_BH[SCIndex][:, 0] * m2km)
+    axs[1].plot(timeData, r_BH[SCIndex][:, 1] * m2km)
+    axs[2].plot(timeData, r_BH[SCIndex][:, 2] * m2km)
     
     axs[0].set_title('x-axis')
     axs[1].set_title('y-axis')

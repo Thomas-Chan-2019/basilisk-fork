@@ -126,7 +126,7 @@ class transError(sysModel.SysModel):
         # # All Python SysModels have self.bskLogger available
         # # The logger level flags (i.e. BSK_INFORMATION) may be
         # # accessed from sysModel
-        if 1:
+        if False:
             self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"------ TransError Module ------")
             """Sample Python module method"""
             self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"Time: {CurrentSimNanos * 1.0E-9} s")

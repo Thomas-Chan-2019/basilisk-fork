@@ -133,7 +133,7 @@ class PIDController(sysModel.SysModel):
         # compute TRANS control solution
         rc_H = np.array(transGuidMsgBuffer.r_BR_B)
         vc_H = np.array(transGuidMsgBuffer.v_BR_B)
-        FrCmd_hill = self.Kp_trans @ rc_H + self.Kd_trans @ vc_H
+        FrCmd_hill = - self.Kp_trans @ rc_H - self.Kd_trans @ vc_H
         
         # Convert the Hill-frame control force to Body frames
         r_BN_N = np.array(transInMsgBuffer.r_BN_N)
@@ -158,26 +158,26 @@ class PIDController(sysModel.SysModel):
         # omega_BR_B_Tilde = np.array(omega_BR_B_Tilde) # this is unnecessary!
         Isc = np.array(vehConfigMsgBuffer.ISCPntB_B).reshape(3,3) # From vehConfig ISCPntB_B[9] to Isc[3][3] np array.
         wTilde_I_w = omega_BR_B_Tilde @ Isc @ np.array(attGuidMsgBuffer.omega_BR_B).reshape(3,1) # [omegaTilde]*[I]*omega term; reshaping of omega[3] to a np column vector for matrix multiplication (@ operator). 
-        lrCmd = np.array(attGuidMsgBuffer.sigma_BR) * self.K_rot + np.array(attGuidMsgBuffer.omega_BR_B) * self.P_rot + wTilde_I_w.reshape(1,3).squeeze()
+        lrCmd = - np.array(attGuidMsgBuffer.sigma_BR) * self.K_rot - np.array(attGuidMsgBuffer.omega_BR_B) * self.P_rot - wTilde_I_w.reshape(1,3).squeeze()
         # lrCmd = np.array(attGuidMsgBuffer.sigma_BR) * self.K_rot + np.array(attGuidMsgBuffer.omega_BR_B) * self.P_rot
         # To add reference trajectory related terms (e.g. omega_r, sigma_r) when needed:
         # PD Form:
         # u = -[K]*sigma - [P]*(omega - omega_r) + [I]*(omegaDot_r - [omegaTilde]*omega_r) + [omegaTilde]*[I]*omega - L
-        torqueOutMsgBuffer.torqueRequestBody = (-lrCmd).tolist()
+        torqueOutMsgBuffer.torqueRequestBody = (lrCmd).tolist()
         self.cmdTorqueOutMsg.write(torqueOutMsgBuffer, CurrentSimNanos, self.moduleID)
 
         # All Python SysModels have self.bskLogger available
         # The logger level flags (i.e. BSK_INFORMATION) may be
         # accessed from sysModel
-        if 1:
+        if False:
             self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"------ TransController Module ------")
             """Sample Python module method"""
             self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"Time: {CurrentSimNanos * 1.0E-9} s")
-            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"transGuidMsgBuffer.r_BR_B: {transGuidMsgBuffer.r_BR_B}")
-            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"transGuidMsgBuffer.v_BR_B: {transGuidMsgBuffer.v_BR_B}")
+            # self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"transGuidMsgBuffer.r_BR_B: {transGuidMsgBuffer.r_BR_B}")
+            # self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"transGuidMsgBuffer.v_BR_B: {transGuidMsgBuffer.v_BR_B}")
             
-            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"ForceRequestBody: {forceOutMsgBuffer.forceRequestBody}")
-            self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"TorqueRequestBody: {torqueOutMsgBuffer.torqueRequestBody}")
+            # self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"ForceRequestBody: {forceOutMsgBuffer.forceRequestBody}")
+            # self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"TorqueRequestBody: {torqueOutMsgBuffer.torqueRequestBody}")
             self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"Written Msg - ForceRequestBody: {self.cmdForceOutMsg.read().forceRequestBody}")
             self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"Written Msg - TorqueRequestBody: {self.cmdTorqueOutMsg.read().torqueRequestBody}")
             
