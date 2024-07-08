@@ -202,9 +202,11 @@ def plot_rw_temperature(timeData, tempData, numRW, id=None):
     return
 
 def plot_cmd_force(timeData, dataCmdForce, id=None):
-    """Plot the energy inside the onboard battery"""
+    """Plot the cmd force"""
     plt.figure(id)
-    plt.plot(timeData, dataCmdForce)
+    labels = ['$F_x$', '$F_y$', '$F_z$']
+    for F_arr, label in zip(dataCmdForce.T, labels): # Taking dataCmdForce.transpose to arrange with "labels" for plotting purposes only.
+        plt.plot(timeData, F_arr, label=label)
     plt.legend(loc='lower right')
     plt.xlabel('Time [min]')
     plt.ylabel('Cmd Force (N) ')

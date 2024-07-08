@@ -239,5 +239,16 @@ def SetThrusterDynEffector(self):
         
 ```
 
-# Current issues:
+# Resolved issues:
 - Force mapping issues with the `forceTorqueThrForceMapping` module, see [test_forceTorqueThrForceMapping.py](src/fswAlgorithms/effectorInterfaces/forceTorqueThrForceMapping/_UnitTest/test_forceTorqueThrForceMapping.py) & standalone test [try_forceTorqueThrForceMapping.py](src/fswAlgorithms/effectorInterfaces/forceTorqueThrForceMapping/_UnitTest/try_forceTorqueThrForceMapping.py); link to module from [BSK net](https://hanspeterschaub.info/basilisk/Documentation/fswAlgorithms/effectorInterfaces/forceTorqueThrForceMapping/forceTorqueThrForceMapping.html?highlight=thrarraycmdforce); some thruster configurations are based on general location/unit vector definitions or scenarios like [scenarioFormationReconfig.py](dev/template-examples/scenarioFormationReconfig.py) (but without the `forceTorqueThrForceMapping` module used here) 
+
+# Current issues:
+- __Thruster log__ giving zero values despite connecting to seemingly correct messaging structures, see line 334 in[MultiSat_test_scenario.py](dev/MultiSatBskSim/scenariosMultiSat/MultiSat_test_scenario.py), currently commented
+- __z-component command force__ from hill frame - inertial frame conversion in the DCM to investigate, see line 146-148 in [PIDController.py](dev/PIDController.py)
+- __PID Tuning__ at function `SetTransController()` (line 329) of [BSK_MultiSatFsw.py](dev/MultiSatBskSim/modelsMultiSat/BSK_MultiSatFsw.py) 
+- __Problematic configuration for spacecraft initial condition__ using cartesians inertial coordinates which gives strange visualization in terms of initial spacecraft position in Vizard
+
+You can run the following command to test the very first few time steps:
+```
+python dev/MultiSatBskSim/scenariosMultiSat/MultiSat_test_scenario.py "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/init_config.json" .0001
+```
