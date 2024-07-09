@@ -377,7 +377,7 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
             print((self.thrLogs[spacecraftIndex][item].thrForce).shape)
             print((self.thrLogs[spacecraftIndex][item].thrForce[:,:6]).shape)
             # print((self.thrLogs[spacecraftIndex][item].thrForce[:DynModels[spacecraftIndex].numThr][:]).shape)
-            dataThrust.append(self.thrLogs[spacecraftIndex][item].thrForce[:,:DynModels[spacecraftIndex].numThr])
+            dataThrust.append(self.thrLogs[spacecraftIndex][item].thrForce[:,item])
             # dataThrust.append(self.thrLogs[spacecraftIndex][item].thrustForce_B)
             # dataThrustPercentage.append(self.thrLogs[spacecraftIndex][item].thrustFactor)
 
