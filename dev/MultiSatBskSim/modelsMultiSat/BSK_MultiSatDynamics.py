@@ -206,19 +206,6 @@ class BSKDynamicModels:
         location = sc_config.thrLocation
         direction = sc_config.thrDirection
         
-        # location = [[0.0, 0.0, 0.0], 
-        #             [0.0, 0.0, 0.0], 
-        #             [0.0, 0.0, 0.0], 
-        #             [0.0, 0.0, 0.0], 
-        #             [0.0, 0.0, 0.0], 
-        #             [0.0, 0.0, 0.0]] # Setting thrusters positions ALL at S/C body centre for now
-        # direction = [[1.0, 0.0, 0.0], 
-        #              [-1.0, 0.0, 0.0], 
-        #              [0.0, 1.0, 0.0], 
-        #              [0.0, -1.0, 0.0], 
-        #              [0.0, 0.0, 1.0], 
-        #              [0.0, 0.0, -1.0], ] # Setting thrusters direction at +/- x,y,z direction of S/C.
-
         # create the thruster devices by specifying the thruster type and its location and direction
         for pos_B, dir_B in zip(location, direction):
             # self.thrusterFactory.create('TEST_Thruster', pos_B, dir_B, useMinPulseTime=False, MaxThrust=maxThrust)

@@ -374,7 +374,10 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
         dataThrust = []
         dataThrustPercentage = []
         for item in range(DynModels[spacecraftIndex].numThr):
-            dataThrust.append(self.thrLogs[spacecraftIndex][item].thrForce)
+            print((self.thrLogs[spacecraftIndex][item].thrForce).shape)
+            print((self.thrLogs[spacecraftIndex][item].thrForce[:,:6]).shape)
+            # print((self.thrLogs[spacecraftIndex][item].thrForce[:DynModels[spacecraftIndex].numThr][:]).shape)
+            dataThrust.append(self.thrLogs[spacecraftIndex][item].thrForce[:,:DynModels[spacecraftIndex].numThr])
             # dataThrust.append(self.thrLogs[spacecraftIndex][item].thrustForce_B)
             # dataThrustPercentage.append(self.thrLogs[spacecraftIndex][item].thrustFactor)
 
@@ -453,8 +456,9 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
 
         # Print outputs: # Debug from here... 20240514
         # print(dr.__sizeof__())
-        # print(dr)
-        print(dataTransGuid)
+        print(dr)
+        # print(dataTransGuid)
+        
         # Print thrust # Debug from here... 20240528
         print(dataThrust)
         print(np.shape(dataThrust))
@@ -471,7 +475,7 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
         # plt.plot_rate_error(timeLineSetMin, dataOmegaBR, 4)
         # plt.plot_attitude_reference(timeLineSetMin, dataSigmaRN, 5)
         # plt.plot_rate_reference(timeLineSetMin, dataOmegaRN_B, 6)
-        # plt.plot_rw_motor_torque(timeLineSetMin, dataUsReq, dataRW, DynModels[spacecraftIndex].numRW, 7)
+        plt.plot_rw_motor_torque(timeLineSetMin, dataUsReq, dataRW, DynModels[spacecraftIndex].numRW, 7)
         # plt.plot_rw_speeds(timeLineSetMin, dataOmegaRW, DynModels[spacecraftIndex].numRW, 8)        
         plt.plot_orbits(r_BN_N, self.numberSpacecraft, 9)
         
@@ -518,9 +522,13 @@ def runScenario(scenario, relativeNavigation, simulationTimeHours):
 
     # Configure initial FSW attitude modes, later iterate through a for-loop?
     # scenario.FSWModels[0].modeRequest = "inertialPointing"
-    scenario.FSWModels[1].modeRequest = "inertialPointing" # We need to turn on all S/C tasks!
-    scenario.FSWModels[2].modeRequest = "inertialPointing" # We need to turn on all S/C tasks!    
+    # scenario.FSWModels[1].modeRequest = "inertialPointing" # We need to turn on all S/C tasks!
+    # scenario.FSWModels[2].modeRequest = "inertialPointing" # We need to turn on all S/C tasks!    
     
+    scenario.FSWModels[0].modeRequest = "hillPointing"
+    scenario.FSWModels[1].modeRequest = "hillPointing" 
+    scenario.FSWModels[2].modeRequest = "hillPointing"
+     
     # scenario.FSWModels[1].modeRequest = "sunPointing"
     # scenario.FSWModels[2].modeRequest = "locationPointing"
 
@@ -529,25 +537,22 @@ def runScenario(scenario, relativeNavigation, simulationTimeHours):
 
     # Configure run time and execute simulation
     simulationTime = macros.hour2nano(simulationTimeHours)
-    # simulationTime = macros.hour2nano(1.)
-    # simulationTime = macros.sec2nano(5.)
-    scenario.ConfigureStopTime(simulationTime)
+    # Hill pointing time: ~1.5 mins sufficient
+    hillPointSimTime = macros.min2nano(5)
+    
+    scenario.ConfigureStopTime(hillPointSimTime)
     # scenario.TotalSim.SingleStepProcesses() 
     # scenario.TotalSim.SingleStepProcesses() 
     
-    # scenario.TotalSim.SingleStepProcesses()
+    # return
     
     scenario.ExecuteSimulation()
-
-    return
     
     # Reconfigure FSW attitude modes
     # scenario.FSWModels[0].modeRequest = "inertialPointing"
-    scenario.FSWModels[1].modeRequest = "inertialPointing"
-    scenario.FSWModels[2].modeRequest = "inertialPointing"
-    # scenario.FSWModels[1].modeRequest = "locationPointing"
-    # scenario.FSWModels[2].modeRequest = "sunPointing"
-
+    scenario.FSWModels[1].modeRequest = "startTransController"
+    scenario.FSWModels[2].modeRequest = "startTransController"
+    
     # Execute the simulation
     scenario.ConfigureStopTime(simulationTime)
     scenario.ExecuteSimulation()

@@ -24,7 +24,7 @@ from scipy.signal import place_poles
 import copy
 
 from Basilisk.architecture import messaging
-from Basilisk.fswAlgorithms import (inertial3D, locationPointing, attTrackingError, mrpFeedback,
+from Basilisk.fswAlgorithms import (inertial3D, hillPoint, locationPointing, attTrackingError, mrpFeedback,
                                     rwMotorTorque, spacecraftReconfig, thrForceMapping, forceTorqueThrForceMapping, thrFiringSchmitt) # most of the pointing/controller/feedback modules are not used
 from Basilisk.utilities import (macros as mc, fswSetupThrusters, fswSetupRW, orbitalMotion) # need the fswSetupRW module?
 from Basilisk.utilities import deprecated
@@ -75,6 +75,8 @@ class BSKFswModels:
         # Create tasks
         SimBase.fswProc[spacecraftIndex].addTask(SimBase.CreateNewTask("inertialPointTask" + str(spacecraftIndex),
                                                                        self.processTasksTimeStep), 20)
+        SimBase.fswProc[spacecraftIndex].addTask(SimBase.CreateNewTask("hillPointTask" + str(spacecraftIndex),
+                                                                       self.processTasksTimeStep), 20)
         SimBase.fswProc[spacecraftIndex].addTask(SimBase.CreateNewTask("trackingErrorTask" + str(spacecraftIndex),
                                                                        self.processTasksTimeStep), 10)
         # New tasks for new modules:
@@ -83,6 +85,8 @@ class BSKFswModels:
         # transControllerTask created here is later called below to add the actuator control axis (rwMotorTorque & [TODO] thruster mapping module)!
         SimBase.fswProc[spacecraftIndex].addTask(SimBase.CreateNewTask("transControllerTask" + str(spacecraftIndex),
                                                                        self.processTasksTimeStep), 5) # Following priority of mrpFeedbackRWsTask (pending to be removed)
+        SimBase.fswProc[spacecraftIndex].addTask(SimBase.CreateNewTask("mrpFeedbackRWsTask" + str(spacecraftIndex),
+                                                                       self.processTasksTimeStep), 5)
         
         # # ------------------ <START> PEND REMOVE ------------------
         
@@ -115,12 +119,20 @@ class BSKFswModels:
         self.inertial3DPoint = inertial3D.inertial3D() # Get att. reference MRP message
         self.inertial3DPoint.ModelTag = "inertial3D"
         
+        # Added Hill pointing module:
+        self.hillPoint = hillPoint.hillPoint()
+        self.hillPoint.ModelTag = "hillPoint"
+        
+        
         self.trackingError = attTrackingError.attTrackingError()
         self.trackingError.ModelTag = "trackingError"
 
         self.rwMotorTorque = rwMotorTorque.rwMotorTorque()
         self.rwMotorTorque.ModelTag = "rwMotorTorque"
 
+        self.mrpFeedbackRWs = mrpFeedback.mrpFeedback()
+        self.mrpFeedbackRWs.ModelTag = "mrpFeedbackRWs"
+        
         # Add new modules:
         self.transError = transError.transError()
         self.transError.ModelTag = "transError"
@@ -145,10 +157,6 @@ class BSKFswModels:
 
         # self.spacecraftReconfig = spacecraftReconfig.spacecraftReconfig()
         # self.spacecraftReconfig.ModelTag = "spacecraftReconfig"
-
-
-        # self.mrpFeedbackRWs = mrpFeedback.mrpFeedback()
-        # self.mrpFeedbackRWs.ModelTag = "mrpFeedbackRWs"
         
         # # ------------------ <END> PEND REMOVE ------------------
 
@@ -161,12 +169,16 @@ class BSKFswModels:
 
         # Assign initialized modules to tasks
         SimBase.AddModelToTask("inertialPointTask" + str(spacecraftIndex), self.inertial3DPoint, 10)
+        SimBase.AddModelToTask("hillPointTask" + str(spacecraftIndex), self.hillPoint, 10)
         SimBase.AddModelToTask("trackingErrorTask" + str(spacecraftIndex), self.trackingError, 9)
         # Add new modules to simulation:
         SimBase.AddModelToTask("transErrorTask" + str(spacecraftIndex), self.transError, 9) # transError
         SimBase.AddModelToTask("transControllerTask" + str(spacecraftIndex), self.transController, 7) # transControllerTask is defined above when created a new event!
+        # Increasing Att. control priority:
+        SimBase.AddModelToTask("mrpFeedbackRWsTask" + str(spacecraftIndex), self.mrpFeedbackRWs, 8) # MRP Feedback RW task 
+        SimBase.AddModelToTask("mrpFeedbackRWsTask" + str(spacecraftIndex), self.rwMotorTorque, 6) # Torque cmd to actuation mapping
 
-        SimBase.AddModelToTask("transControllerTask" + str(spacecraftIndex), self.rwMotorTorque, 6) # Torque cmd to actuation mapping
+        # SimBase.AddModelToTask("transControllerTask" + str(spacecraftIndex), self.rwMotorTorque, 6) # Torque cmd to actuation mapping
         SimBase.AddModelToTask("transControllerTask" + str(spacecraftIndex), self.thrForceMapping, 6) # Force cmd to actuation mapping
         
         SimBase.AddModelToTask("transControllerTask" + str(spacecraftIndex), self.thrustOnTimeFiring, 6) # Force cmd to actuation mapping
@@ -205,7 +217,31 @@ class BSKFswModels:
                                 "self.enableTask('trackingErrorTask" + str(spacecraftIndex) + "')",
                                 "self.enableTask('transErrorTask" + str(spacecraftIndex) + "')",
                                 "self.enableTask('transControllerTask" + str(spacecraftIndex) + "')",
-                                # "self.enableTask('mrpFeedbackRWsTask" + str(spacecraftIndex) + "')",
+                                "self.enableTask('mrpFeedbackRWsTask" + str(spacecraftIndex) + "')",
+                                "self.setAllButCurrentEventActivity('initiateInertialPointing_" + str(spacecraftIndex) +
+                                "', True, useIndex=True)"])
+        
+        # New event for hill pointing:
+        SimBase.createNewEvent("initiateHillPointing_" + str(spacecraftIndex), self.processTasksTimeStep, True,
+                               ["self.FSWModels[" + str(spacecraftIndex) + "].modeRequest == 'hillPointing'"],
+                               ["self.fswProc[" + str(spacecraftIndex) + "].disableAllTasks()",
+                                "self.FSWModels[" + str(spacecraftIndex) + "].zeroGateWayMsgs()",
+                                "self.enableTask('hillPointTask" + str(spacecraftIndex) + "')",
+                                "self.enableTask('trackingErrorTask" + str(spacecraftIndex) + "')",
+                                "self.enableTask('mrpFeedbackRWsTask" + str(spacecraftIndex) + "')",
+                                "self.setAllButCurrentEventActivity('initiateInertialPointing_" + str(spacecraftIndex) +
+                                "', True, useIndex=True)"])
+
+        # Event to start transController:
+        SimBase.createNewEvent("initiateTransController_" + str(spacecraftIndex), self.processTasksTimeStep, True,
+                               ["self.FSWModels[" + str(spacecraftIndex) + "].modeRequest == 'startTransController'"],
+                               ["self.fswProc[" + str(spacecraftIndex) + "].disableAllTasks()",
+                                "self.FSWModels[" + str(spacecraftIndex) + "].zeroGateWayMsgs()",
+                                "self.enableTask('hillPointTask" + str(spacecraftIndex) + "')",
+                                "self.enableTask('trackingErrorTask" + str(spacecraftIndex) + "')",
+                                "self.enableTask('transErrorTask" + str(spacecraftIndex) + "')",
+                                "self.enableTask('transControllerTask" + str(spacecraftIndex) + "')",
+                                "self.enableTask('mrpFeedbackRWsTask" + str(spacecraftIndex) + "')",
                                 "self.setAllButCurrentEventActivity('initiateInertialPointing_" + str(spacecraftIndex) +
                                 "', True, useIndex=True)"])
 
@@ -248,6 +284,16 @@ class BSKFswModels:
         self.inertial3DPoint.sigma_R0N = [0.0, 0.0, 0.0] # No attitude difference for now, can define an attitude trajectory later for monitoring!
         # self.inertial3DPoint.sigma_R0N = [0.1, 0.2, -0.3]
         messaging.AttRefMsg_C_addAuthor(self.inertial3DPoint.attRefOutMsg, self.attRefMsg)
+
+    # Adding Hill-pointing setup:
+    def SetHillPointingGuidance(self, SimBase):
+        """
+        Defines the hill pointing guidance module.
+        """
+        self.hillPoint.transNavInMsg.subscribeTo(SimBase.DynModels[self.spacecraftIndex].simpleNavObject.transOutMsg)
+        # Keep here in case we need
+        messaging.AttRefMsg_C_addAuthor(self.hillPoint.attRefOutMsg, self.attRefMsg)
+
 
     def SetSunPointGuidance(self, SimBase):
         """
@@ -409,15 +455,16 @@ class BSKFswModels:
         # self.transController.Kp_trans = SimBase.DynModels[self.spacecraftIndex].m_sc * 1
         # self.transController.Kd_trans = SimBase.DynModels[self.spacecraftIndex].m_sc * 1
 
+        ## Att. control part:
         self.decayTime = 50 # copy from MRP Feedback module
         self.xi = 0.9 # copy from MRP Feedback module
         ## To tune rotational PD controller from a CONSTANT to 3x3 matrix:
-        self.transController.P_rot = 2 * np.max(SimBase.DynModels[self.spacecraftIndex].I_sc) / self.decayTime
-        self.transController.K_rot = (self.transController.P_rot / self.xi) * \
-                                    (self.transController.P_rot / self.xi) / np.max(
-            SimBase.DynModels[self.spacecraftIndex].I_sc)
-        # self.transController.P_rot = 0.
-        # self.transController.K_rot = 0.
+        # self.transController.P_rot = 2 * np.max(SimBase.DynModels[self.spacecraftIndex].I_sc) / self.decayTime
+        # self.transController.K_rot = (self.transController.P_rot / self.xi) * \
+        #                             (self.transController.P_rot / self.xi) / np.max(
+        #     SimBase.DynModels[self.spacecraftIndex].I_sc)
+        self.transController.P_rot = 0.
+        self.transController.K_rot = 0.
         # Based on linearised assumptions and modified to constant (see SD2910 Notes P.707):
         # decayTime = 2 * I_SC * inv(P)
         # xi = P * inv[sqrt(K * I_SC)]
@@ -436,6 +483,7 @@ class BSKFswModels:
         """
         Defines the module that converts a reference message into a guidance message.
         """
+        # self.trackingError.sigma_R0R = [0.0, 0.0, 0.0]
         self.trackingError.attNavInMsg.subscribeTo(
             SimBase.DynModels[self.spacecraftIndex].simpleNavObject.attOutMsg)
         self.trackingError.attRefInMsg.subscribeTo(self.attRefMsg) # We need to figure out how specify attRefMsg!
@@ -445,7 +493,7 @@ class BSKFswModels:
         """
         Defines the control properties.
         """
-        self.decayTime = 50 # for MRP Feedback module only
+        self.decayTime = 10 # for MRP Feedback module only
         self.xi = 0.9 # for MRP Feedback module only
         self.mrpFeedbackRWs.Ki = -1  # make value negative to turn off integral feedback
         self.mrpFeedbackRWs.P = 2 * np.max(SimBase.DynModels[self.spacecraftIndex].I_sc) / self.decayTime
@@ -489,8 +537,8 @@ class BSKFswModels:
                          0.0, 0.0, 1.0]
 
         self.rwMotorTorque.controlAxes_B = controlAxes_B
-        self.rwMotorTorque.vehControlInMsg.subscribeTo(self.transController.cmdTorqueOutMsg)
-        # self.rwMotorTorque.vehControlInMsg.subscribeTo(self.mrpFeedbackRWs.cmdTorqueOutMsg)
+        # self.rwMotorTorque.vehControlInMsg.subscribeTo(self.transController.cmdTorqueOutMsg)
+        self.rwMotorTorque.vehControlInMsg.subscribeTo(self.mrpFeedbackRWs.cmdTorqueOutMsg)
         self.rwMotorTorque.rwParamsInMsg.subscribeTo(self.fswRwConfigMsg)
     
     def SetThrForceMapping(self, SimBase):
@@ -530,6 +578,7 @@ class BSKFswModels:
         Initializes all FSW objects.
         """
         self.SetInertial3DPointGuidance()
+        self.SetHillPointingGuidance(SimBase)
         # self.SetTransRef() # Translational dr dv setting (hardcoded for now)
         # Skip this setup function for now until we implement modules to generate translational reference messages.
         
@@ -541,7 +590,7 @@ class BSKFswModels:
         # Added translational controller modules:
         self.SetTransError(SimBase)
         self.SetTransController(SimBase)
-        # self.SetMRPFeedbackRWA(SimBase)
+        self.SetMRPFeedbackRWA(SimBase)
         # self.SetSpacecraftOrbitReconfig(SimBase)
         self.SetRWMotorTorque()
         self.SetThrForceMapping(SimBase)
