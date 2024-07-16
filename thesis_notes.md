@@ -247,7 +247,7 @@ def SetThrusterDynEffector(self):
 # Current issues:
 - __Thruster log__ giving zero values despite connecting to seemingly correct messaging structures, see line 334 in [MultiSat_test_scenario.py](dev/MultiSatBskSim/scenariosMultiSat/MultiSat_test_scenario.py), __36 thruster arrays__ created and passed on messaging `THRArrayCmdForceMsg` instead of available number of thrusters (6 or 8 thrusters); Comparing[forceTorqueThrForceMapping.c](src/fswAlgorithms/effectorInterfaces/forceTorqueThrForceMapping/forceTorqueThrForceMapping.c) & [thrForceMapping.c](src/fswAlgorithms/effectorInterfaces/thrForceMapping/thrForceMapping.c) might give insights
 - __PID Tuning__ at function `SetTransController()` (line 329) of [BSK_MultiSatFsw.py](dev/MultiSatBskSim/modelsMultiSat/BSK_MultiSatFsw.py) 
-- __Problematic configuration for spacecraft initial condition__ using cartesians inertial coordinates which gives strange visualization in terms of initial spacecraft position in Vizard
+- __Problematic configuration for spacecraft initial condition__ using cartesians inertial coordinates which gives strange visualization in terms of initial spacecraft position in Vizard (check indexing in line 114 of `setInitialCondition()` in [scConfig.py](dev/scConfig.py))
 - __Include a Disturbance Module__: New Python module for white noise generation of thruster actuation errors
 
 You can run the following command to test the very first few time steps:
