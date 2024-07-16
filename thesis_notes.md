@@ -241,12 +241,14 @@ def SetThrusterDynEffector(self):
 
 # Resolved issues:
 - Force mapping issues with the `forceTorqueThrForceMapping` module, see [test_forceTorqueThrForceMapping.py](src/fswAlgorithms/effectorInterfaces/forceTorqueThrForceMapping/_UnitTest/test_forceTorqueThrForceMapping.py) & standalone test [try_forceTorqueThrForceMapping.py](src/fswAlgorithms/effectorInterfaces/forceTorqueThrForceMapping/_UnitTest/try_forceTorqueThrForceMapping.py); link to module from [BSK net](https://hanspeterschaub.info/basilisk/Documentation/fswAlgorithms/effectorInterfaces/forceTorqueThrForceMapping/forceTorqueThrForceMapping.html?highlight=thrarraycmdforce); some thruster configurations are based on general location/unit vector definitions or scenarios like [scenarioFormationReconfig.py](dev/template-examples/scenarioFormationReconfig.py) (but without the `forceTorqueThrForceMapping` module used here) 
+- __z-component command force__ from hill frame - inertial frame conversion in the DCM to investigate, see line 146-148 in [PIDController.py](dev/PIDController.py)
+- __SRL Robot initial condition configs__ should be with inclination = 0.0 deg so that the z-components are neglects fully. (fixed in [SRL_config.json](dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/SRL_config.json))
 
 # Current issues:
-- __Thruster log__ giving zero values despite connecting to seemingly correct messaging structures, see line 334 in[MultiSat_test_scenario.py](dev/MultiSatBskSim/scenariosMultiSat/MultiSat_test_scenario.py), currently commented
-- __z-component command force__ from hill frame - inertial frame conversion in the DCM to investigate, see line 146-148 in [PIDController.py](dev/PIDController.py)
+- __Thruster log__ giving zero values despite connecting to seemingly correct messaging structures, see line 334 in [MultiSat_test_scenario.py](dev/MultiSatBskSim/scenariosMultiSat/MultiSat_test_scenario.py), __36 thruster arrays__ created and passed on messaging `THRArrayCmdForceMsg` instead of available number of thrusters (6 or 8 thrusters); Comparing[forceTorqueThrForceMapping.c](src/fswAlgorithms/effectorInterfaces/forceTorqueThrForceMapping/forceTorqueThrForceMapping.c) & [thrForceMapping.c](src/fswAlgorithms/effectorInterfaces/thrForceMapping/thrForceMapping.c) might give insights
 - __PID Tuning__ at function `SetTransController()` (line 329) of [BSK_MultiSatFsw.py](dev/MultiSatBskSim/modelsMultiSat/BSK_MultiSatFsw.py) 
 - __Problematic configuration for spacecraft initial condition__ using cartesians inertial coordinates which gives strange visualization in terms of initial spacecraft position in Vizard
+- __Include a Disturbance Module__: New Python module for white noise generation of thruster actuation errors
 
 You can run the following command to test the very first few time steps:
 ```
