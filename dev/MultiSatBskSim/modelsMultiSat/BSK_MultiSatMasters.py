@@ -40,7 +40,9 @@ class BSKSim(SimulationBaseClass.SimBaseClass):
     Main bskSim simulation class
 
     Args:
-        numberSpacecraft (int): number of spacecraft
+        (REMOVED) numberSpacecraft (int): number of spacecraft
+        targetOE (object `orbitalMotion.ClassicElements()`): target orbital elements
+        initConfigs (object `InitConfig`): initialization config from JSON file input, see dev/scConfig.py for more information.
         relativeNavigation (bool): whether the chief is the barycenter of the spacecraft formation
         fswRate (float): [s] FSW update rate
         dynRate (float): [s] dynamics update rate
@@ -48,13 +50,13 @@ class BSKSim(SimulationBaseClass.SimBaseClass):
         relNavRate (float): [s] relative navigation update rate
 
     """
-
-    def __init__(self, numberSpacecraft, targetOE, initConfigs, relativeNavigation=False, fswRate=0.1, dynRate=0.1, envRate=0.1, relNavRate=0.1):
+    # Removed param `numberSpacecraft`
+    def __init__(self, targetOE, initConfigs, relativeNavigation=False, fswRate=0.1, dynRate=0.1, envRate=0.1, relNavRate=0.1):
         self.dynRate = dynRate
         self.fswRate = fswRate
         self.envRate = envRate
         self.relNavRate = relNavRate
-        self.numberSpacecraft = numberSpacecraft
+        self.numberSpacecraft = len(initConfigs)
 
         # Init. config implementations:
         # self.initConfigPath = initConfigPath
