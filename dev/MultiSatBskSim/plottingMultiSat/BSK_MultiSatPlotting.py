@@ -210,6 +210,7 @@ def plot_cmd_force(timeData, dataCmdForce, id=None):
     plt.legend(loc='lower right')
     plt.xlabel('Time [min]')
     plt.ylabel('Cmd Force (N) ')
+    plt.title('Controller Command Force 3D')
     return
 
 def plot_thrust(timeData, thrustData, numThr, id=None):
@@ -222,6 +223,7 @@ def plot_thrust(timeData, thrustData, numThr, id=None):
     plt.legend(loc='lower right')
     plt.xlabel('Time [min]')
     plt.ylabel('Thrust [N]')
+    plt.title('Thruster net force output')
     return
 
 def plot_thrust_percentage(timeData, thrustData, numThr, id=None):

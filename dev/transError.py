@@ -113,6 +113,11 @@ class transError(sysModel.SysModel):
             dR_err = dR - np.array(self.transRefStatic_r_RN_N)
             dV_err = dV - np.array(self.transRefStatic_v_RN_N)   
         
+        # # Remove numerical error terms/very small navigation difference from message:
+        # eps = 1e-6
+        # dR_err[np.abs(dR_err) < eps] = 0
+        # dV_err[np.abs(dV_err) < eps] = 0
+        
         transGuidOutMsgBuffer.r_BR_B = dR_err.tolist()
         transGuidOutMsgBuffer.v_BR_B = dV_err.tolist()
         self.transGuidOutMsg.write(transGuidOutMsgBuffer, CurrentSimNanos, self.moduleID)

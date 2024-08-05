@@ -46,6 +46,7 @@ class PIDController(sysModel.SysModel):
         self.K_rot = 0 # Proportional gain
         self.P_rot = 0 # Derivative gain
         
+        ## INPUT:
         # Input guidance structure message: Translational
         self.transGuidInMsg = messaging.TransGuidMsgReader()
         # self.transGuidInMsg = messaging.TransGuidMsg_C()
@@ -56,20 +57,16 @@ class PIDController(sysModel.SysModel):
         self.transNavInMsg = messaging.NavTransMsgReader()
         self.attNavInMsg = messaging.NavAttMsgReader()
         
-        # # Include thruster & RW arrays configs:
-        # self.thrParamsInMsg = messaging.THRArrayConfigMsg()
+        # Include thruster & RW arrays configs:
+        # self.thrParamsInMsg = messaging.THRArrayConfigMsgReader()
         # self.rwParamsInMsg = messaging.RWArrayConfigMsg()
         
+        ## OUTPUT:
         # Output body thrust & force message name
         self.cmdForceOutMsg = messaging.CmdForceBodyMsg() # 
         # self.cmdForceInMsg = messaging.CmdForceInertialMsg # to verify
         self.cmdTorqueOutMsg = messaging.CmdTorqueBodyMsg()
         
-        # # Input guidance structure message
-        # self.guidInMsg = messaging.AttGuidMsgReader()
-        # # Output body torque message name
-        # self.cmdTorqueOutMsg = messaging.CmdTorqueBodyMsg()
-
     def Reset(self, CurrentSimNanos):
         # # Proportional gain term used in control
         # self.Kp_trans = 0
@@ -135,6 +132,10 @@ class PIDController(sysModel.SysModel):
         vc_H = np.array(transGuidMsgBuffer.v_BR_B)
         FrCmd_hill = - self.Kp_trans @ rc_H - self.Kd_trans @ vc_H
         
+        # Set small forces to zero for initial actuation noise filtering:
+        eps = 1e-6
+        FrCmd_hill[np.abs(FrCmd_hill) < eps] = 0.0
+        
         # Convert the Hill-frame control force to Body frames
         r_BN_N = np.array(transInMsgBuffer.r_BN_N)
         v_BN_N = np.array(transInMsgBuffer.v_BN_N)
@@ -143,10 +144,14 @@ class PIDController(sysModel.SysModel):
         # Retrive DCM from inertial N frame to body B frame via its own attitude from attNavInMsg of simpleNav module.
         DCM_BN = RBK.MRP2C(np.array(attNavInMsgBuffer.sigma_BN)) # .transpose()
         FrCmd_N = DCM_NH @ FrCmd_hill
+        
+        # Print log -> Pend remove:
         print("Hill-frame Cmd Force: ", FrCmd_hill)
         print("Inertial Cmd Force: ", FrCmd_N)
         print("DCM Inertial from Hill: ", DCM_NH)
         print("DCM Body from Inertial: ", DCM_BN)
+        
+        # Convert Hill-frame Cmd force to Inertial Cmd force:
         FrCmd = DCM_BN @ DCM_NH @ FrCmd_hill
         print("Cmd Force: ", FrCmd)
         # forceOutMsgBuffer.forceRequestBody = (-FrCmd).tolist()

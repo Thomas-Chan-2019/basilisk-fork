@@ -314,12 +314,31 @@ void Update_forceTorqueThrForceMapping(forceTorqueThrForceMappingConfig *configD
     // Reallocate thrusters to ensure non-negative values
     reallocate_thrusters(DG, (size_t) 6, (size_t) configData->numThrusters, force_B, forceTorque_B, forceSubtracted_B);
 
+    // REMOVE WHEN DEBUGGING FINISHED
+    printf("Force allocated before applying saturation: \n");
+    int numUnsat = sizeof(forceSubtracted_B) / sizeof(forceSubtracted_B[0]);
+    for (int i = 0; i < numUnsat; i++) {
+        // Print each float followed by a space
+        printf("%.3f ", forceSubtracted_B[i]);
+    }
+    printf("\n");
+    // REMOVE WHEN DEBUGGING FINISHED
+    // Thomas as of 20240805: Apply thruster saturation after mapping the Cmd forces to thrusters by reading the `THRArrayConfigMsg`:
+    THRArrayConfigMsgPayload thrConfigInMsgBuffer;  //!< local copy of `THRArrayConfigMsg` buffer from `configData`
+    thrConfigInMsgBuffer = THRArrayConfigMsg_C_read(&configData->thrConfigInMsg);
+    for(uint32_t i = 0; i < configData->numThrusters; i++)
+    {
+        // Apply saturation based on maxThrust of each thrusters:
+        if(forceSubtracted_B[i] > thrConfigInMsgBuffer.thrusters[i].maxThrust){
+            forceSubtracted_B[i] = thrConfigInMsgBuffer.thrusters[i].maxThrust;
+        }
+    }
+
     /* Write to the output messages */
     vCopy(forceSubtracted_B, configData->numThrusters, thrForceCmdOutMsgBuffer.thrForce);
     THRArrayCmdForceMsg_C_write(&thrForceCmdOutMsgBuffer, &configData->thrForceCmdOutMsg, moduleID, callTime);
 
     // REMOVE WHEN DEBUGGING FINISHED
-    // Stopped here, we see all zeros in the Thrust Cmd force... 
     printf("thrForceCmdOutMsg: \n");
     int num = sizeof(thrForceCmdOutMsgBuffer.thrForce) / sizeof(thrForceCmdOutMsgBuffer.thrForce[0]);
     for (int i = 0; i < num; i++) {
