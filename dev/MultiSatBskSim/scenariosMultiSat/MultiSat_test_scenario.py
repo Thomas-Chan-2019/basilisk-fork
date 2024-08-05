@@ -479,8 +479,9 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
         # plt.plot_rw_speeds(timeLineSetMin, dataOmegaRW, DynModels[spacecraftIndex].numRW, 8)        
         plt.plot_orbits(r_BN_N, self.numberSpacecraft, 9)
         
-        # Added animated plot to relative orbits, keep `ani` there!
-        _ = plt.plot_relative_orbits(dr, len(dr), 10)
+        # Added animated plot to relative orbits, keep `_` there!
+        # _ = plt.plot_relative_orbits(dr, len(dr), 10)
+        
         # print(dr, len(dr))
         # print(range(0, self.numberSpacecraft - 1))
         for scIndex in range(0, self.numberSpacecraft):
@@ -525,10 +526,13 @@ def runScenario(scenario, relativeNavigation, simulationTimeHours):
     # scenario.FSWModels[1].modeRequest = "inertialPointing" # We need to turn on all S/C tasks!
     # scenario.FSWModels[2].modeRequest = "inertialPointing" # We need to turn on all S/C tasks!    
     
-    scenario.FSWModels[0].modeRequest = "hillPointing"
-    scenario.FSWModels[1].modeRequest = "hillPointing" 
-    scenario.FSWModels[2].modeRequest = "hillPointing"
+    # scenario.FSWModels[0].modeRequest = "hillPointing"
+    # scenario.FSWModels[1].modeRequest = "hillPointing" 
+    # scenario.FSWModels[2].modeRequest = "hillPointing"
      
+    for i in range(scenario.numberSpacecraft): # Indexxing range starts from 0.
+        scenario.FSWModels[i].modeRequest = "hillPointing"
+    
     # scenario.FSWModels[1].modeRequest = "sunPointing"
     # scenario.FSWModels[2].modeRequest = "locationPointing"
 
@@ -550,8 +554,11 @@ def runScenario(scenario, relativeNavigation, simulationTimeHours):
     
     # Reconfigure FSW attitude modes
     # scenario.FSWModels[0].modeRequest = "inertialPointing"
-    scenario.FSWModels[1].modeRequest = "startTransController"
-    scenario.FSWModels[2].modeRequest = "startTransController"
+    # scenario.FSWModels[1].modeRequest = "startTransController"
+    # scenario.FSWModels[2].modeRequest = "startTransController" 
+    # scenario.FSWModels[3].modeRequest = "startTransController" 
+    for i in range(1, scenario.numberSpacecraft): # Ignore the index 0 target: 
+        scenario.FSWModels[i].modeRequest = "startTransController"
     
     # Execute the simulation
     scenario.ConfigureStopTime(simulationTime)

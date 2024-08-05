@@ -111,7 +111,7 @@ def setInitialCondition(EnvModel, DynModels, targetOE, init_configs):
     rN0, vN0 = orbitalMotion.elem2rv(EnvModel.mu, targetOE)
     orbitalMotion.rv2elem(EnvModel.mu, rN0, vN0)
     DCM_NH = orbitalMotion.hillFrame(rN0, vN0).transpose()
-    for spacecraftIndex in range(len(DynModels)):
+    for spacecraftIndex in range(len(DynModels)): # Index starts from 0!
         # if config.isTarget == 1:
         #     pass
         # else:
