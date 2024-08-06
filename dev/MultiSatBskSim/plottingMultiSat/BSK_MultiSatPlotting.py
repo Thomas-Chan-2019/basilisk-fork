@@ -237,6 +237,17 @@ def plot_thrust_percentage(timeData, thrustData, numThr, id=None):
     plt.ylabel('Thrust Percentage')
     return
 
+def plot_OnTimeRequest(timeData, dataSchm, numTh, id=None):
+    """Plot the thruster on time requests."""
+    plt.figure(id)
+    for idx in range(numTh):
+        plt.plot(timeData, dataSchm[:, idx],
+                 color=unitTestSupport.getLineColor(idx, numTh),
+                 label=r'$OnTimeRequest_{' + str(idx) + r'}$')
+    plt.legend(loc='lower right')
+    plt.xlabel('Time [min]')
+    plt.ylabel('OnTimeRequest [sec]')
+
 def plot_fuel(timeData, fuelData, id=None):
     """Plot the fuel mass information"""
     plt.figure(id)

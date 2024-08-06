@@ -20,7 +20,7 @@ import numpy as np
 from Basilisk import __path__
 # thrusterDynamicEffector -> thrusterStateEffector ? 
 from Basilisk.simulation import (spacecraft, simpleNav, simpleMassProps, reactionWheelStateEffector,
-                                 thrusterDynamicEffector, simpleSolarPanel, simplePowerSink, simpleBattery, fuelTank,
+                                 thrusterDynamicEffector, thrusterStateEffector, simpleSolarPanel, simplePowerSink, simpleBattery, fuelTank,
                                  ReactionWheelPower)
 from Basilisk.simulation import (extForceTorque) # Needed for external disturbances?
 from Basilisk.utilities import (macros as mc, unitTestSupport as sp, RigidBodyKinematics as rbk,
@@ -65,7 +65,8 @@ class BSKDynamicModels:
         self.simpleMassPropsObject = simpleMassProps.SimpleMassProps()
         self.rwStateEffector = reactionWheelStateEffector.ReactionWheelStateEffector()
         self.rwFactory = simIncludeRW.rwFactory()
-        self.thrusterDynamicEffector = thrusterDynamicEffector.ThrusterDynamicEffector()
+        # self.thrusterDynamicEffector = thrusterDynamicEffector.ThrusterDynamicEffector()
+        self.thrusterStateEffector = thrusterStateEffector.ThrusterStateEffector()
         self.thrusterFactory = simIncludeThruster.thrusterFactory()
 
         if includeExtDisturbances:
@@ -89,7 +90,8 @@ class BSKDynamicModels:
         SimBase.AddModelToTask(self.taskName, self.simpleNavObject, 100)
         SimBase.AddModelToTask(self.taskName, self.simpleMassPropsObject, 99)
         SimBase.AddModelToTask(self.taskName, self.rwStateEffector, 100)
-        SimBase.AddModelToTask(self.taskName, self.thrusterDynamicEffector, 100)
+        # SimBase.AddModelToTask(self.taskName, self.thrusterDynamicEffector, 100)
+        SimBase.AddModelToTask(self.taskName, self.thrusterStateEffector, 100)
         
         if includeExtDisturbances: # check if we add external disturbances
             SimBase.AddModelToTask(self.taskName, self.extDisturbance, 100)
@@ -205,17 +207,19 @@ class BSKDynamicModels:
         maxThrust = sc_config.MaxThrust
         location = sc_config.thrLocation
         direction = sc_config.thrDirection
-        
+
         # create the thruster devices by specifying the thruster type and its location and direction
         for pos_B, dir_B in zip(location, direction):
             # self.thrusterFactory.create('TEST_Thruster', pos_B, dir_B, useMinPulseTime=False, MaxThrust=maxThrust)
-            self.thrusterFactory.create('MOOG_Monarc_5', pos_B, dir_B, useMinPulseTime=False, MaxThrust=maxThrust)
+            self.thrusterFactory.create('MOOG_Monarc_5', pos_B, dir_B, cutoffFrequency=10., useMinPulseTime=False, MaxThrust=maxThrust)
             # Decide if choose the thruster type too later!
 
         self.numThr = self.thrusterFactory.getNumOfDevices()
 
         # create thruster object container and tie to spacecraft object
-        self.thrusterFactory.addToSpacecraft("thrusterFactory", self.thrusterDynamicEffector, self.scObject)
+        # self.thrusterFactory.addToSpacecraft("thrusterFactory", self.thrusterDynamicEffector, self.scObject)
+        self.thrusterFactory.addToSpacecraft("thrusterFactory", self.thrusterStateEffector, self.scObject)
+        
         
         # print(self.thrusterFactory.getConfigMessage()) # To figure out how to check config
 

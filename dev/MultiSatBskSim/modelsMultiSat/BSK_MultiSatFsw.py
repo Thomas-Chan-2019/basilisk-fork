@@ -174,14 +174,16 @@ class BSKFswModels:
         # Add new modules to simulation:
         SimBase.AddModelToTask("transErrorTask" + str(spacecraftIndex), self.transError, 9) # transError
         SimBase.AddModelToTask("transControllerTask" + str(spacecraftIndex), self.transController, 7) # transControllerTask is defined above when created a new event!
+        SimBase.AddModelToTask("transControllerTask" + str(spacecraftIndex), self.thrForceMapping, 6) # Force cmd to actuation mapping
+        SimBase.AddModelToTask("transControllerTask" + str(spacecraftIndex), self.thrustOnTimeFiring, 6) # Force cmd to actuation mapping
+        
         # Increasing Att. control priority:
         SimBase.AddModelToTask("mrpFeedbackRWsTask" + str(spacecraftIndex), self.mrpFeedbackRWs, 8) # MRP Feedback RW task 
         SimBase.AddModelToTask("mrpFeedbackRWsTask" + str(spacecraftIndex), self.rwMotorTorque, 6) # Torque cmd to actuation mapping
 
         # SimBase.AddModelToTask("transControllerTask" + str(spacecraftIndex), self.rwMotorTorque, 6) # Torque cmd to actuation mapping
-        SimBase.AddModelToTask("transControllerTask" + str(spacecraftIndex), self.thrForceMapping, 6) # Force cmd to actuation mapping
         
-        SimBase.AddModelToTask("transControllerTask" + str(spacecraftIndex), self.thrustOnTimeFiring, 6) # Force cmd to actuation mapping
+        # SimBase.AddModelToTask("transControllerTask" + str(spacecraftIndex), self.thrustOnTimeFiring, 6) # Force cmd to actuation mapping
 
 
         # ------------------ <START> PEND REMOVE ------------------
@@ -398,8 +400,8 @@ class BSKFswModels:
         
         # Controller Design:
         # 1) Linearization - Pole placement using scipy.signal.place_poles():
-        design_poles = np.array([-10.0, -10.0, -10.0, -1.0, -1.0, -1.0])
-        # design_poles = np.array([-1.0, -1.1, -1.2, -0.1, -0.11, -0.12])
+        # design_poles = np.array([-10.0, -10.0, -10.0, -1.0, -1.0, -1.0])
+        design_poles = np.array([-4.0, -4.1, -4.2, -1.0, -1.1, -1.2])
         if controllerType == 1:
             polePlaceResult = place_poles(A, B, design_poles)
             K = polePlaceResult.gain_matrix
@@ -408,6 +410,11 @@ class BSKFswModels:
             
             Kp_trans = K[:, :3] # retrieve first 3 columns of K as Kp
             Kd_trans = K[:, 3:] # retrieve last 3 columns of K as Kd
+
+            ku = 1/1 * np.array([[2,0,0], [0,2,0], [0,0,0]]).transpose()
+            Kp_trans = 0.60 * ku
+            Ki_trans = 0.1* 1.2 * ku / 18
+            Kd_trans = 5*0.075 * ku * 18
         
         # 2) Feedback Linearization + Pole Placement: # Reuse A, B matrices and poles from 1).
         if controllerType == 2:
@@ -557,18 +564,21 @@ class BSKFswModels:
         self.thrForceMapping.cmdForceInMsg.subscribeTo(self.transController.cmdForceOutMsg)
         
     def SetThrustOntimeFiring(self, SimBase):
-        self.thrustOnTimeFiring.thrMinFireTime = 0.002
-        self.thrustOnTimeFiring.level_on = .75
-        self.thrustOnTimeFiring.level_off = .25
+        self.thrustOnTimeFiring.thrMinFireTime = 0.1
+        self.thrustOnTimeFiring.level_on = 0.01
+        self.thrustOnTimeFiring.level_off = 0.001
+        # self.thrustOnTimeFiring.baseThrustState = 0
+        # self.thrustOnTimeFiring.maxThrust = [4.5]*36
+        # self.thrustOnTimeFiring.lastThrustState = True
+        # self.thrustOnTimeFiring.thrFiringOnTime.append(0.0)
         
         # if useDVThrusters:
         #     thrFiringSchmittObj.baseThrustState = 1
         
         self.thrustOnTimeFiring.thrConfInMsg.subscribeTo(self.fswThrusterConfigMsg)
         self.thrustOnTimeFiring.thrForceInMsg.subscribeTo(self.thrForceMapping.thrForceCmdOutMsg)
-        
         # Below has been moved to `setupGatewayMsgs()` to connect thrusterDynamicEffector to the thrustOnTimeFiring module (`forceTorqueThrForceMapping`) 
-        # # Also connect this to thrusterDynamicEffector from Dynamic model:
+        # Also connect this to thrusterDynamicEffector from Dynamic model:
         # SimBase.DynModels[self.spacecraftIndex].thrusterDynamicEffector.cmdsInMsg.subscribeTo(self.thrustOnTimeFiring.onTimeOutMsg)
 
     
@@ -613,9 +623,11 @@ class BSKFswModels:
             self.rwMotorTorque.rwMotorTorqueOutMsg)
         
         # Also connect this to thrusterDynamicEffector from Dynamic model:
-        SimBase.DynModels[self.spacecraftIndex].thrusterDynamicEffector.cmdsInMsg.subscribeTo(
+        # SimBase.DynModels[self.spacecraftIndex].thrusterDynamicEffector.cmdsInMsg.subscribeTo(
+        #     self.thrustOnTimeFiring.onTimeOutMsg)
+        SimBase.DynModels[self.spacecraftIndex].thrusterStateEffector.cmdsInMsg.subscribeTo(
             self.thrustOnTimeFiring.onTimeOutMsg)
-        # # Code stop working here -> need implementation on Thrust-Force-to-On-Time:
+        # Code stop working here -> need implementation on Thrust-Force-to-On-Time:
         # SimBase.DynModels[self.spacecraftIndex].thrusterDynamicEffector.cmdsInMsg.subscribeTo(
         #     self.spacecraftReconfig.onTimeOutMsg) # Need to change spacecraftReconfig related here to sth like thrForceMapping
 
