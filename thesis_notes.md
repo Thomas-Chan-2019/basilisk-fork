@@ -1,6 +1,13 @@
 # Basilisk Thesis Notes
 This repo is a direct FORK from the original [Basilisk repo](https://github.com/AVSLab/basilisk). Run `git fetch upstream` regularly to catch latest updates from the original repo. Simulations and configuration files created for this project are located inside the `dev/` file, including chosen example simulation scripts inside `dev/template-examples` copied from scripts in `examples/`.
 
+## Set upstream fetch with the Basilisk original repo:
+Follow [git remote guide](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/configuring-a-remote-repository-for-a-fork) for information.
+```
+git remote add upstream https://github.com/AVSLab/basilisk.git
+git remote -v
+```
+
 ## Building the Project:
 Run the following for clean build, this is required when a new C/C++ message/module type is newly-implemented/modified. For more information see the Basilisk online resources on [Building the Software Framework](http://hanspeterschaub.info/basilisk/Install/installBuild.html).
 ```
