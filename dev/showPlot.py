@@ -2,7 +2,8 @@ import mplfig
 import matplotlib.pyplot as plt
 import pylustrator
 
-plotPath = "dev/MultiSatBskSim/ResultPlots/control_case_7_xyzr/index_1/" # Replace with absolute path when necessary.
+plotPath = "dev/MultiSatBskSim/ResultPlots/control_case_5_yr/index_1/" # Replace with absolute path when necessary.
+# plotPath = "dev/MultiSatBskSim/ResultPlots/control_case_7_xyzr/index_1/" # Replace with absolute path when necessary.
 
 # pylustrator.load(plotPath+"/figure_9.png")
 # pylustrator.load(plotPath+"/figure_10.png", offset=[1, 0])
@@ -33,7 +34,7 @@ def showPlotsFromMPL():
     plt.show()
     return
 
-# TODO if use MATLAB plot:
+# DONE - if use MATLAB plot, go to dev/showPlot.m:
 r"""
 
 from scipy.io import savemat
@@ -67,8 +68,6 @@ title('Plot of data1 against time');
 figure;
 plot(time, data2(:,1), time, data2(:,2));
 title('Plot of data2 columns against time');
-
-
 """
 
 
