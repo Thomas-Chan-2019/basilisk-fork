@@ -374,7 +374,7 @@ class BSKFswModels:
         # `self.transGuidOutMsg` has been set in function setupGatewayMsgs() with C addAuthor() 
         # -> Check why, probably because the original structure would switch between control modules (SpacecraftReconfig, Local Pointing, Sun Pointing etc.)
     
-    def SetTransController(self, SimBase, controllerType = 1):
+    def SetTransController(self, SimBase, controllerType = 'pole-place'):
         # TODO - Maybe set controller gains via a JSON file separately, or define via `scConfig.py`?
         # self.initConfig.scName == "ITRL"
         
@@ -402,7 +402,17 @@ class BSKFswModels:
         # 1) Linearization - Pole placement using scipy.signal.place_poles():
         # design_poles = np.array([-10.0, -10.0, -10.0, -1.0, -1.0, -1.0])
         design_poles = np.array([-4.0, -4.1, -4.2, -1.0, -1.1, -1.2])
-        if controllerType == 1:
+        if controllerType == 'pole-place':
+            polePlaceResult = place_poles(A, B, design_poles)
+            K = polePlaceResult.gain_matrix
+            print(K)
+            print(A - B@K)
+            
+            Kp_trans = K[:, :3] # retrieve first 3 columns of K as Kp
+            Kd_trans = K[:, 3:] # retrieve last 3 columns of K as Kd
+        
+        # 1) Pole placement with SRL config -> No z-axis actuation:
+        if controllerType == 'SRL':
             polePlaceResult = place_poles(A, B, design_poles)
             K = polePlaceResult.gain_matrix
             print(K)
@@ -411,13 +421,13 @@ class BSKFswModels:
             Kp_trans = K[:, :3] # retrieve first 3 columns of K as Kp
             Kd_trans = K[:, 3:] # retrieve last 3 columns of K as Kd
 
-            ku = 1/1 * np.array([[2,0,0], [0,2,0], [0,0,0]]).transpose()
+            ku = 1/1 * np.array([[2,0,0], [0,2,0], [0,0,0]]).transpose() # Remove z-axis actuation
             Kp_trans = 0.60 * ku
             Ki_trans = 0.1* 1.2 * ku / 18
             Kd_trans = 5*0.075 * ku * 18
         
         # 2) Feedback Linearization + Pole Placement: # Reuse A, B matrices and poles from 1).
-        if controllerType == 2:
+        if controllerType == 'feedback-lin':
             # i) Feedback linearization PHI-term to remove non-linearity 
             phi_p = A[3:,:3] # position nonlinearity - p
             phi_d = A[3:,3:] # derivative nonlinearity - d
@@ -599,7 +609,10 @@ class BSKFswModels:
         self.SetThrustersConfigMsg(SimBase)
         # Added translational controller modules:
         self.SetTransError(SimBase)
-        self.SetTransController(SimBase)
+        self.SetTransController(SimBase, controllerType='pole-place')
+        # self.SetTransController(SimBase, controllerType='feedback-lin')
+        # self.SetTransController(SimBase,controllerType='SRL') # Use this for controller in SRL config with no z-axis actuation!
+        
         self.SetMRPFeedbackRWA(SimBase)
         # self.SetSpacecraftOrbitReconfig(SimBase)
         self.SetRWMotorTorque()

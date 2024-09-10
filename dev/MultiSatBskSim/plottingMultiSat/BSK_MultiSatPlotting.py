@@ -15,13 +15,17 @@
 #  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 #  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
+import os
+import mplfig # save plt plots like MATLAB
+from scipy.io import savemat
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import numpy as np
 from Basilisk.utilities import macros
 from Basilisk.utilities import unitTestSupport
 
-plt.rcParams['font.size'] = 24
+plt.rcParams['axes.titlesize'] = 16
+plt.rcParams['font.size'] = 14
 
 # --------------------------------- COMPONENTS & SUBPLOT HANDLING ----------------------------------------------- #
 
@@ -38,6 +42,58 @@ def save_all_plots(fileName, figureNames):
         pltName = fileName + "_" + figureNames[i]
         figureList[pltName] = plt.figure(i+1)
     return figureList
+
+
+# Export matrice-dictionaries to .mat files:
+def export_data_mat(dataPath, data_filename, data_dict):
+    try:
+        # Check if the folder exists
+        if not os.path.exists(dataPath):
+            # Try to create the folder
+            os.makedirs(dataPath)
+            print(f"Folder '{dataPath}' created.")
+    except OSError as e:
+        print(f"Error creating folder '{dataPath}': {e}")
+    
+    export_path = dataPath + data_filename + "_plot_data.mat"
+    savemat(export_path, data_dict)
+    print("Exported data to given path: ", export_path)
+    return
+
+def matrices_to_dict(**matrices):
+    """
+    Converts multiple matrices into a dictionary where keys are the names of the matrices 
+    and values are the matrices themselves.
+
+    Parameters:
+    **matrices: Named matrices as keyword arguments.
+
+    Returns:
+    dict: A dictionary with matrix names as keys and the matrices as values.
+    """
+    return matrices
+
+
+def save_plots_to_path(figurePath, figure_filename, index_folder_string='index_0', fileNames=None):
+    figurePathCase = figurePath + figure_filename + "/" + index_folder_string + "/"
+    # Subfolder for particular scenarios: 
+    try:
+        # Check if the folder exists
+        if not os.path.exists(figurePathCase):
+            # Try to create the folder
+            os.makedirs(figurePathCase)
+            print(f"Folder '{figurePathCase}' created.")
+    except OSError as e:
+        print(f"Error creating folder '{figurePathCase}': {e}")
+    
+    for i in plt.get_fignums():
+        fig = plt.figure(i)
+        mplfig.save_figure(fig, figurePathCase+'figure_%d.mplpkl' % i)
+        if i==1:
+            mplfig.save_figure(fig, figurePathCase+'blank.mplpkl')
+        # plt.savefig(figurePath+'/figure_%d.png' % i)
+        # plt.savefig(fileNames+'_figure_%d.png' % i)
+    return
 
 # ------------------------------------- MAIN PLOT HANDLING ------------------------------------------------------ #
 color_x = 'dodgerblue'

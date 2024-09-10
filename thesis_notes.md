@@ -9,9 +9,9 @@ git remote -v
 ```
 
 ## Building the Project:
-Run the following for clean build, this is required when a new C/C++ message/module type is newly-implemented/modified. For more information see the Basilisk online resources on [Building the Software Framework](http://hanspeterschaub.info/basilisk/Install/installBuild.html).
+Run the following for clean build, this is required when a new C/C++ message/module type is newly-implemented/modified. Notice the `--vizInterface` flag should be set `True` in order to allow visualization in Vizard. For more information see the Basilisk online resources on [Building the Software Framework](http://hanspeterschaub.info/basilisk/Install/installBuild.html).
 ```
-python3 conanfile.py --clean
+python3 conanfile.py --clean --vizInterface True
 ```
 
 ## Run basic simulations by:
@@ -261,3 +261,12 @@ You can run the following command to test the very first few time steps:
 ```
 python dev/MultiSatBskSim/scenariosMultiSat/MultiSat_test_scenario.py "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/init_config.json" .0001
 ```
+
+Change Controller Type at [BSK_MultiSatFsw.py](dev/MultiSatBskSim/modelsMultiSat/BSK_MultiSatFsw.py) line 612, while the controller type can be defined in the `BSK_MultiSatFsw.SetTransController()` function: 
+```
+self.SetTransController(SimBase, controllerType='pole-place')
+# self.SetTransController(SimBase, controllerType='feedback-lin')
+# self.SetTransController(SimBase, controllerType='SRL') # Use this for controller in SRL config with no z-axis actuation!
+```
+
+Change paths in [showPlot.py](dev/showPlot.py) to fetch the `.mplpkl` files!

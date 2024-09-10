@@ -213,7 +213,7 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
             for i in range(self.numberSpacecraft):
                 DynModelsList.append(self.DynModels[i].scObject)
                 rwStateEffectorList.append(self.DynModels[i].rwStateEffector)
-                thDynamicEffectorList.append([self.DynModels[i].thrusterDynamicEffector])
+                thDynamicEffectorList.append([self.DynModels[i].thrusterStateEffector])
 
             # Below is only for Battery/Fuel Tank, we do not need these for now but keep for later use.
             # gsList = []
@@ -340,7 +340,7 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
                 FswModels[spacecraft].transController.cmdForceOutMsg.recorder(self.samplingTime))
             self.AddModelToTask(DynModels[spacecraft].taskName, self.cmdThrLog[spacecraft])
 
-    def pull_outputs(self, showPlots, relativeNavigation, spacecraftIndex):
+    def pull_outputs(self, showPlots, relativeNavigation, spacecraftIndex, initConfigPath):
         print("SC Index: ", spacecraftIndex)
         # Process outputs
         DynModels = self.get_DynModel()
@@ -475,9 +475,9 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
         # plt.plot_rate_error(timeLineSetMin, dataOmegaBR, 4)
         # plt.plot_attitude_reference(timeLineSetMin, dataSigmaRN, 5)
         # plt.plot_rate_reference(timeLineSetMin, dataOmegaRN_B, 6)
-        plt.plot_rw_motor_torque(timeLineSetMin, dataUsReq, dataRW, DynModels[spacecraftIndex].numRW, 7)
+        plt.plot_rw_motor_torque(timeLineSetMin, dataUsReq, dataRW, DynModels[spacecraftIndex].numRW)
         # plt.plot_rw_speeds(timeLineSetMin, dataOmegaRW, DynModels[spacecraftIndex].numRW, 8)        
-        plt.plot_orbits(r_BN_N, self.numberSpacecraft, 9)
+        plt.plot_orbits(r_BN_N, self.numberSpacecraft)
         
         # Added animated plot to relative orbits, keep `_` there!
         # _ = plt.plot_relative_orbits(dr, len(dr), 10)
@@ -488,29 +488,56 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
             # print("add", scIndex)
             if scIndex != targetSCIndex:
                 if scIndex != 0:
-                    plt.orbit_xyz_time_series(timeLineSetMin, dr, scIndex - 1, 12 + scIndex) # Subtract by 1 
+                    plt.orbit_xyz_time_series(timeLineSetMin, dr, scIndex - 1) # Subtract by 1 
                 elif scIndex == 0:
-                    plt.orbit_xyz_time_series(timeLineSetMin, dr, 0, 12 + scIndex) # Subtract by 1 
+                    plt.orbit_xyz_time_series(timeLineSetMin, dr, 0) # Subtract by 1 
             
         # plt.plot_orbital_element_differences(timeLineSetSec / T, oed, 13)
         
         # plt.plot_power(timeLineSetMin, netData, supplyData, sinkData, 14)
         # plt.plot_fuel(timeLineSetMin, dataFuelMass, 15)
-        plt.plot_cmd_force(timeLineSetMin, dataCmdForce, 20)
-        plt.plot_thrust(timeLineSetMin, dataThrust, DynModels[spacecraftIndex].numThr, 30)
+        plt.plot_cmd_force(timeLineSetMin, dataCmdForce)
+        plt.plot_thrust(timeLineSetMin, dataThrust, DynModels[spacecraftIndex].numThr)
         # plt.plot_thrust_percentage(timeLineSetMin, dataThrustPercentage, DynModels[spacecraftIndex].numThr, 31)
 
         
         figureList = {}
         if showPlots:
             plt.show_all_plots()
+        # else:
+            # To comment out
+            # fileName = os.path.basename(os.path.splitext(__file__)[0])
+            # figureNames = ["attitude", "rate", "attitudeTrackingError", "trackingErrorRate", "attitudeReference",
+            #                "rateReference", "rwMotorTorque", "rwSpeeds", "orbits", "relativeOrbits", "oeDifferences",
+            #                "power", "fuel", "thrustPercentage"]
+            # figureList = plt.save_all_plots(fileName, figureNames)
+            # To comment out
         else:
-            fileName = os.path.basename(os.path.splitext(__file__)[0])
-            figureNames = ["attitude", "rate", "attitudeTrackingError", "trackingErrorRate", "attitudeReference",
-                           "rateReference", "rwMotorTorque", "rwSpeeds", "orbits", "relativeOrbits", "oeDifferences",
-                           "power", "fuel", "thrustPercentage"]
-            figureList = plt.save_all_plots(fileName, figureNames)
-
+            # Save plot data to .mat:
+            data_filename = scConfig.getFileNameFromInitConfigJSON(initConfigPath)
+            # data_filename = data_filename + "_index_" + str(spacecraftIndex)
+            
+            data_dict = plt.matrices_to_dict(
+                simLength=simLength,
+                timeLineSetMin=timeLineSetMin,
+                dataUsReq=dataUsReq,
+                dataSigmaBN=dataSigmaBN,
+                dataOmegaRN_N=dataOmegaRN_N,
+                dataRW=dataRW,
+                dataThrust=dataThrust,
+                dataCmdForce=dataCmdForce,
+                dataOmegaRN_B=dataOmegaRN_B,
+                dr=dr,
+                oed=oed,
+            )
+            
+            dataPath = "dev/MultiSatBskSim/ResultData/"
+            plt.export_data_mat(dataPath, data_filename, data_dict)
+            
+            # Save plots:
+            figurePath = "dev/MultiSatBskSim/ResultPlots/"
+            plt.save_plots_to_path(figurePath, data_filename, index_folder_string="index_"+str(spacecraftIndex))
+            
         # close the plots being saved off to avoid over-writing old and new figures
         plt.clear_all_plots()
 
@@ -594,18 +621,17 @@ def run(showPlots, relativeNavigation = False,
     # TheScenario = MultiSat_test_scenario(numberSpacecraft, initConfigPath, relativeNavigation)
     TheScenario = MultiSat_test_scenario(targetOE, initConfigs, simRate, dataSamplingTimeSec, relativeNavigation)
     runScenario(TheScenario, relativeNavigation, simulationTimeHours)
-    # figureList = TheScenario.pull_outputs(showPlots, relativeNavigation, 0)
-    figureList = TheScenario.pull_outputs(showPlots, relativeNavigation,2)
-    
+    # figureList = TheScenario.pull_outputs(showPlots, relativeNavigation, 0, initConfigPath)
+    for i in range(TheScenario.numberSpacecraft):
+        figureList = TheScenario.pull_outputs(showPlots, relativeNavigation, i, initConfigPath)
     return figureList
 
 
 if __name__ == "__main__":
-    run(showPlots=True,
-        # numberSpacecraft=3,
+    run(showPlots=False, # Set showPlots=False to save plots!
         relativeNavigation=False,
         initConfigPath = "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/init_config.json",
         simulationTimeHours = 0.5,
         simRate = 0.1,
-        dataSamplingTimeSec = 0.1
+        dataSamplingTimeSec = 10.0
         )

@@ -89,6 +89,25 @@ def loadInitConfig(init_config_path):
     return targetOE, init_configs
 
 # @params:
+# s: path string, to get the file name 
+def getFileNameFromInitConfigJSON(s):
+    # Find the last occurrence of "/"
+    last_slash_index = s.rfind('/')
+    
+    # If "/" is found, cut the string after the last "/"
+    if last_slash_index != -1:
+        s = s[last_slash_index + 1:]
+    
+    # Find the last occurrence of "." in the remaining string
+    last_dot_index = s.rfind('.')
+    
+    # If "." is found, return the substring before the last "."
+    if last_dot_index != -1:
+        return s[:last_dot_index]
+    else:
+        return s  # If no "." is found, return the string after the last "/"
+
+# @params:
 # TODO
 def getObject(objects, key, value):
     for obj in objects:
