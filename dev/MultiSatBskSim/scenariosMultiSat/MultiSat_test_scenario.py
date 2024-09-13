@@ -532,7 +532,7 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
             )
             
             dataPath = "dev/MultiSatBskSim/ResultData/"
-            plt.export_data_mat(dataPath, data_filename, data_dict)
+            plt.export_data_mat(dataPath, data_filename, data_dict, index_string="index_"+str(spacecraftIndex))
             
             # Save plots:
             figurePath = "dev/MultiSatBskSim/ResultPlots/"

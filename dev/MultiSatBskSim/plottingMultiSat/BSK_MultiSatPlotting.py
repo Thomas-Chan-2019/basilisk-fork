@@ -45,17 +45,18 @@ def save_all_plots(fileName, figureNames):
 
 
 # Export matrice-dictionaries to .mat files:
-def export_data_mat(dataPath, data_filename, data_dict):
+def export_data_mat(dataPath, data_filename, data_dict, index_string='index_0'):
+    dataPathCase = dataPath + data_filename + '/'
     try:
         # Check if the folder exists
-        if not os.path.exists(dataPath):
+        if not os.path.exists(dataPathCase):
             # Try to create the folder
-            os.makedirs(dataPath)
-            print(f"Folder '{dataPath}' created.")
+            os.makedirs(dataPathCase)
+            print(f"Folder '{dataPathCase}' created.")
     except OSError as e:
-        print(f"Error creating folder '{dataPath}': {e}")
+        print(f"Error creating folder '{dataPathCase}': {e}")
     
-    export_path = dataPath + data_filename + "_plot_data.mat"
+    export_path = dataPathCase + index_string + "_plot_data.mat"
     savemat(export_path, data_dict)
     print("Exported data to given path: ", export_path)
     return
