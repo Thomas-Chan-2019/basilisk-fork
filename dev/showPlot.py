@@ -2,7 +2,8 @@ import mplfig
 import matplotlib.pyplot as plt
 import pylustrator
 
-plotPath = "dev/MultiSatBskSim/ResultPlots/control_case_5_yr/index_1/" # Replace with absolute path when necessary.
+plotPath = "dev/MultiSatBskSim/ResultPlots/base_case_1_xr/index_1/" # Replace with absolute path when necessary.
+# plotPath = "dev/MultiSatBskSim/ResultPlots/control_case_5_yr/index_1/" # Replace with absolute path when necessary.
 # plotPath = "dev/MultiSatBskSim/ResultPlots/control_case_7_xyzr/index_1/" # Replace with absolute path when necessary.
 
 # pylustrator.load(plotPath+"/figure_9.png")
@@ -17,7 +18,7 @@ def showPlotsFromMPL():
     _ = mplfig.load_figure(plotPath+"figure_3.mplpkl") 
     _ = mplfig.load_figure(plotPath+"figure_4.mplpkl") 
     _ = mplfig.load_figure(plotPath+"figure_5.mplpkl") 
-    _ = mplfig.load_figure(plotPath+"figure_6.mplpkl") 
+    # _ = mplfig.load_figure(plotPath+"figure_6.mplpkl") 
     # fig7 = mplfig.load_figure(plotPath+"figure_7.mplpkl") 
 
     # _ = mplfig.load_figure(plotPath+"/figure_8.mplpkl") 

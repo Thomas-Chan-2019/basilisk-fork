@@ -544,7 +544,7 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
         return figureList
 
 
-def runScenario(scenario, relativeNavigation, simulationTimeHours):
+def runScenario(scenario, relativeNavigation, simulationTimeHours, turnOnController=1):
     # Get the environment model
     EnvModel = scenario.get_EnvModel()
 
@@ -584,8 +584,10 @@ def runScenario(scenario, relativeNavigation, simulationTimeHours):
     # scenario.FSWModels[1].modeRequest = "startTransController"
     # scenario.FSWModels[2].modeRequest = "startTransController" 
     # scenario.FSWModels[3].modeRequest = "startTransController" 
-    for i in range(1, scenario.numberSpacecraft): # Ignore the index 0 target: 
-        scenario.FSWModels[i].modeRequest = "startTransController"
+    
+    if turnOnController:
+        for i in range(1, scenario.numberSpacecraft): # Ignore the index 0 target: 
+            scenario.FSWModels[i].modeRequest = "startTransController"
     
     # Execute the simulation
     scenario.ConfigureStopTime(simulationTime)
@@ -593,9 +595,10 @@ def runScenario(scenario, relativeNavigation, simulationTimeHours):
 
 def run(showPlots, relativeNavigation = False,  
         initConfigPath = "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/init_config.json",
-        simulationTimeHours = 1.,
+        simulationTimeHours = 1.0,
+        turnOnController = 1, # Turn ON: 1, Turn OFF: 0 (base cases validation)
         simRate = 0.1,
-        dataSamplingTimeSec = 1 # Define simulation rate (for dynamics, FSW & environment models) & data sampling rate.
+        dataSamplingTimeSec = 1.0 # Define simulation rate (for dynamics, FSW & environment models) & data sampling rate.
         ):
     """
     The scenarios can be run with the followings setups parameters:
@@ -616,22 +619,32 @@ def run(showPlots, relativeNavigation = False,
     
     if len(sys.argv) > 2:
         simulationTimeHours = float(sys.argv[2])
+        
+    if len(sys.argv) > 3:
+        turnOnController = int(sys.argv[3])
+    
+    if len(sys.argv) > 4:
+        simRate = float(sys.argv[4])
+        
+    if len(sys.argv) > 5:
+        dataSamplingTimeSec = float(sys.argv[5])
     
     targetOE, initConfigs = scConfig.loadInitConfig(initConfigPath)
     # TheScenario = MultiSat_test_scenario(numberSpacecraft, initConfigPath, relativeNavigation)
     TheScenario = MultiSat_test_scenario(targetOE, initConfigs, simRate, dataSamplingTimeSec, relativeNavigation)
-    runScenario(TheScenario, relativeNavigation, simulationTimeHours)
+    runScenario(TheScenario, relativeNavigation, simulationTimeHours, turnOnController)
     # figureList = TheScenario.pull_outputs(showPlots, relativeNavigation, 0, initConfigPath)
     for i in range(TheScenario.numberSpacecraft):
         figureList = TheScenario.pull_outputs(showPlots, relativeNavigation, i, initConfigPath)
-    return figureList
+    return
 
 
 if __name__ == "__main__":
     run(showPlots=False, # Set showPlots=False to save plots!
         relativeNavigation=False,
         initConfigPath = "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/init_config.json",
-        simulationTimeHours = 0.5,
+        simulationTimeHours = 1.0,
+        turnOnController = 1,
         simRate = 0.1,
-        dataSamplingTimeSec = 10.0
+        dataSamplingTimeSec = 1.0
         )

@@ -146,14 +146,19 @@ class PIDController(sysModel.SysModel):
         FrCmd_N = DCM_NH @ FrCmd_hill
         
         # Print log -> Pend remove:
-        print("Hill-frame Cmd Force: ", FrCmd_hill)
-        print("Inertial Cmd Force: ", FrCmd_N)
-        print("DCM Inertial from Hill: ", DCM_NH)
-        print("DCM Body from Inertial: ", DCM_BN)
+        # print("Hill-frame Cmd Force: ", FrCmd_hill)
+        # print("Inertial Cmd Force: ", FrCmd_N)
+        # print("DCM Inertial from Hill: ", DCM_NH)
+        # print("DCM Body from Inertial: ", DCM_BN)
+        # Print log -> Pend remove:
         
         # Convert Hill-frame Cmd force to Inertial Cmd force:
         FrCmd = DCM_BN @ DCM_NH @ FrCmd_hill
-        print("Cmd Force: ", FrCmd)
+        
+        # Print log -> Pend remove:
+        # print("Cmd Force: ", FrCmd)
+        # Print log -> Pend remove:
+        
         # forceOutMsgBuffer.forceRequestBody = (-FrCmd).tolist()
         forceOutMsgBuffer.forceRequestBody = (FrCmd).tolist() # Set the negative sign when using the module!!!
         self.cmdForceOutMsg.write(forceOutMsgBuffer, CurrentSimNanos, self.moduleID)

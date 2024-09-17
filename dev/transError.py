@@ -93,8 +93,10 @@ class transError(sysModel.SysModel):
         # Need a new message type?
         transGuidOutMsgBuffer = messaging.TransGuidMsgPayload()
 
+        # REMOVE WHEN DEBUGGING FINISHED
         # print("Check transRefInMsg", np.array(transRefInMsgBuffer.r_RN_N))
-        print("Check transRefInStatic: r_RN_N = ", np.array(self.transRefStatic_r_RN_N), "; v_RN_N = ", np.array(self.transRefStatic_v_RN_N))
+        # print("Check transRefInStatic: r_RN_N = ", np.array(self.transRefStatic_r_RN_N), "; v_RN_N = ", np.array(self.transRefStatic_v_RN_N))
+        # REMOVE WHEN DEBUGGING FINISHED
         
         # # Simple subtraction for error:
         # dR = np.array(chaserTransInMsgBuffer.r_BN_N) - np.array(targetTransInMsgBuffer.r_BN_N)
