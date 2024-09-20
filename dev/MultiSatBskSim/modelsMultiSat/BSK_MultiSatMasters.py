@@ -29,11 +29,11 @@ path = os.path.dirname(os.path.abspath(filename)) # Basilisk absolute path
 bskPath = __path__[0]
 
 # Import Dynamics and FSW models
-sys.path.append(path + '/models')
-sys.path.append(path + '/../..')
+# sys.path.append(path + '/..') # So that it could read the scConfig path!
+# sys.path.append(path + '/models')
+# sys.path.append(path + '/../..')
 
 import scConfig
-
 
 class BSKSim(SimulationBaseClass.SimBaseClass):
     """
@@ -51,18 +51,20 @@ class BSKSim(SimulationBaseClass.SimBaseClass):
 
     """
     # Removed param `numberSpacecraft`
-    def __init__(self, targetOE, initConfigs, relativeNavigation=False, fswRate=0.1, dynRate=0.1, envRate=0.1, relNavRate=0.1):
+    def __init__(self, initConfigPath, relativeNavigation=False, fswRate=0.1, dynRate=0.1, envRate=0.1, relNavRate=0.1):
+    # def __init__(self, targetOE, initConfigs, relativeNavigation=False, fswRate=0.1, dynRate=0.1, envRate=0.1, relNavRate=0.1):
+
+        # Init. config implementations:
+        self.initConfigPath = initConfigPath
+        targetOE, initConfigs = scConfig.loadInitConfig(initConfigPath)
+        self.targetOE = targetOE
+        self.initConfigs = initConfigs
+        
         self.dynRate = dynRate
         self.fswRate = fswRate
         self.envRate = envRate
         self.relNavRate = relNavRate
         self.numberSpacecraft = len(initConfigs)
-
-        # Init. config implementations:
-        # self.initConfigPath = initConfigPath
-        # _, initConfigs = scConfig.loadInitConfig(initConfigPath)
-        self.targetOE = targetOE
-        self.initConfigs = initConfigs
         
         # Create a sim module as an empty container
         SimulationBaseClass.SimBaseClass.__init__(self)

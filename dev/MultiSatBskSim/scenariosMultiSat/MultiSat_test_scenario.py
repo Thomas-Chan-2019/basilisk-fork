@@ -164,12 +164,13 @@ import BSK_MultiSatPlotting as plt
 
 # class shall Inherits BSK_MultiSatMasters.BSKSim & .BSKScenario
 class MultiSat_test_scenario(BSKSim, BSKScenario): 
-    def __init__(self, targetOE, initConfigs, simRate, dataSamplingTimeSec, relativeNavigation):
+    def __init__(self, initConfigPath, simRate, dataSamplingTimeSec, relativeNavigation):
+    # def __init__(self, targetOE, initConfigs, simRate, dataSamplingTimeSec, relativeNavigation, initConfigPath):
         # This below is initializing the scenario itself using the class structure defined in 
         super(MultiSat_test_scenario, self).__init__(
-            targetOE, initConfigs, relativeNavigation=relativeNavigation, fswRate=simRate, dynRate=simRate, envRate=simRate, relNavRate=simRate)
+            initConfigPath, relativeNavigation=relativeNavigation, fswRate=simRate, dynRate=simRate, envRate=simRate, relNavRate=simRate)
         self.name = 'MultiSat_test_scenario'
-        # self.initConfigPath = initConfigPath
+        self.initConfigName = scConfig.getFileNameFromInitConfigJSON(initConfigPath)
         
         # Connect the environment, dynamics and FSW classes. It is crucial that these are set in the order specified, as
         # some connects made imply that some modules already exist
@@ -240,7 +241,8 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
             #     gsList.append([batteryPanel, tankPanel])
 
             viz = vizSupport.enableUnityVisualization(self, self.DynModels[0].taskName, DynModelsList
-                                                      , saveFile=__file__
+                                                      , saveFile=self.initConfigName
+                                                    #   , saveFile=__file__
                                                     #   , liveStream=True
                                                       , rwEffectorList=rwStateEffectorList
                                                       , thrEffectorList=thDynamicEffectorList
@@ -340,7 +342,7 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
                 FswModels[spacecraft].transController.cmdForceOutMsg.recorder(self.samplingTime))
             self.AddModelToTask(DynModels[spacecraft].taskName, self.cmdThrLog[spacecraft])
 
-    def pull_outputs(self, showPlots, relativeNavigation, spacecraftIndex, initConfigPath):
+    def pull_outputs(self, showPlots, relativeNavigation, spacecraftIndex):
         print("SC Index: ", spacecraftIndex)
         # Process outputs
         DynModels = self.get_DynModel()
@@ -514,8 +516,7 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
             # To comment out
         else:
             # Save plot data to .mat:
-            data_filename = scConfig.getFileNameFromInitConfigJSON(initConfigPath)
-            # data_filename = data_filename + "_index_" + str(spacecraftIndex)
+            data_filename = scConfig.getFileNameFromInitConfigJSON(self.initConfigPath)
             
             data_dict = plt.matrices_to_dict(
                 simLength=simLength,
@@ -629,13 +630,14 @@ def run(showPlots, relativeNavigation = False,
     if len(sys.argv) > 5:
         dataSamplingTimeSec = float(sys.argv[5])
     
-    targetOE, initConfigs = scConfig.loadInitConfig(initConfigPath)
-    # TheScenario = MultiSat_test_scenario(numberSpacecraft, initConfigPath, relativeNavigation)
-    TheScenario = MultiSat_test_scenario(targetOE, initConfigs, simRate, dataSamplingTimeSec, relativeNavigation)
+    # targetOE, initConfigs = scConfig.loadInitConfig(initConfigPath)
+    # TheScenario = MultiSat_test_scenario(targetOE, initConfigs, simRate, dataSamplingTimeSec, relativeNavigation, initConfigPath)
+    TheScenario = MultiSat_test_scenario(initConfigPath, simRate, dataSamplingTimeSec, relativeNavigation)
     runScenario(TheScenario, relativeNavigation, simulationTimeHours, turnOnController)
     # figureList = TheScenario.pull_outputs(showPlots, relativeNavigation, 0, initConfigPath)
     for i in range(TheScenario.numberSpacecraft):
-        figureList = TheScenario.pull_outputs(showPlots, relativeNavigation, i, initConfigPath)
+        figureList = TheScenario.pull_outputs(showPlots, relativeNavigation, i)
+        # figureList = TheScenario.pull_outputs(showPlots, relativeNavigation, i, initConfigPath)
     return
 
 
