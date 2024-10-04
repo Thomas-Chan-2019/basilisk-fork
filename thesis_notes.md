@@ -3,6 +3,7 @@ This repo is a direct FORK from the original [Basilisk repo](https://github.com/
 
 ## Set upstream fetch with the Basilisk original repo:
 Follow [git remote guide](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/configuring-a-remote-repository-for-a-fork) for information.
+
 ```
 git remote add upstream https://github.com/AVSLab/basilisk.git
 git remote -v
@@ -14,11 +15,103 @@ Run the following for clean build, this is required when a new C/C++ message/mod
 python3 conanfile.py --clean --vizInterface True
 ```
 
-## Run basic simulations by:
+# Running Basilisk Simulations
+Always source your virtual environment before running any simulations by:
 ```
 source .venv/bin/activate $activate python virtual env
-python3 scenarioBasicOrbitStream.py $run basic simulations in terminal 
 ```
+
+## Run basic simulations at `examples/` or `dev/template-examples`:
+```
+python3 examples/scenarioBasicOrbitStream.py $run basic simulations in terminal 
+```
+
+OR
+
+```
+python3 dev/template-examples/scenarioBasicOrbitStream.py $run basic simulations in terminal 
+```
+
+You could also `cd` into a specific folder where you define your basic simulations and run it directly without the folder specifications.
+ 
+## Running MultiSat-based simulations (thesis related):
+### Running ONE simulation:
+```
+python dev/MultiSatBskSim/scenariosMultiSat/MultiSat_test_scenario.py $param_1 $param_2 $param_3 $param_4 $param_5
+```
+__param_1 to param_5__ are __OPTIONAL__ and can only be provided in sequence for now. 
+
+See their default values at [MultiSat_test_scenario.py](dev/MultiSatBskSim/scenariosMultiSat/MultiSat_test_scenario.py) line 596/ line 642. Here a summary is provided:
+- __param_1__: `initConfigPath`, Path to Initialization Config JSON, see default at [MultiSat_test_scenario.py](dev/MultiSatBskSim/scenariosMultiSat/MultiSat_test_scenario.py) line 596/ line 642.
+- __param_2__: `simulationTimeHours`, Simulation Time in hours, default = 0.3
+- __param_3__: `turnOnController`, Turn on Controllers or not, 1 (ON, default) or 0 (OFF)
+- __param_4__: `simRate`, Simulation rate in seconds, default = 0.1 sec
+- __param_5__: `dataSamplingTimeSec`, Data sampling rate in seconds, default = 0.1 sec
+
+### Running MULTIPLE simulations in a BATCH script (Supports Linux(Ubuntu)/MacOS/Windows[To be tested]):
+Run [runMultiSatBSKSim.sh](runMultiSatBSKSim.sh) located at the `basilisk-fork` root. 
+
+Note that for __Windows__ an extra [runMultiSatBSKSim.bat](runMultiSatBSKSim.bat) is called and run, __NO CHANGES within [runMultiSatBSKSim.bat](runMultiSatBSKSim.bat) needed__!
+
+```
+./runMultiSatBSKSim.sh
+```
+
+Specify the __param_1 to param_5__ in batch script syntax.
+```bash
+#!/bin/bash
+
+# List of input paths (common to both Linux/MacOS and Windows)
+input_paths=(
+    # "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/base_case_1_xr.json"
+    # "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/base_case_2_xyr.json"
+    # "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/base_case_3_zr_zrdot.json"
+    # "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/base_case_4_xyzr.json"
+    "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/control_case_5_yr.json"
+    "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/control_case_6_xyr.json"
+    "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/control_case_7_xyzr.json"
+)
+
+simTimeHours=1.5 # Hours, one orbit for given orbit in each json for now.
+
+# turnOnController=0
+turnOnController=1
+
+simRate=0.1
+dataSamplingTimeSec=0.1
+
+# Path to your Python script (common to both platforms)
+python_script="dev/MultiSatBskSim/scenariosMultiSat/MultiSat_test_scenario.py"
+
+# Detect the OS
+OS_TYPE=$(uname)
+
+if [[ "$OS_TYPE" == "Linux" || "$OS_TYPE" == "Darwin" ]]; then
+    echo "Running on Linux/MacOS"
+    
+    # Loop through the input paths and run the Python script
+    for input_path in "${input_paths[@]}"
+    do
+      echo "Running Python script with input: $input_path"
+      # python3 $python_script "$input_path" $simTimeHours $turnOnController
+      python3 "$python_script" "$input_path" "$simTimeHours" "$turnOnController" "$simRate" "$dataSamplingTimeSec" # Opt for more options when needed.
+    done
+
+elif [[ "$OS_TYPE" == *"MINGW"* || "$OS_TYPE" == *"CYGWIN"* ]]; then
+    echo "Running on Windows using the batch script"
+
+    # Convert array to a space-separated string for passing to the batch script
+    input_paths_string=$(IFS=" "; echo "${input_paths[*]}")
+
+    # Call the batch script with all the variables passed as arguments
+    cmd.exe /c run_simulation.bat "$input_paths_string" "$simTimeHours" "$turnOnController" "$simRate" "$dataSamplingTimeSec"
+else
+    echo "Unsupported OS detected."
+    exit 1
+fi
+
+```
+
 
 ## Viz-support:
 Viz Socket: [tcp://localhost:5556](tcp://localhost:5556)
@@ -27,7 +120,7 @@ Viz Socket: [tcp://localhost:5556](tcp://localhost:5556)
 [scenarioDataToViz.py](examples/scenarioDataToViz.py) shows how (line 178 / https://hanspeterschaub.info/basilisk/Vizard/VizardGUI.html#import-a-custom-shape-model)
 
 Example: 
-```
+```python
 viz = vizSupport.enableUnityVisualization(scSim, simTaskName, scList
                                                   , saveFile=fileName
                                                   , liveStream=True
@@ -89,7 +182,7 @@ as there are no direct satellite-to-satellite dynamic interactions.; ALSO see li
 - `extForceTorque.ExtForceTorque()` can be used to replace the `rwMotorTorque` & `rwStateEffector` when no actuators (RW) for command torque is defined
 - To create new message, visit this [link](https://hanspeterschaub.info/basilisk/Learn/makingModules/makingModules-2.html?highlight=new%20message)
 - [Message recorder](https://hanspeterschaub.info/basilisk/Learn/bskPrinciples/bskPrinciples-4.html): use this
-```
+```python
 someMsgRec = module.someOutMsg.recorder() # or recorder(minUpdateTime) to reduce the record time, must be lower than the recorded module update time!
 scSim.AddModelToTask("taskName", someMsgRec) # need to add recorder model to sim!
 ```
@@ -126,12 +219,12 @@ This is for aliging the `Reset()` function action of our created Python Modules 
 - `thrusterStateEffector` (newer, contains time integration & can turn on in ratio of 0-100% / 0-1) v.s. `thrusterDynamicEffector` (older, without time integration, only on/off or 0/1)
 - [BSK_MultiSatDynamics.py](examples/MultiSatBskSim/modelsMultiSat/BSK_MultiSatDynamics.py) & [BSK_MultiSatFsw.py](examples/MultiSatBskSim/modelsMultiSat/BSK_MultiSatFsw.py): good example module setup for gathering S/C creation, gravity body creation, thruster/RW creations & other instances (GS, batteries, power, solar panel, etc.), as well as setting up FSW related modules like `inertial3D`, `attTrackingError` & `mrpFeedback`
 - [Simulation Update Debugging](https://hanspeterschaub.info/basilisk/Learn/bskPrinciples/bskPrinciples-2a.html): For testing purposes, to execute the code, this script doesn’t run the simulation for a period of time. Rather, the simulation is executed for a single time step. This is convenient in particular when testing the module input-output behavior. The command to execute Basilisk for one time step is: 
-``` 
+```python
 # perform a single Update on all modules
 scSim.TotalSim.SingleStepProcesses() 
 ```
 - [Task Priority & Simulation Documentation Figures](https://hanspeterschaub.info/basilisk/Learn/bskPrinciples/bskPrinciples-2b.html): Print task priority in terminal & save priority figures via:
-```
+```python
 # print to the terminal window the execution order of the processes, task lists and modules
 scSim.ShowExecutionOrder()
 # uncomment this code to show the execution order figure and save it off
@@ -144,7 +237,7 @@ scSim.ShowExecutionOrder()
 
 __Case 1__ - Simple 3-axis aligned:
 
-```
+```python
 #
 # add RW devices
 #
@@ -185,7 +278,7 @@ scSim.AddModelToTask(simTaskName, rwStateEffector, 2)
 ```
 
 __Case 2__ - Tetrahedron structure (avoid saturation?) (in original [BSK_MultiSatDynamics.py](dev/MultiSatBskSim/modelsMultiSat/BSK_MultiSatDynamicsOld.py)):
-```
+```python
 # We should redefine the axis of the RWs!
 def SetReactionWheelDynEffector(self):
     """
@@ -217,7 +310,7 @@ def SetReactionWheelDynEffector(self):
 ![RW Settings](./ref-images/rwSettings_simIncludeRW.png)
 
 - Updates to create Thrusters: in [simIncludeThruster.py](dist3/Basilisk/utilities/simIncludeThruster.py) & example specified in [scenarioAttitudeConstrainedManeuver.py](examples/scenarioAttitudeConstrainedManeuver.py) line 211, RW should be initialised with `location` and `direction` vector; an example of creating thrusters is:
-```
+```python
 def SetThrusterDynEffector(self): 
         """
         Defines the thruster state effector.
@@ -258,12 +351,12 @@ def SetThrusterDynEffector(self):
 - __Include a Disturbance Module__: New Python module for white noise generation of thruster actuation errors
 
 You can run the following command to test the very first few time steps:
-```
+```bat
 python dev/MultiSatBskSim/scenariosMultiSat/MultiSat_test_scenario.py "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/init_config.json" .0001
 ```
 
 Change Controller Type at [BSK_MultiSatFsw.py](dev/MultiSatBskSim/modelsMultiSat/BSK_MultiSatFsw.py) line 612, while the controller type can be defined in the `BSK_MultiSatFsw.SetTransController()` function: 
-```
+```python
 self.SetTransController(SimBase, controllerType='pole-place')
 # self.SetTransController(SimBase, controllerType='feedback-lin')
 # self.SetTransController(SimBase, controllerType='SRL') # Use this for controller in SRL config with no z-axis actuation!

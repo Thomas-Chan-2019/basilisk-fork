@@ -44,7 +44,7 @@ def save_all_plots(fileName, figureNames):
     return figureList
 
 
-# Export matrice-dictionaries to .mat files:
+# Per S/C index: Export ONE matrice-dictionary to .mat files:
 def export_data_mat(dataPath, data_filename, data_dict, index_string='index_0'):
     dataPathCase = dataPath + data_filename + '/'
     try:
@@ -60,6 +60,42 @@ def export_data_mat(dataPath, data_filename, data_dict, index_string='index_0'):
     savemat(export_path, data_dict)
     print("Exported data to given path: ", export_path)
     return
+
+# For ALL S/C index: One single .mat saving all data of S/Cs for single MATLAB plotting!
+def export_dicts_to_mat(data_dicts, dataPath, data_filename):
+    """
+    Export a list of dictionaries with the same keys into a single .mat file.
+    """
+    dataPathCase = dataPath + data_filename + '/'
+    try:
+        # Check if the folder exists
+        if not os.path.exists(dataPathCase):
+            # Try to create the folder
+            os.makedirs(dataPathCase)
+            print(f"Folder '{dataPathCase}' created.")
+    except OSError as e:
+        print(f"Error creating folder '{dataPathCase}': {e}")
+    
+    export_path = dataPathCase + data_filename + "_plot_data.mat"
+    
+    # Create a dictionary to hold combined data for exporting to .mat
+    mat_data = {}
+    
+    # Get the keys from the first dictionary (assuming all dictionaries have the same keys)
+    keys = data_dicts[0].keys()
+    
+    for key in keys:
+        # For each key, stack the corresponding values from all dictionaries along a new dimension
+        values = [d[key] for d in data_dicts]
+        
+        # Convert to numpy array if not already
+        values_array = np.array(values)
+        
+        # Add the combined array to the mat_data dictionary
+        mat_data[key] = values_array
+    
+    # Export the combined data to a .mat file
+    savemat(export_path, mat_data)
 
 def matrices_to_dict(**matrices):
     """

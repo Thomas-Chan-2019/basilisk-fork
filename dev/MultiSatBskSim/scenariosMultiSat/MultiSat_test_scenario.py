@@ -352,39 +352,39 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
         #
         #   Retrieve the logged data
         #
-        dataUsReq = self.rwMotorLog[spacecraftIndex].motorTorque
-        dataSigmaBR = self.attErrorLog[spacecraftIndex].sigma_BR
-        dataOmegaBR = self.attErrorLog[spacecraftIndex].omega_BR_B
-        dataSigmaBN = self.snAttLog[spacecraftIndex].sigma_BN
-        dataOmegaBN_B = self.snAttLog[spacecraftIndex].omega_BN_B
-        # dataOmegaRW = self.rwSpeedLog[spacecraftIndex].wheelSpeeds
-        dataSigmaRN = self.attRefLog[spacecraftIndex].sigma_RN
-        dataOmegaRN_N = self.attRefLog[spacecraftIndex].omega_RN_N
-        # dataFuelMass = self.fuelLog[spacecraftIndex].fuelMass
+        dataUsReq = self.rwMotorLog[spacecraftIndex].motorTorque # Cmd torque
+        dataSigmaBR = self.attErrorLog[spacecraftIndex].sigma_BR # MRP, Body from Reference frame (Hill frame initiailly)
+        dataOmegaBR = self.attErrorLog[spacecraftIndex].omega_BR_B # Angular velocity, Body to Reference frame w.r.t. Body
+        dataSigmaBN = self.snAttLog[spacecraftIndex].sigma_BN # MRP, Body from Inertial
+        dataOmegaBN_B = self.snAttLog[spacecraftIndex].omega_BN_B # Angular velocity, Body from Inertial
+        # dataOmegaRW = self.rwSpeedLog[spacecraftIndex].wheelSpeeds # RW Speed log
+        dataSigmaRN = self.attRefLog[spacecraftIndex].sigma_RN # MRP, Reference frmae to Inertial
+        dataOmegaRN_N = self.attRefLog[spacecraftIndex].omega_RN_N # Angular velocity, Reference frmae to Inertial
+        # dataFuelMass = self.fuelLog[spacecraftIndex].fuelMass # Fuel mass
 
-        dataTransGuid = self.transGuidLog[spacecraftIndex].r_BR_B
-        dataTransGuid_Velocity = self.transGuidLog[spacecraftIndex].v_BR_B
+        dataTransGuid = self.transGuidLog[spacecraftIndex].r_BR_B # Guidance navigation Relative Position, Body to Reference frame (Hill frame initially)
+        dataTransGuid_Velocity = self.transGuidLog[spacecraftIndex].v_BR_B # Guidance navigation Relative Velocity (linear), Body to Reference frame (Hill frame initially)
 
         # Save RW information
-        dataRW = []
+        dataRW = [] # RW Actuated Torque log (mapped by mapping module!)
         # dataRWPower = []
         for item in range(DynModels[spacecraftIndex].numRW):
             dataRW.append(self.rwLogs[spacecraftIndex][item].u_current)
         #     dataRWPower.append(self.rwPowerLogs[spacecraftIndex][item].netPower)
 
         # Save thrusters information
-        dataThrust = []
-        dataThrustPercentage = []
+        dataThrust = [] # Thrusters Actuated Forces log (mapped by mapping module!)
+        dataThrustPercentage = [] # Thrusted percentage w.r.t. Max. Thrust per thrusters.
         for item in range(DynModels[spacecraftIndex].numThr):
-            print((self.thrLogs[spacecraftIndex][item].thrForce).shape)
-            print((self.thrLogs[spacecraftIndex][item].thrForce[:,:6]).shape)
+            # print((self.thrLogs[spacecraftIndex][item].thrForce).shape)
+            # print((self.thrLogs[spacecraftIndex][item].thrForce[:,:6]).shape)
             # print((self.thrLogs[spacecraftIndex][item].thrForce[:DynModels[spacecraftIndex].numThr][:]).shape)
             dataThrust.append(self.thrLogs[spacecraftIndex][item].thrForce[:,item])
             # dataThrust.append(self.thrLogs[spacecraftIndex][item].thrustForce_B)
             # dataThrustPercentage.append(self.thrLogs[spacecraftIndex][item].thrustFactor)
 
         # Save Cmd force data
-        dataCmdForce = self.cmdThrLog[spacecraftIndex].forceRequestBody
+        dataCmdForce = self.cmdThrLog[spacecraftIndex].forceRequestBody # Cmd force
         
         # # Save power info
         # supplyData = self.spLog[spacecraftIndex].netPower
@@ -393,22 +393,22 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
         # netData = self.pmLog[spacecraftIndex].currentNetPower
 
         # Retrieve the time info
-        timeLineSetMin = self.snTransLog[spacecraftIndex].times() * macros.NANO2MIN
-        timeLineSetSec = self.snTransLog[spacecraftIndex].times() * macros.NANO2SEC
+        timeLineSetMin = self.snTransLog[spacecraftIndex].times() * macros.NANO2MIN # Time vector in MINUTES
+        timeLineSetSec = self.snTransLog[spacecraftIndex].times() * macros.NANO2SEC # Time vector in SECONDS
 
         # Compute the number of time steps of the simulation
-        simLength = len(timeLineSetMin)
+        simLength = len(timeLineSetMin) # Size/Time Length of Simulation
 
         # Convert the reference attitude rate into body frame components
-        dataOmegaRN_B = []
+        dataOmegaRN_B = [] 
         for i in range(simLength):
             dcmBN = rbk.MRP2C(dataSigmaBN[i, :])
             dataOmegaRN_B.append(dcmBN.dot(dataOmegaRN_N[i, :]))
         dataOmegaRN_B = np.array(dataOmegaRN_B)
 
         # Extract position and velocity information for all spacecraft
-        r_BN_N = []
-        v_BN_N = []
+        r_BN_N = [] # S/C Inertial Postion 
+        v_BN_N = [] # S/C Inertial Velocity
         for i in range(self.numberSpacecraft):
             r_BN_N.append(self.snTransLog[i].r_BN_N)
             v_BN_N.append(self.snTransLog[i].v_BN_N)
@@ -422,20 +422,23 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
             dataChiefVelocity = v_BN_N[0]
 
         # Compute the relative position in the Hill frame
-        dr = []
+        dr = [] # Relative position (Hill frame) of Chasers from Target spacecraft
         if relativeNavigation:
             for i in range(self.numberSpacecraft):
                 rd = np.array([orbitalMotion.rv2hill(dataChiefPosition[item], dataChiefVelocity[item], r_BN_N[i][item],
                                                      v_BN_N[i][item])[0] for item in range(simLength)])
                 dr.append(rd)
         else:
-            for i in range(1, self.numberSpacecraft):
+            for i in range(self.numberSpacecraft):
+            # for i in range(1, self.numberSpacecraft):
                 rd = np.array([orbitalMotion.rv2hill(dataChiefPosition[item], dataChiefVelocity[item], r_BN_N[i][item],
                                                      v_BN_N[i][item])[0] for item in range(simLength)])
                 dr.append(rd)
+                
+        # print('Size of dr:', np.shape(dr))
 
         # Compute the orbital element differences between the spacecraft and the chief
-        oed = np.empty((simLength, 6))
+        oed = np.empty((simLength, 6)) # Orbital Element Differences
         for i in range(simLength):
             oe_tmp = orbitalMotion.rv2elem(EnvModel.mu, dataChiefPosition[i], dataChiefVelocity[i])
             oe2_tmp = orbitalMotion.rv2elem(EnvModel.mu, r_BN_N[spacecraftIndex][i], v_BN_N[spacecraftIndex][i])
@@ -455,16 +458,6 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
 
         # Compute the orbit period - Kepler's 3rd Law
         T = 2*math.pi*math.sqrt(self.oe[spacecraftIndex].a ** 3 / EnvModel.mu)
-
-        # Print outputs: # Debug from here... 20240514
-        # print(dr.__sizeof__())
-        print(dr)
-        # print(dataTransGuid)
-        
-        # Print thrust # Debug from here... 20240528
-        print(dataThrust)
-        print(np.shape(dataThrust))
-        print(dataCmdForce)
         
         #
         # Plot results
@@ -486,13 +479,16 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
         
         # print(dr, len(dr))
         # print(range(0, self.numberSpacecraft - 1))
-        for scIndex in range(0, self.numberSpacecraft):
-            # print("add", scIndex)
-            if scIndex != targetSCIndex:
-                if scIndex != 0:
-                    plt.orbit_xyz_time_series(timeLineSetMin, dr, scIndex - 1) # Subtract by 1 
-                elif scIndex == 0:
-                    plt.orbit_xyz_time_series(timeLineSetMin, dr, 0) # Subtract by 1 
+        # for scIndex in range(self.numberSpacecraft):
+        #     # print("add", scIndex)
+        #     if scIndex != targetSCIndex:
+        #         if scIndex != 0:
+        #             plt.orbit_xyz_time_series(timeLineSetMin, dr, scIndex - 1) # Subtract by 1 
+        #         elif scIndex == 0:
+        #             plt.orbit_xyz_time_series(timeLineSetMin, dr, 0) # Subtract by 1 
+                    
+        for i in range(self.numberSpacecraft):
+            plt.orbit_xyz_time_series(timeLineSetMin, dr, i) # Subtract by 1 
             
         # plt.plot_orbital_element_differences(timeLineSetSec / T, oed, 13)
         
@@ -506,6 +502,7 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
         figureList = {}
         if showPlots:
             plt.show_all_plots()
+            data_dict = None
         # else:
             # To comment out
             # fileName = os.path.basename(os.path.splitext(__file__)[0])
@@ -518,17 +515,20 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
             # Save plot data to .mat:
             data_filename = scConfig.getFileNameFromInitConfigJSON(self.initConfigPath)
             
+            # Manual Output Data as .mat format for plots in MATLAB:
             data_dict = plt.matrices_to_dict(
                 simLength=simLength,
                 timeLineSetMin=timeLineSetMin,
                 dataUsReq=dataUsReq,
                 dataSigmaBN=dataSigmaBN,
+                dataSigmaBR=dataSigmaBR,
                 dataOmegaRN_N=dataOmegaRN_N,
+                dataOmegaBR=dataOmegaBR,
                 dataRW=dataRW,
                 dataThrust=dataThrust,
                 dataCmdForce=dataCmdForce,
                 dataOmegaRN_B=dataOmegaRN_B,
-                dr=dr,
+                dr_index=dr[spacecraftIndex], # Special case, as dr holds all the data for index! We export per index of S/C, so we only get the dr data for particular index!
                 oed=oed,
             )
             
@@ -542,7 +542,7 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
         # close the plots being saved off to avoid over-writing old and new figures
         plt.clear_all_plots()
 
-        return figureList
+        return data_dict, figureList
 
 
 def runScenario(scenario, relativeNavigation, simulationTimeHours, turnOnController=1):
@@ -558,6 +558,8 @@ def runScenario(scenario, relativeNavigation, simulationTimeHours, turnOnControl
     # scenario.FSWModels[1].modeRequest = "hillPointing" 
     # scenario.FSWModels[2].modeRequest = "hillPointing"
      
+    # Turn on Hill pointing tasks defined in FSW, for all S/C modules:
+    # This is done before turning on all the TransControllers for the Chaser spacecraft to follow the Target:
     for i in range(scenario.numberSpacecraft): # Indexxing range starts from 0.
         scenario.FSWModels[i].modeRequest = "hillPointing"
     
@@ -573,12 +575,8 @@ def runScenario(scenario, relativeNavigation, simulationTimeHours, turnOnControl
     hillPointSimTime = macros.min2nano(5)
     
     scenario.ConfigureStopTime(hillPointSimTime)
-    # scenario.TotalSim.SingleStepProcesses() 
-    # scenario.TotalSim.SingleStepProcesses() 
-    
-    # return
-    
     scenario.ExecuteSimulation()
+    # scenario.TotalSim.SingleStepProcesses() # Single Step of simulation, keep here in case of debugging.
     
     # Reconfigure FSW attitude modes
     # scenario.FSWModels[0].modeRequest = "inertialPointing"
@@ -586,6 +584,7 @@ def runScenario(scenario, relativeNavigation, simulationTimeHours, turnOnControl
     # scenario.FSWModels[2].modeRequest = "startTransController" 
     # scenario.FSWModels[3].modeRequest = "startTransController" 
     
+    # Start FSW TransController tasks to turn on Relative Position Controllers after sustaining sufficient time for Hill Pointing:
     if turnOnController:
         for i in range(1, scenario.numberSpacecraft): # Ignore the index 0 target: 
             scenario.FSWModels[i].modeRequest = "startTransController"
@@ -609,24 +608,17 @@ def run(showPlots, relativeNavigation = False,
         (REMOVED) numberSpacecraft (int): Number of spacecraft in the simulation
         relativeNavigation (bool): Determines if the formation's chief is the barycenter or the zeroth index spacecraft
 
-    """
-
-    # Configure a scenario in the base simulation - keep for later use for now.
-    # initConfigPath = "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/init_config.json"
-    # initConfigPath = "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/SRL_config.json"
-    
+    """ 
+    # Command Line (CLI) execution of this python file, pass CLI arguments if fed in chronological order:
+    # Add on CLI arguments are all optional, but if provided they need to be in this order for now:
     if len(sys.argv) > 1:
         initConfigPath = sys.argv[1] # Pass python argument from cmdline, argument position 1.
-    
     if len(sys.argv) > 2:
         simulationTimeHours = float(sys.argv[2])
-        
     if len(sys.argv) > 3:
         turnOnController = int(sys.argv[3])
-    
     if len(sys.argv) > 4:
         simRate = float(sys.argv[4])
-        
     if len(sys.argv) > 5:
         dataSamplingTimeSec = float(sys.argv[5])
     
@@ -634,19 +626,25 @@ def run(showPlots, relativeNavigation = False,
     # TheScenario = MultiSat_test_scenario(targetOE, initConfigs, simRate, dataSamplingTimeSec, relativeNavigation, initConfigPath)
     TheScenario = MultiSat_test_scenario(initConfigPath, simRate, dataSamplingTimeSec, relativeNavigation)
     runScenario(TheScenario, relativeNavigation, simulationTimeHours, turnOnController)
-    # figureList = TheScenario.pull_outputs(showPlots, relativeNavigation, 0, initConfigPath)
+    
+    data_dicts = []
     for i in range(TheScenario.numberSpacecraft):
-        figureList = TheScenario.pull_outputs(showPlots, relativeNavigation, i)
-        # figureList = TheScenario.pull_outputs(showPlots, relativeNavigation, i, initConfigPath)
+        data_dict, _ = TheScenario.pull_outputs(showPlots, relativeNavigation, i)
+        data_dicts.append(data_dict)
+        # data_dict, figureList = TheScenario.pull_outputs(showPlots, relativeNavigation, i, initConfigPath)
+    if not showPlots:
+        data_filename = scConfig.getFileNameFromInitConfigJSON(TheScenario.initConfigPath)
+        dataPath = "dev/MultiSatBskSim/ResultData/"
+        plt.export_dicts_to_mat(data_dicts, dataPath, data_filename)
     return
 
 
 if __name__ == "__main__":
-    run(showPlots=False, # Set showPlots=False to save plots!
+    run(showPlots=True, # Set showPlots=False to save plots!
         relativeNavigation=False,
         initConfigPath = "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/init_config.json",
-        simulationTimeHours = 1.0,
+        simulationTimeHours = 0.3,
         turnOnController = 1,
         simRate = 0.1,
-        dataSamplingTimeSec = 1.0
+        dataSamplingTimeSec = 0.1
         )

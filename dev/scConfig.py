@@ -125,24 +125,31 @@ def setInitialCondition(EnvModel, DynModels, targetOE, init_configs):
     
     mu_Earth = orbitalMotion.MU_EARTH * math.pow(1000,3) # Convert to S.I.: m^3/s^2
     omega_earth_rot = math.sqrt(mu_Earth / math.pow(targetOE.a,3))
+    omega_earth_rot_vec = np.array([0,0,omega_earth_rot])
     
     # Get RV for initialization & position deviation preparation:
     rN0, vN0 = orbitalMotion.elem2rv(EnvModel.mu, targetOE)
     orbitalMotion.rv2elem(EnvModel.mu, rN0, vN0)
     DCM_NH = orbitalMotion.hillFrame(rN0, vN0).transpose()
     for spacecraftIndex in range(len(DynModels)): # Index starts from 0!
-        # if config.isTarget == 1:
-        #     pass
-        # else:
-        #     pass:
-        omega_earth_rot_vec = np.array([0,0,omega_earth_rot])
+        # If it is not a target, apply Hill relative position according to init_config!
+        # if init_configs[spacecraftIndex].isTarget == 0:
         dr_hill = init_configs[spacecraftIndex].init_dr_hill
         dv_hill = init_configs[spacecraftIndex].init_dv_hill
         dv_hill += np.cross(omega_earth_rot_vec, dr_hill) # Add dv = omega x r_hill term!
         dr = DCM_NH @ dr_hill
         dv = DCM_NH @ dv_hill
+        
+        # dv += np.cross(omega_earth_rot_vec, dr) # Add dv = omega x dr term!
+        
         rN = rN0 + dr
         vN = vN0 + dv
+        # If it IS Target, no need relative positioning! (init_config still takes `init_dr_hill`, `init_dv_hill`, `target_dr_hill` &  `target_dv_hill`, but it will not be used!)
+        # else:
+        #     print("This is the Target!")
+        #     rN = rN0
+        #     vN = vN0
+        
         orbitalMotion.rv2elem(EnvModel.mu, rN, vN)
         
         oe_list.append(copy.deepcopy(targetOE))
