@@ -18,9 +18,9 @@ set(groot, 'defaultLineLineWidth', 1.5);  % Axes line width
 % dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/base_case_4_xyzr/base_case_4_xyzr_plot_data.mat';
 % dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/control_case_5_yr/control_case_5_yr_plot_data.mat';
 % dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/control_case_6_xyr/control_case_6_xyr_plot_data.mat';
-% dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/control_case_7_xyzr/control_case_7_xyzr_plot_data.mat';
+dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/control_case_7_xyzr/control_case_7_xyzr_plot_data.mat';
 
-dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/init_config/init_config_plot_data.mat';
+% dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/init_config/init_config_plot_data.mat';
 
 % Extract file name:
 [~, export_case_name, ~] = fileparts(dataPath); 
@@ -31,16 +31,19 @@ export_plots_path = "/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSi
 % Example of calling the function
 % LoadCombine_mat(dataPath);
 load(dataPath);
-controllerOn = 0;
-% controllerOn = 1;
+% controllerOn = 0;
+controllerOn = 1;
 
 %% Plots:
 
 % Gather data:
-t = timeLineSetMin(1,:);
+t = timeLineSetMin(1,:)';
+dt = (t(2) - t(1)) * 60; % Simulation Frequencey/Rate, Min -> Second
+t_zoom = t(1:10*60/dt); % Zoomed-in time vector for plotting enlargement.
+idx_t_zoom = length(t_zoom);
+
 numSC = length(simLength);
 sim_dim = simLength(1);
-
 
 for i=1:numSC
 
@@ -67,13 +70,13 @@ sigma_BH = squeeze(dataSigmaBR(i,:,:)); % MATLAB `squeeze()` to reduce a dimensi
 omega_BH = squeeze(dataOmegaBR(i,:,:)); % MATLAB `squeeze()` to reduce a dimension!
 
 fig(2) = figure('Name','sigma_BH_omega_BH'); % apply_custom_style();
-subplot(2,1,1); plot(t, sigma_BH);
+subplot(2,1,1); plot(t_zoom, sigma_BH(1:idx_t_zoom,:));
 xlabel('Time $t \ [min]$'); 
 ylabel('$\sigma_{B/H} \ [rad]$');
 legend('$\sigma_{1}$', '$\sigma_{2}$', '$\sigma_{3}$');
 title(title_text_base + "MRP Pointing Error - Body w.r.t. Hill-frame");
 
-subplot(2,1,2); plot(t, omega_BH);
+subplot(2,1,2); plot(t_zoom, omega_BH(1:idx_t_zoom,:));
 xlabel('Time $t \ [min]$'); 
 ylabel('$\omega_{B/H} \ [rad/s]$');
 legend('$\omega_{x}$', '$\omega_{y}$', '$\omega_{z}$');
@@ -89,25 +92,15 @@ if controllerOn
     ylabel('Commanded Force $F_{cmd} \ [N]$');
     title(title_text_base + "Commanded Control Force");
     legend('$F_x$','$F_y$','$F_z$');
-    
-% 4) Cmd Torque:
-    L_cmd = squeeze(dataUsReq(i,:,:)); % MATLAB `squeeze()` to reduce a dimension!
-    
-    fig(4) = figure('Name','L_cmd'); % apply_custom_style();
-    plot(t,F_cmd); 
-    xlabel('Time $t \ [min]$'); 
-    ylabel('Commanded Torque $L_{cmd} \ [Nm]$');
-    title(title_text_base + "Commanded Control Torque");
-    legend('$L_x$','$L_y$','$L_z$');
-    
-% 5) Thruster Actuations:
+       
+% 4) Thruster Actuations:
     % Total Impulse P_tot = summation(F*dt), dt = sampling time*60 (minute):
-    F_thrusters = squeeze(dataThrust(i,:,:)); % MATLAB `squeeze()` to reduce a dimension!
-    dt = (t(2) - t(1)) * 60; % Min -> Second
+    F_thrusters = squeeze(dataThrust(i,:,:))'; % MATLAB `squeeze()` to reduce a dimension!
+    % dt = (t(2) - t(1)) * 60; % Min -> Second
     F_tot = sum(sum(F_thrusters)); % Discrete sum of forces
     P_tot = F_tot * dt
     
-    fig(5) = figure('Name','F_thrusters'); % apply_custom_style();
+    fig(4) = figure('Name','F_thrusters'); % apply_custom_style();
     plot(t,F_thrusters); 
     xlabel('Time $t \ [min]$'); 
     ylabel('Actuated Force $F_{thrusters} \ [N]$');
@@ -116,16 +109,70 @@ if controllerOn
     
     P_tot_txt = "Total Impulse: $P_{tot} = $ " + num2str(P_tot) + " $Ns$";
     text(t(end)/2,max(max(F_thrusters))/2,P_tot_txt,'HorizontalAlignment','center', 'FontSize',36);
+
+% 5) Combined - Cmd v.s. Applied (summing +/- components per x,y,z axis) Forces
+    % Reusing `F_cmd` & `F_thrusters`:
+    F_applied = [ sum(F_thrusters(:,1:2),2),... 
+                  sum(F_thrusters(:,3:4),2), ...
+                  sum(F_thrusters(:,5:6),2) ];
     
-% 6) RW Actuations (motorTorque):
-    L_RW = squeeze(dataRW(i,:,:)); % MATLAB `squeeze()` to reduce a dimension!
+    fig(5) = figure('Name','F_applied_vs_F_cmd'); % apply_custom_style();
+    subplot(3,1,1); plot(t, F_applied(:,1), 'g-', t, F_cmd(:,1), 'r--');
+    title(title_text_base + "Thruster Applied Force v.s. Commanded Control Force");
+    xlabel('Time $t \ [min]$'); 
+    ylabel('$F_x \ [N]$');
+    legend('$F_{applied, x}$','$F_{cmd, x}$');
+    subplot(3,1,2); plot(t, F_applied(:,2), 'g-', t, F_cmd(:,2), 'r--');
+    xlabel('Time $t \ [min]$'); 
+    ylabel('$F_y \ [N]$');
+    legend('$F_{applied, y}$','$F_{cmd, y}$');
+    subplot(3,1,3); plot(t, F_applied(:,3), 'g-', t, F_cmd(:,3), 'r--');
+    xlabel('Time $t \ [min]$'); 
+    ylabel('$F_z \ [N]$');
+    legend('$F_{applied, z}$','$F_{cmd, z}$');
+
+% 6) Cmd Torque:
+    L_cmd = squeeze(dataUsReq(i,:,:)); % MATLAB `squeeze()` to reduce a dimension!
     
-    fig(6) = figure('Name','L_RW'); % apply_custom_style();
-    plot(t,L_RW); 
+    fig(6) = figure('Name','L_cmd'); % apply_custom_style();
+    plot(t_zoom,L_cmd(1:idx_t_zoom,:)); 
+    xlabel('Time $t \ [min]$'); 
+    ylabel('Commanded Torque $L_{cmd} \ [Nm]$');
+    title(title_text_base + "Commanded Control Torque");
+    legend('$L_x$','$L_y$','$L_z$');
+
+% 7) RW Actuations (motorTorque):
+    L_RW = squeeze(dataRW(i,:,:))'; % MATLAB `squeeze()` to reduce a dimension!
+    
+    fig(7) = figure('Name','L_RW'); % apply_custom_style();
+    plot(t_zoom,L_RW(1:idx_t_zoom,:)); 
     title(title_text_base + "RW Actuated Torque");
     xlabel('Time $t \ [min]$'); 
     ylabel('Actuated Torque $L_{RW} \ [Nm]$');
     legend('RW $x$','RW $y$','RW $z$'); % Currently hard-coded for 3 RWs.
+
+% 8) Combined - Cmd v.s. Applied (summing +/- components per x,y,z axis) Forces
+    % Reusing `L_cmd` & `L_RW`:
+    % L_applied = [ sum(L_RW(:,1:2),2),... 
+    %               sum(L_RW(:,3:4),2), ...
+    %               sum(L_RW(:,5:6),2) ];
+    L_applied = L_RW; % 3 RWs, hardcoded for now.
+
+    fig(8) = figure('Name','L_applied_vs_L_cmd'); % apply_custom_style();
+    subplot(3,1,1); plot(t_zoom, L_applied(1:idx_t_zoom,1), 'g-', t_zoom, L_cmd(1:idx_t_zoom,1), 'r--');
+    title(title_text_base + "RW Applied Torque v.s. Commanded Control Torque");
+    xlabel('Time $t \ [min]$'); 
+    ylabel('$L_x \ [N]$');
+    legend('$L_{applied, x}$','$L_{cmd, x}$');
+    subplot(3,1,2); plot(t_zoom, L_applied(1:idx_t_zoom,2), 'g-', t_zoom, L_cmd(1:idx_t_zoom,2), 'r--');
+    xlabel('Time $t \ [min]$'); 
+    ylabel('$L_y \ [N]$');
+    legend('$L_{applied, y}$','$L_{cmd, y}$');
+    subplot(3,1,3); plot(t_zoom, L_applied(1:idx_t_zoom,3), 'g-', t_zoom, L_cmd(1:idx_t_zoom,3), 'r--');
+    xlabel('Time $t \ [min]$'); 
+    ylabel('$L_z \ [N]$');
+    legend('$L_{applied, z}$','$L_{cmd, z}$');
+
 end
 
 % End loop:
