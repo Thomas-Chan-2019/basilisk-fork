@@ -3,12 +3,13 @@
 # List of input paths (common to both Linux/MacOS and Windows)
 input_paths=(
     # "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/base_case_1_xr.json"
-    # "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/base_case_2_xyr.json"
+    # "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/base_case_2_xyrdot.json"
     # "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/base_case_3_zr_zrdot.json"
     # "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/base_case_4_xyzr.json"
     "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/control_case_5_yr.json"
     "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/control_case_6_xyr.json"
     "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/control_case_7_xyzr.json"
+    "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/control_case_8_xyzr_dot.json"
 )
 
 simTimeHours=1.5 # Hours, one orbit for given orbit in each json for now.

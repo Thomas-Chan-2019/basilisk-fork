@@ -640,9 +640,10 @@ def run(showPlots, relativeNavigation = False,
 
 
 if __name__ == "__main__":
-    run(showPlots=True, # Set showPlots=False to save plots!
+    run(showPlots=False, # Set showPlots=False to save plots!
         relativeNavigation=False,
-        initConfigPath = "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/init_config.json",
+        initConfigPath = "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/control_case_8_xyzr_dot.json",
+        # initConfigPath = "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/init_config.json",
         simulationTimeHours = 0.3,
         turnOnController = 1,
         simRate = 0.1,

@@ -137,7 +137,13 @@ class BSKFswModels:
         self.transError = transError.transError()
         self.transError.ModelTag = "transError"
         
-        self.transController = PIDController.PIDController()
+        # Setting the relative position controller module via its orbital radius `a_orbit` and controller type `controllerType`.
+        # Choose from the following `controllerType` string flags:
+        # "pole-place" or "SRL" or "feedback-lin". See implementation in the PIDController() module.
+        self.transController = PIDController.PIDController(
+            a_orbit = self.targetOE.a, 
+            controllerType = "pole-place"
+            )
         self.transController.ModelTag = "transController"
 
         # self.thrForceMapping = thrForceMapping.thrForceMapping()
@@ -378,101 +384,9 @@ class BSKFswModels:
         # TODO - Maybe set controller gains via a JSON file separately, or define via `scConfig.py`?
         # self.initConfig.scName == "ITRL"
         
-        # Translational controller PID tuning: 
-        # Feedback Linearization trial:
-        mu_Earth = orbitalMotion.MU_EARTH * math.pow(1000,3) # Convert to S.I.: m^3/s^2
-        r = self.targetOE.a # Orbital radius
-        w = math.sqrt(mu_Earth / math.pow(r,3))
+        ## Relative Position Controller Gains are now set in the PIDController() module directly!
         
-        # Open-loop system of CW-equation:
-        A = np.array([[0, 0, 0, 1, 0, 0],
-                      [0, 0, 0, 0, 1, 0],
-                      [0, 0, 0, 0, 0, 1],
-                      [0, 0, 0, 0, 2*w, 0],
-                      [0, 3*math.pow(w,2), 0, -2*w, 0, 0],
-                      [0, 0, -math.pow(w,2), 0, 0, 0]]) # 6x6 A-matrix
-        B = np.array([[0, 0, 0],
-                      [0, 0, 0],
-                      [0, 0, 0],
-                      [1, 0, 0],
-                      [0, 1, 0],
-                      [0, 0, 1]]) # 6x3 B-matrix
-        
-        # Controller Design:
-        # 1) Linearization - Pole placement using scipy.signal.place_poles():
-        # design_poles = np.array([-10.0, -10.0, -10.0, -1.0, -1.0, -1.0])
-        design_poles = np.array([-4.0, -4.1, -4.2, -1.0, -1.1, -1.2])
-        if controllerType == 'pole-place':
-            polePlaceResult = place_poles(A, B, design_poles)
-            K = polePlaceResult.gain_matrix
-            print(K)
-            print(A - B@K)
-            
-            Kp_trans = K[:, :3] # retrieve first 3 columns of K as Kp
-            Kd_trans = K[:, 3:] # retrieve last 3 columns of K as Kd
-        
-        # 1) Pole placement with SRL config -> No z-axis actuation:
-        if controllerType == 'SRL':
-            polePlaceResult = place_poles(A, B, design_poles)
-            K = polePlaceResult.gain_matrix
-            print(K)
-            print(A - B@K)
-            
-            Kp_trans = K[:, :3] # retrieve first 3 columns of K as Kp
-            Kd_trans = K[:, 3:] # retrieve last 3 columns of K as Kd
-
-            ku = 1/1 * np.array([[2,0,0], [0,2,0], [0,0,0]]).transpose() # Remove z-axis actuation
-            Kp_trans = 0.60 * ku
-            Ki_trans = 0.1* 1.2 * ku / 18
-            Kd_trans = 5*0.075 * ku * 18
-        
-        # 2) Feedback Linearization + Pole Placement: # Reuse A, B matrices and poles from 1).
-        if controllerType == 'feedback-lin':
-            # i) Feedback linearization PHI-term to remove non-linearity 
-            phi_p = A[3:,:3] # position nonlinearity - p
-            phi_d = A[3:,3:] # derivative nonlinearity - d
-            # Equivalent to below:
-            # phi_x_p = np.array[[0,0,0],
-            #                    [0,3*math.pow(w,2),0],
-            #                    [0,0,-math.pow(w,2)]] 
-            # phi_x_d = np.array([[0,2*w,0],
-            #                     [-2*w,0,0],
-            #                     [0,0,0]]) 
-            
-            # A[3:,:3] = np.zeros((3,3)) # Remove nonlinearity phi_p
-            # A[3:,3:] = np.zeros((3,3)) # Remove nonlinearity phi_d
-            # (Below is equivalent to set the corresponding part in A equal to zero, but this is kept for clear understanding.)
-            A_tilde = copy.deepcopy(A)
-            A_tilde[3:,:3] = A[3:,:3] - phi_p # Remove nonlinearity phi_p
-            A_tilde[3:,3:] = A[3:,3:] - phi_d # Remove nonlinearity phi_d
-            
-            # ii) Set gain matrices through pole placement:
-            polePlaceResult = place_poles(A_tilde, B, design_poles)
-            K_temp = polePlaceResult.gain_matrix
-            print(K_temp)
-            print(A_tilde - B@K_temp)
-            
-            Kp_trans = phi_p + K_temp[:, :3] # retrieve first 3 columns of K as Kp
-            Kd_trans = phi_d + K_temp[:, 3:] # retrieve last 3 columns of K as Kd
-            # Kp_trans = np.array([[0,0,0],
-            #                      [0,-3*math.pow(w,2),0],
-            #                      [0,0,math.pow(w,2)]]) + \
-            #            np.array([[-k1,0,0],
-            #                      [0,-k2,0],
-            #                      [0,0,-k3]]) 
-            # Kd_trans = np.array([[-1,-2*w,0],
-            #                      [2*w,-1,0],
-            #                      [0,0,-1]]) + \
-            #            np.array([[-k4,0,0],
-            #                      [0,-k5,0],
-            #                      [0,0,-k6]])
-        
-        self.transController.Kp_trans = Kp_trans
-        self.transController.Kd_trans = Kd_trans
-        # self.transController.Kp_trans = SimBase.DynModels[self.spacecraftIndex].m_sc * 1
-        # self.transController.Kd_trans = SimBase.DynModels[self.spacecraftIndex].m_sc * 1
-
-        ## Att. control part:
+        ## Att. control part (remove Att. control in TransController SOON):
         self.decayTime = 50 # copy from MRP Feedback module
         self.xi = 0.9 # copy from MRP Feedback module
         ## To tune rotational PD controller from a CONSTANT to 3x3 matrix:

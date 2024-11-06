@@ -58,7 +58,11 @@ class InitConfig(object):
 # TODO        
 def loadSCConfig(sc_config_path):
     with open(sc_config_path, 'r') as file:
-        data = json.load(file)
+        try:
+            data = json.load(file)
+        except Exception as e:
+            print("\nInit Config not found (with error ", e, "), please check the path again.")
+            
     sc_configs = [SCConfig(**config) for config in data.get('SCConfig', [])]
     # other_configs1 = [OtherConfig1(**config) for config in data.get('OtherConfigs1', [])]
     # other_configs2 = [OtherConfig2(**config) for config in data.get('OtherConfigs2', [])]

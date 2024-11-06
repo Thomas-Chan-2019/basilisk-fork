@@ -13,12 +13,13 @@ set(groot, 'defaultLineLineWidth', 1.5);  % Axes line width
 
 %%
 % dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/base_case_1_xr/base_case_1_xr_plot_data.mat';
-% dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/base_case_2_xyr/base_case_2_xyr_plot_data.mat';
+% dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/base_case_2_xyrdot/base_case_2_xyrdot_plot_data.mat';
 % dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/base_case_3_zr_zrdot/base_case_3_zr_zrdot_plot_data.mat';
 % dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/base_case_4_xyzr/base_case_4_xyzr_plot_data.mat';
 % dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/control_case_5_yr/control_case_5_yr_plot_data.mat';
 % dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/control_case_6_xyr/control_case_6_xyr_plot_data.mat';
-dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/control_case_7_xyzr/control_case_7_xyzr_plot_data.mat';
+% dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/control_case_7_xyzr/control_case_7_xyzr_plot_data.mat';
+dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/control_case_8_xyzr_dot/control_case_8_xyzr_dot_plot_data.mat';
 
 % dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/init_config/init_config_plot_data.mat';
 
@@ -300,3 +301,11 @@ function LoadCombine_mat(folder_path)
     % end
 end
 
+function r_t = CWAnalytical(t, r0, v0, omega)
+    rx_t = 4*r0(1) + 2*v0(2)/omega + v0(1)*sin(omega * t)/omega - ( 3*r0(1) + 2*v0(2)/omega )*cos(omega * t);
+    ry_t = 2*v0(1)*cos(omega * t)/omega + (6*r0(1) + 4*v0(2)/omega)*sin(omega * t) - ( 6*omega*r0(1) + 3*v0(2) )*t - 2*v0(1)/omega + r0(2);
+    % -2*r0(1)*sin(omega * t) + r0(2);
+    rz_t = r0(3)*cos(omega * t) + v0(3)*sin(omega * t)/omega;
+
+    r_t = [rx_t ry_t rz_t];
+end 

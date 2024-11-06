@@ -1,6 +1,8 @@
 from Basilisk.architecture import sysModel, messaging
 from Basilisk.utilities import orbitalMotion, unitTestSupport as UAT, RigidBodyKinematics as RBK # Import for Hill-frame conversion & control if necessary
 import numpy as np
+import math, copy
+from scipy.signal import place_poles
 
 # See https://hanspeterschaub.info/basilisk/Learn/makingModules/pyModules.html for Python Module creation original example.
 # This controller should have I/O messages from:
@@ -29,18 +31,26 @@ class PIDController(sysModel.SysModel):
     can complete any other computations you need (``Numpy``, ``matplotlib``, vision processing
     AI, whatever).
     """
-    def __init__(self):
+    def __init__(self, a_orbit, controllerType='pole-place'):
         super(PIDController, self).__init__()
 
-        # Translational Gains Initialization:
-        self.Kp_trans = np.array([[0,0,0],
-                                 [0,0,0],
-                                 [0,0,0]]
-                                ) # Proportional gain
-        self.Kd_trans = np.array([[0,0,0],
-                                 [0,0,0],
-                                 [0,0,0]]
-                                ) # Derivative gain
+        # Translational Gains Initialization 
+        self.a_orbit = a_orbit
+        self.controllerType = controllerType
+        
+        # Set gain
+        Kp_trans, Kd_trans = self.__SetTransControllerGains()
+        self.Kp_trans = Kp_trans # Proportional gain
+        self.Kd_trans = Kd_trans # Derivative gain
+        
+        # self.Kp_trans = np.array([[0,0,0],
+        #                          [0,0,0],
+        #                          [0,0,0]]
+        #                         ) # Proportional gain
+        # self.Kd_trans = np.array([[0,0,0],
+        #                          [0,0,0],
+        #                          [0,0,0]]
+        #                         ) # Derivative gain
         
         # Rotational Gains Initialization:
         self.K_rot = 0 # Proportional gain
@@ -192,3 +202,128 @@ class PIDController(sysModel.SysModel):
             self.bskLogger.bskLog(sysModel.BSK_INFORMATION, f"Written Msg - TorqueRequestBody: {self.cmdTorqueOutMsg.read().torqueRequestBody}")
             
         return
+    
+    def __SetTransControllerGains(self): # Internal function to set controller gain here.
+            # Controller PID tuning: 
+            mu_Earth = orbitalMotion.MU_EARTH * math.pow(1000,3) # Convert to S.I.: m^3/s^2
+            w = math.sqrt(mu_Earth / math.pow(self.a_orbit,3)) # Mean motion or Angular velocity
+            
+            # Closed-loop system of CW-equation:
+            A = np.array([[0, 0, 0, 1, 0, 0],
+                        [0, 0, 0, 0, 1, 0],
+                        [0, 0, 0, 0, 0, 1],
+                        [0, 0, 0, 0, 2*w, 0],
+                        [0, 3*math.pow(w,2), 0, -2*w, 0, 0],
+                        [0, 0, -math.pow(w,2), 0, 0, 0]]) # 6x6 A-matrix
+            B = np.array([[0, 0, 0],
+                        [0, 0, 0],
+                        [0, 0, 0],
+                        [1, 0, 0],
+                        [0, 1, 0],
+                        [0, 0, 1]]) # 6x3 B-matrix
+            
+            # Controller Design:
+            # 1) Linearization - Pole placement using scipy.signal.place_poles():
+            # design_poles = np.array([-10.0, -10.0, -10.0, -1.0, -1.0, -1.0]) # Works but too damped
+            # design_poles = np.array([-2.0, -2.1, -2.2, -0.5, -0.6, -0.7]) # Works
+            # design_poles = np.array([-4.0, -4.1, -4.2, -1.0, -1.1, -1.2]) # Works
+            # design_poles = np.array([-0.3, -0.1, -0.2, -0.5, -0.6, -0.7]) # TOO LOW... Trying to lower the damping!
+            design_poles = np.array([-1.0, -1.1, -1.2, -0.5, -0.6, -0.7]) # Seems good enough with 600 Ns total impulse - Trying to lower the damping!
+            
+            # Try only replace the +ve pole:
+            # design_poles = __replace_unstable_eigenvalues(A, num_unstable=1, replacement_values=[-1000.0])
+            
+            original_poles = [0, 0, w*1j, -w*1j, +w*math.sqrt(-4*w + 3), -w*math.sqrt(-4*w + 3)]
+            # design_poles = [0, 0, w*1j, -w*1j, -1 +w*math.sqrt(-4*w + 3), -1 -w*math.sqrt(-4*w + 3)]
+            design_poles_dyn = [-0.5, -0.5, -1-w*1j, -1+w*1j, -1 +w*math.sqrt(-4*w + 3), -1 -w*math.sqrt(-4*w + 3)] # Works with 600 Ns total impulse
+            
+            if self.controllerType == "pole-place":
+                polePlaceResult = place_poles(A, B, design_poles)
+                K = polePlaceResult.gain_matrix
+                print(K)
+                print(A - B@K)
+                
+                Kp_trans = K[:, :3] # retrieve first 3 columns of K as Kp
+                Kd_trans = K[:, 3:] # retrieve last 3 columns of K as Kd
+            
+            # 1) Pole placement with SRL config -> No z-axis actuation:
+            elif self.controllerType == "SRL":
+                design_poles_SRL = np.array([-0.1, -0.05, -0.08, -0.03, -0.05, -0.5])
+                # polePlaceResult = place_poles(A, B, design_poles)
+                polePlaceResult = place_poles(A, B, design_poles_SRL)
+                K = polePlaceResult.gain_matrix
+                print(K)
+                print(A - B@K)
+                
+                Kp_trans = K[:, :3] # retrieve first 3 columns of K as Kp
+                Kd_trans = K[:, 3:] # retrieve last 3 columns of K as Kd
+
+                # ku = 1/1 * np.array([[2,0,0], [0,2,0], [0,0,0]]).transpose() # Remove z-axis actuation
+
+                # Kp_trans = 0.60 * ku
+                # Ki_trans = 0.1* 1.2 * ku / 18
+                # Kd_trans = 5*0.075 * ku * 18
+                Kp_trans[-1,:] = [0, 0, 0]
+                Kd_trans[-1,:] = [0, 0, 0]
+            
+            # 2) Feedback Linearization + Pole Placement: # Reuse A, B matrices and poles from 1).
+            elif self.controllerType == "feedback-lin":
+                # i) Feedback linearization PHI-term to remove non-linearity 
+                phi_p = A[3:,:3] # position nonlinearity - p
+                phi_d = A[3:,3:] # derivative nonlinearity - d
+                # Equivalent to below:
+                # phi_x_p = np.array[[0,0,0],
+                #                    [0,3*math.pow(w,2),0],
+                #                    [0,0,-math.pow(w,2)]] 
+                # phi_x_d = np.array([[0,2*w,0],
+                #                     [-2*w,0,0],
+                #                     [0,0,0]]) 
+                
+                # (Below is equivalent to set the corresponding part in A equal to zero, but this is kept for clear understanding.)
+                A_tilde = copy.deepcopy(A)
+                A_tilde[3:,:3] = A[3:,:3] - phi_p # Remove nonlinearity phi_p
+                A_tilde[3:,3:] = A[3:,3:] - phi_d # Remove nonlinearity phi_d
+                
+                # ii) Set gain matrices through pole placement:
+                polePlaceResult = place_poles(A_tilde, B, design_poles)
+                K_temp = polePlaceResult.gain_matrix
+                print(K_temp)
+                print(A_tilde - B@K_temp)
+                
+                Kp_trans = phi_p + K_temp[:, :3] # retrieve first 3 columns of K as Kp
+                Kd_trans = phi_d + K_temp[:, 3:] # retrieve last 3 columns of K as Kd
+                # Kp_trans = np.array([[0,0,0],
+                #                      [0,-3*math.pow(w,2),0],
+                #                      [0,0,math.pow(w,2)]]) + \
+                #            np.array([[-k1,0,0],
+                #                      [0,-k2,0],
+                #                      [0,0,-k3]]) 
+                # Kd_trans = np.array([[-1,-2*w,0],
+                #                      [2*w,-1,0],
+                #                      [0,0,-1]]) + \
+                #            np.array([[-k4,0,0],
+                #                      [0,-k5,0],
+                #                      [0,0,-k6]])
+            else:
+                self.bskLogger.bskLog(sysModel.BSK_ERROR, f"Error: Wrong Controller Gain selection type. Please check Controller Gain implementation.")
+            
+            return Kp_trans, Kd_trans
+        
+    def __replace_unstable_eigenvalues(A, num_unstable, replacement_values):
+            """ 
+            Replace unstable eigenvalues (those with positive real parts) 
+            with new desired stable values.
+            """
+            eigenvalues, _ = np.linalg.eig(A)
+            # Identify unstable eigenvalues (positive real part)
+            unstable_indices = np.where(np.real(eigenvalues) > 0)[0]
+            
+            # If the number of unstable eigenvalues is not as expected, raise an error
+            if len(unstable_indices) != num_unstable:
+                raise ValueError(f"Expected {num_unstable} unstable eigenvalues, but found {len(unstable_indices)}")
+            
+            # Replace the unstable eigenvalues with the provided stable values
+            for i, idx in enumerate(unstable_indices):
+                eigenvalues[idx] = replacement_values[i]
+            
+            return eigenvalues
