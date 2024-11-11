@@ -144,7 +144,8 @@ class PIDController(sysModel.SysModel):
         
         # Set small forces to zero for initial actuation noise filtering:
         eps = 1e-6
-        FrCmd_hill[np.abs(FrCmd_hill) < eps] = 0.0
+        self.__SetForceNoiseFilter(FrCmd_hill, eps)
+        # FrCmd_hill[np.abs(FrCmd_hill) < eps] = 0.0
         
         # Convert the Hill-frame control force to Body frames
         r_BN_N = np.array(transInMsgBuffer.r_BN_N)
@@ -308,6 +309,9 @@ class PIDController(sysModel.SysModel):
                 self.bskLogger.bskLog(sysModel.BSK_ERROR, f"Error: Wrong Controller Gain selection type. Please check Controller Gain implementation.")
             
             return Kp_trans, Kd_trans
+        
+    def __SetForceNoiseFilter(self, F, eps=1e-6): # Filter command force under a threshold order of magnitude.
+        F[np.abs(F) < eps] = 0.0
         
     def __replace_unstable_eigenvalues(A, num_unstable, replacement_values):
             """ 
