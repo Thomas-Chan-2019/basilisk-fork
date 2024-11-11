@@ -127,6 +127,22 @@ viz = vizSupport.enableUnityVisualization(scSim, simTaskName, scList
                                                   )
 # Enable "liveStream=True" for Viz tool to work!
 # Enable "saveFile=fileName"
+
+# load CAD for target spacecraft
+vizSupport.createCustomModel(viz,
+                                modelPath=os.path.join(path, "dataForExamples", "Aura_27.obj"),
+                                shader=1,
+                                simBodiesToModify=[scList[1].ModelTag],
+                                rotation=[180. * macros.D2R, 0.0 * macros.D2R, -90. * macros.D2R],
+                                scale=[1, 1, 1])
+# load CAD for servicer spacecraft
+vizSupport.createCustomModel(viz,
+                                modelPath=os.path.join(path, "dataForExamples", "Loral-1300Com-main.obj"),
+                                simBodiesToModify=[scList[0].ModelTag],
+                                rotation=[0. * macros.D2R, -90.0 * macros.D2R, 0. * macros.D2R],
+                                scale=[0.09, 0.09, 0.09])
+
+
 ```
 
 ## Basilisk video takeaways:

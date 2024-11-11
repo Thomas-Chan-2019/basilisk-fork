@@ -1,27 +1,61 @@
-%% LATEX INITIALIZATION:
+%% LATEX INITIALIZATION:%
 clear; 
 close all;
 clc;
-set(groot,'defaultAxesTickLabelInterpreter','latex');
-set(groot,'defaulttextinterpreter','latex');
-set(groot,'defaultLegendInterpreter','latex');
+% set(groot,'defaultAxesTickLabelInterpreter','latex');
+% set(groot,'defaulttextinterpreter','latex');
+% set(groot,'defaultLegendInterpreter','latex');
+% 
+% set(groot,'DefaultFigureWindowStyle','docked'); % Dock all figures!
 
-set(groot,'DefaultFigureWindowStyle','docked'); % Dock all figures!
-
-set(groot,'defaultAxesFontSize',40); 
+set(groot,'defaultAxesFontSize',30); % Font size is monitor-dependent!
 set(groot, 'defaultLineLineWidth', 1.5);  % Axes line width
 
-%%
-% dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/base_case_1_xr/base_case_1_xr_plot_data.mat';
-% dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/base_case_2_xyrdot/base_case_2_xyrdot_plot_data.mat';
-% dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/base_case_3_zr_zrdot/base_case_3_zr_zrdot_plot_data.mat';
-% dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/base_case_4_xyzr/base_case_4_xyzr_plot_data.mat';
-% dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/control_case_5_yr/control_case_5_yr_plot_data.mat';
-% dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/control_case_6_xyr/control_case_6_xyr_plot_data.mat';
-% dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/control_case_7_xyzr/control_case_7_xyzr_plot_data.mat';
-dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/control_case_8_xyzr_dot/control_case_8_xyzr_dot_plot_data.mat';
+% set(0, 'DefaultAxesXLimMode', 'auto');
+set(groot, 'defaultLegendLocation', 'eastoutside');
 
-% dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/init_config/init_config_plot_data.mat';
+%%
+
+simCase = input('Choose from case 1-8: ');
+
+switch simCase
+    case 1
+        dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/base_case_1_xr/base_case_1_xr_plot_data.mat';
+        r0 = [2 0 0]; v0 = [0 0 0]; 
+        controllerOn = 0;
+    case 2
+        dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/base_case_2_xyrdot/base_case_2_xyrdot_plot_data.mat';
+        r0 = [0 0 0]; v0 = [2 2 0];
+        controllerOn = 0;
+    case 3 
+        dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/base_case_3_zr_zrdot/base_case_3_zr_zrdot_plot_data.mat';
+        r0 = [0 0 0]; v0 = [0 0 0.1];
+        controllerOn = 0;
+    case 4 
+        dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/base_case_4_xyzr/base_case_4_xyzr_plot_data.mat';
+        r0 = [1 2 3]; v0 = [0 0 0];
+        controllerOn = 0;
+    case 5 
+        dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/control_case_5_yr/control_case_5_yr_plot_data.mat';
+        rr = [0.0, -2.0, 0.0; 0.0, 2.0, 0.0]; % v0 = [0 0 0];
+        controllerOn = 1;
+    case 6 
+        dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/control_case_6_xyr/control_case_6_xyr_plot_data.mat';
+        rr = [3.0, -2.0, 0.0; -3.0, 2.0, 0.0]; % v0 = [0 0 0];
+        controllerOn = 1;
+    case 7 
+        dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/control_case_7_xyzr/control_case_7_xyzr_plot_data.mat';
+        rr = [3.0, -2.0, -4.0; -3.0, 2.0, 4.0]; % v0 = [0 0 0];
+        controllerOn = 1;
+    case 8 
+        dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/control_case_8_xyzr_dot/control_case_8_xyzr_dot_plot_data.mat';
+        rr = [3.0, -2.0, -4.0; -3.0, 2.0, 4.0]; % v0 = [-0.2, -0.2, -0.2]; (keep)
+        controllerOn = 1;
+    case 0 
+        dataPath = '/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSim/ResultData/init_config/init_config_plot_data.mat';
+        rr = [0 0 0; 0 0 0]; % TODO
+        controllerOn = 1;
+end
 
 % Extract file name:
 [~, export_case_name, ~] = fileparts(dataPath); 
@@ -33,38 +67,74 @@ export_plots_path = "/home/thomas/Documents/gits/basilisk-fork/dev/MultiSatBskSi
 % LoadCombine_mat(dataPath);
 load(dataPath);
 % controllerOn = 0;
-controllerOn = 1;
+% controllerOn = 1;
 
 %% Plots:
 
 % Gather data:
 t = timeLineSetMin(1,:)';
 dt = (t(2) - t(1)) * 60; % Simulation Frequencey/Rate, Min -> Second
-t_zoom = t(1:10*60/dt); % Zoomed-in time vector for plotting enlargement.
+t_zoom_timestamp = 10; % [min]
+
+t_zoom = t(1:t_zoom_timestamp*60/dt); % Zoomed-in time vector for plotting enlargement.
 idx_t_zoom = length(t_zoom);
 
 numSC = length(simLength);
 sim_dim = simLength(1);
 
-for i=1:numSC
+% CW Analytical part:
+if ~controllerOn
+    mu = 3.986e14;
+    a_orbit = 6578e3;
+    omega = sqrt(mu/a_orbit^3);
+    r_t = CWAnalytical(t*60, r0, v0, omega);
+end 
+
+for i=2:numSC % Skip index 1 (SC Index 0) for speed...
 
 % 0) Title text & indexing:
-title_text_base = "Spacecraft Index " + num2str(i-1) + " - ";
+title_text_base = "Spacecraft Index " + num2str(i-1); % + " - ";
 
 % 1) Relative Position - Hill Frame x-y-z positions from Target S/C:
 rel_pos = squeeze(dr_index(i,:,:)); % MATLAB `squeeze()` to reduce a dimension!
 
 fig(1) = figure('Name','rel_pos'); % apply_custom_style();
-subplot(3,1,1); plot(t, rel_pos(:,1));
-title(title_text_base + "Relative Position from Target S/C (Hill-frame)");
+subplot(3,1,1); plot(t, rel_pos(:,1)); hold on;
+title(title_text_base, "Relative Position from Target S/C (Hill-frame)");
 xlabel('Time $t \ [min]$'); 
 ylabel('$x \ [m]$');
-subplot(3,1,2); plot(t, rel_pos(:,2));
+if ~controllerOn && i~=1
+    plot(t,r_t(:,1)); %legend('Basilisk Simulation','CW-Analytical');
+elseif controllerOn && i~=1
+    yline(rr(i-1,1), 'r--', '$x_r$', 'LineWidth',2, 'FontSize', 20, 'LabelHorizontalAlignment','left'); %legend('Basilisk Simulation','CW-Analytical');
+    axLim = 1.2*max(abs(rel_pos(:,1)));
+    ylim([-axLim axLim]);
+    legend('Controlled $x$','Reference $x_r$');
+end
+
+subplot(3,1,2); plot(t, rel_pos(:,2)); hold on; 
 xlabel('Time $t \ [min]$'); 
 ylabel('$y \ [m]$');
-subplot(3,1,3); plot(t, rel_pos(:,3));
+if ~controllerOn && i~=1
+    plot(t,r_t(:,2)); legend('Basilisk Simulation','CW-Analytical','Location','northeast');
+elseif controllerOn && i~=1
+    yline(rr(i-1,2), 'r--', '$y_r$', 'LineWidth',2, 'FontSize', 20, 'LabelHorizontalAlignment','left'); 
+    axLim = 1.2*max(abs(rel_pos(:,2)));
+    ylim([-axLim axLim]);
+    legend('Controlled $y$','Reference $y_r$');
+end
+
+subplot(3,1,3); plot(t, rel_pos(:,3)); hold on; 
 xlabel('Time $t \ [min]$'); 
 ylabel('$z \ [m]$');
+if ~controllerOn && i~=1
+    plot(t,r_t(:,3));
+elseif controllerOn && i~=1
+    yline(rr(i-1,3), 'r--', '$z_r$', 'LineWidth',2, 'FontSize', 20, 'LabelHorizontalAlignment','left'); %legend('Basilisk Simulation','CW-Analytical');
+    axLim = 1.2*max(abs(rel_pos(:,3)));
+    ylim([-axLim axLim]);
+    legend('Controlled $z$','Reference $z_r$');
+end
 
 % 2) MRP Pointing Errors + Angular Velocity (Body w.r.t. Hill frame):
 sigma_BH = squeeze(dataSigmaBR(i,:,:)); % MATLAB `squeeze()` to reduce a dimension!
@@ -75,13 +145,13 @@ subplot(2,1,1); plot(t_zoom, sigma_BH(1:idx_t_zoom,:));
 xlabel('Time $t \ [min]$'); 
 ylabel('$\sigma_{B/H} \ [rad]$');
 legend('$\sigma_{1}$', '$\sigma_{2}$', '$\sigma_{3}$');
-title(title_text_base + "MRP Pointing Error - Body w.r.t. Hill-frame");
+title(title_text_base, "MRP Pointing Error - Body w.r.t. Hill-frame");
 
 subplot(2,1,2); plot(t_zoom, omega_BH(1:idx_t_zoom,:));
 xlabel('Time $t \ [min]$'); 
 ylabel('$\omega_{B/H} \ [rad/s]$');
 legend('$\omega_{x}$', '$\omega_{y}$', '$\omega_{z}$');
-title(title_text_base + "Angular Velocity - Body w.r.t. Hill-frame");
+title(title_text_base, "Angular Velocity - Body w.r.t. Hill-frame");
 
 if controllerOn
 % 3) Cmd Force:
@@ -91,7 +161,7 @@ if controllerOn
     plot(t,F_cmd); 
     xlabel('Time $t \ [min]$'); 
     ylabel('Commanded Force $F_{cmd} \ [N]$');
-    title(title_text_base + "Commanded Control Force");
+    title(title_text_base, "Commanded Control Force");
     legend('$F_x$','$F_y$','$F_z$');
        
 % 4) Thruster Actuations:
@@ -105,11 +175,11 @@ if controllerOn
     plot(t,F_thrusters); 
     xlabel('Time $t \ [min]$'); 
     ylabel('Actuated Force $F_{thrusters} \ [N]$');
-    title(title_text_base + "Thrusters Actuated Force");
+    title(title_text_base, "Thrusters Actuated Force");
     legend('$+x$','$-x$','$+y$','$-y$','$+z$','$-z$'); % Currently hard-coded for 6 thrusters.
     
     P_tot_txt = "Total Impulse: $P_{tot} = $ " + num2str(P_tot) + " $Ns$";
-    text(t(end)/2,max(max(F_thrusters))/2,P_tot_txt,'HorizontalAlignment','center', 'FontSize',36);
+    text(t(end)/2,max(max(F_thrusters))/2,P_tot_txt,'HorizontalAlignment','center','FontSize',30);
 
 % 5) Combined - Cmd v.s. Applied (summing +/- components per x,y,z axis) Forces
     % Reusing `F_cmd` & `F_thrusters`:
@@ -117,20 +187,33 @@ if controllerOn
                   sum(F_thrusters(:,3:4),2), ...
                   sum(F_thrusters(:,5:6),2) ];
     
+    P_tot_3_axis = sum(F_applied) * dt;
+    P_tot_txt_x = "$P_{tot,x} = $ " + num2str(round(P_tot_3_axis(1),2)) + " $Ns$";
+    P_tot_txt_y = "$P_{tot,y} = $ " + num2str(round(P_tot_3_axis(2),2)) + " $Ns$";
+    P_tot_txt_z = "$P_{tot,z} = $ " + num2str(round(P_tot_3_axis(3),2)) + " $Ns$";
+
     fig(5) = figure('Name','F_applied_vs_F_cmd'); % apply_custom_style();
     subplot(3,1,1); plot(t, F_applied(:,1), 'g-', t, F_cmd(:,1), 'r--');
-    title(title_text_base + "Thruster Applied Force v.s. Commanded Control Force");
+    % For impulse display on legend:
+    hold on; plot(NaN,NaN,'ko'); %,'Visible','off'
+    title(title_text_base, "Thruster Applied v.s. Commanded Control Force");
     xlabel('Time $t \ [min]$'); 
     ylabel('$F_x \ [N]$');
-    legend('$F_{applied, x}$','$F_{cmd, x}$');
+    legend('$F_{applied, x}$','$F_{cmd, x}$',P_tot_txt_x);
+
     subplot(3,1,2); plot(t, F_applied(:,2), 'g-', t, F_cmd(:,2), 'r--');
+    % For impulse display on legend:
+    hold on; plot(NaN,NaN,'ko'); %,'Visible','off'
     xlabel('Time $t \ [min]$'); 
     ylabel('$F_y \ [N]$');
-    legend('$F_{applied, y}$','$F_{cmd, y}$');
+    legend('$F_{applied, y}$','$F_{cmd, y}$',P_tot_txt_y);
+
     subplot(3,1,3); plot(t, F_applied(:,3), 'g-', t, F_cmd(:,3), 'r--');
+    % For impulse display on legend:
+    hold on; plot(NaN,NaN,'ko'); %,'Visible','off'
     xlabel('Time $t \ [min]$'); 
     ylabel('$F_z \ [N]$');
-    legend('$F_{applied, z}$','$F_{cmd, z}$');
+    legend('$F_{applied, z}$','$F_{cmd, z}$',P_tot_txt_z);
 
 % 6) Cmd Torque:
     L_cmd = squeeze(dataUsReq(i,:,:)); % MATLAB `squeeze()` to reduce a dimension!
@@ -139,7 +222,7 @@ if controllerOn
     plot(t_zoom,L_cmd(1:idx_t_zoom,:)); 
     xlabel('Time $t \ [min]$'); 
     ylabel('Commanded Torque $L_{cmd} \ [Nm]$');
-    title(title_text_base + "Commanded Control Torque");
+    title(title_text_base, "Commanded Control Torque");
     legend('$L_x$','$L_y$','$L_z$');
 
 % 7) RW Actuations (motorTorque):
@@ -147,7 +230,7 @@ if controllerOn
     
     fig(7) = figure('Name','L_RW'); % apply_custom_style();
     plot(t_zoom,L_RW(1:idx_t_zoom,:)); 
-    title(title_text_base + "RW Actuated Torque");
+    title(title_text_base, "RW Actuated Torque");
     xlabel('Time $t \ [min]$'); 
     ylabel('Actuated Torque $L_{RW} \ [Nm]$');
     legend('RW $x$','RW $y$','RW $z$'); % Currently hard-coded for 3 RWs.
@@ -161,7 +244,7 @@ if controllerOn
 
     fig(8) = figure('Name','L_applied_vs_L_cmd'); % apply_custom_style();
     subplot(3,1,1); plot(t_zoom, L_applied(1:idx_t_zoom,1), 'g-', t_zoom, L_cmd(1:idx_t_zoom,1), 'r--');
-    title(title_text_base + "RW Applied Torque v.s. Commanded Control Torque");
+    title(title_text_base, "Applied v.s. Commanded Control Torque");
     xlabel('Time $t \ [min]$'); 
     ylabel('$L_x \ [N]$');
     legend('$L_{applied, x}$','$L_{cmd, x}$');
@@ -183,6 +266,13 @@ end
     for n=1:length(fig)
         figure(fig(n)); 
         exportPlotToPath(export_plots_path, i-1, fig(n).Name);
+        if (n == 1 || n == 5) && controllerOn
+            figNameExport_1 = set_fig_xlim(fig(n), [0 t_zoom_timestamp]);
+            exportPlotToPath(export_plots_path, i-1, figNameExport_1);
+
+            figNameExport_2 = set_fig_xlim(fig(n), [t_zoom_timestamp 90]);
+            exportPlotToPath(export_plots_path, i-1, figNameExport_2);
+        end
     end
     close all;
 end
@@ -214,7 +304,8 @@ function exportPlotToPath(export_path_base, SCIndex, filename)
     % apply_custom_style();
 
     % Save the plots into .eps and .fig:
-    savePlotFile = export_path + "/" + filename + ".eps";
+    % savePlotFile = export_path + "/" + filename + ".eps";
+    savePlotFile = export_path + "/" + filename + ".pdf";
     exportgraphics(gcf, savePlotFile, 'Resolution', 300);
 
     % Close the figure upon saving:
@@ -241,6 +332,17 @@ function exportFigToPath(export_path_base, SCIndex, fig)
     % close(fig);
     % Close the figure upon saving:
     % close all;
+end
+
+% Function to adjust xlim for all subplots and export
+function figName = set_fig_xlim(fig_handle, x_limits)
+    subplots = findobj(fig_handle, 'Type', 'axes'); % Find all subplot axes in the figure
+    for j = 1:numel(subplots)
+        xlim(subplots(j), x_limits); % Apply xlim to each subplot
+        ylim(subplots(j), "auto");
+    end
+    figName = [fig_handle.Name mat2str(x_limits)]
+    % exportgraphics(fig_handle, file_name, 'ContentType', 'vector');
 end
 
 function LoadCombine_mat(folder_path)
