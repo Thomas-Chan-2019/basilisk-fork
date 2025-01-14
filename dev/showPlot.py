@@ -2,9 +2,9 @@ import mplfig
 import matplotlib.pyplot as plt
 import pylustrator
 
-plotPath = "dev/MultiSatBskSim/ResultPlots/base_case_1_xr/index_1/" # Replace with absolute path when necessary.
+# plotPath = "dev/MultiSatBskSim/ResultPlots/base_case_1_xr/index_1/" # Replace with absolute path when necessary.
 # plotPath = "dev/MultiSatBskSim/ResultPlots/control_case_5_yr/index_1/" # Replace with absolute path when necessary.
-# plotPath = "dev/MultiSatBskSim/ResultPlots/control_case_7_xyzr/index_1/" # Replace with absolute path when necessary.
+plotPath = "dev/MultiSatBskSim/ResultPlots/control_case_7_xyzr/index_0/" # Replace with absolute path when necessary.
 
 # pylustrator.load(plotPath+"/figure_9.png")
 # pylustrator.load(plotPath+"/figure_10.png", offset=[1, 0])

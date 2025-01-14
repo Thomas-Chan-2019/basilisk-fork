@@ -17,6 +17,7 @@ set(groot, 'defaultLegendLocation', 'eastoutside');
 %%
 
 simCase = input('Choose from case 1-8: ');
+savePlot = input('Do you want to save the plots? No - 0, Yes - 1: ');
 
 switch simCase
     case 1
@@ -262,27 +263,22 @@ end
 % End loop:
     % savefig(fig_index_array);
     % exportFigToPath(export_plots_path, numSC-1, export_case_name, fig_index_array);
-    exportFigToPath(export_plots_path, i-1, fig);
-    for n=1:length(fig)
-        figure(fig(n)); 
-        exportPlotToPath(export_plots_path, i-1, fig(n).Name);
-        if (n == 1 || n == 5) && controllerOn
-            figNameExport_1 = set_fig_xlim(fig(n), [0 t_zoom_timestamp]);
-            exportPlotToPath(export_plots_path, i-1, figNameExport_1);
-
-            figNameExport_2 = set_fig_xlim(fig(n), [t_zoom_timestamp 90]);
-            exportPlotToPath(export_plots_path, i-1, figNameExport_2);
+    if savePlot
+        exportFigToPath(export_plots_path, i-1, fig);
+        for n=1:length(fig)
+            figure(fig(n)); 
+            exportPlotToPath(export_plots_path, i-1, fig(n).Name);
+            if (n == 1 || n == 5) && controllerOn
+                figNameExport_1 = set_fig_xlim(fig(n), [0 t_zoom_timestamp]);
+                exportPlotToPath(export_plots_path, i-1, figNameExport_1);
+    
+                figNameExport_2 = set_fig_xlim(fig(n), [t_zoom_timestamp 90]);
+                exportPlotToPath(export_plots_path, i-1, figNameExport_2);
+            end
         end
+        close all;
     end
-    close all;
 end
-
-% 7) Plot orbits (out of for loop):
-% figure;
-% xlabel('Time $t \ [min]$'); 
-% ylabel('Actuated Force $F_{thrusters} \ [N]$');
-% 
-% title("Formation Flying Orbits");
 
 %% Functions:
 function apply_custom_style()

@@ -61,3 +61,7 @@ build/
 dev/MultiSatBskSim/ResultData
 dev/MultiSatBskSim/ResultPlots
 dev/MultiSatBskSim/ResultPlotsMATLAB
+
+dev/MultiSatBskSim/ResultData_OLD
+dev/MultiSatBskSim/ResultPlots_OLD
+dev/MultiSatBskSim/ResultPlotsMATLAB_OLD

@@ -147,6 +147,7 @@ import scConfig
 from Basilisk.architecture import messaging
 # Import utilities
 from Basilisk.utilities import orbitalMotion, macros, vizSupport, RigidBodyKinematics as rbk
+from Basilisk.simulation import simSynch
 
 # Import master classes: simulation base class and scenario base class
 sys.path.append(path + '/../')
@@ -164,7 +165,7 @@ import BSK_MultiSatPlotting as plt
 
 # class shall Inherits BSK_MultiSatMasters.BSKSim & .BSKScenario
 class MultiSat_test_scenario(BSKSim, BSKScenario): 
-    def __init__(self, initConfigPath, simRate, dataSamplingTimeSec, relativeNavigation):
+    def __init__(self, initConfigPath, simRate, dataSamplingTimeSec, relativeNavigation, runRealtime=False):
     # def __init__(self, targetOE, initConfigs, simRate, dataSamplingTimeSec, relativeNavigation, initConfigPath):
         # This below is initializing the scenario itself using the class structure defined in 
         super(MultiSat_test_scenario, self).__init__(
@@ -240,10 +241,18 @@ class MultiSat_test_scenario(BSKSim, BSKScenario):
 
             #     gsList.append([batteryPanel, tankPanel])
 
+            ## Update 20241110:
+            ## runRealtime setting: Enslave simulation to run in Realtime by the simSync.ClockSync module function:
+            if runRealtime: # Hardcoded False now...
+                clockSync = simSynch.ClockSynch()
+                clockSync.accelFactor = 1.0
+                # clockSync.accelFactor = 50.0
+                self.AddModelToTask(self.DynModels[0].taskName, clockSync) # Check if this task name is valid later...
+
             viz = vizSupport.enableUnityVisualization(self, self.DynModels[0].taskName, DynModelsList
                                                       , saveFile=self.initConfigName
                                                     #   , saveFile=__file__
-                                                    #   , liveStream=True
+                                                      , liveStream=runRealtime
                                                       , rwEffectorList=rwStateEffectorList
                                                       , thrEffectorList=thDynamicEffectorList
                                                     #   , genericStorageList=gsList
@@ -624,7 +633,7 @@ def run(showPlots, relativeNavigation = False,
     
     # targetOE, initConfigs = scConfig.loadInitConfig(initConfigPath)
     # TheScenario = MultiSat_test_scenario(targetOE, initConfigs, simRate, dataSamplingTimeSec, relativeNavigation, initConfigPath)
-    TheScenario = MultiSat_test_scenario(initConfigPath, simRate, dataSamplingTimeSec, relativeNavigation)
+    TheScenario = MultiSat_test_scenario(initConfigPath, simRate, dataSamplingTimeSec, relativeNavigation, runRealtime=False)
     runScenario(TheScenario, relativeNavigation, simulationTimeHours, turnOnController)
     
     data_dicts = []
