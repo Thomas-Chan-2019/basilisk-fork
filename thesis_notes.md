@@ -37,16 +37,16 @@ You could also `cd` into a specific folder where you define your basic simulatio
 ## Running MultiSat-based simulations (thesis related):
 ### Running ONE simulation:
 ```
-python dev/MultiSatBskSim/scenariosMultiSat/MultiSat_test_scenario.py $param_1 $param_2 $param_3 $param_4 $param_5
+python dev/MultiSatBskSim/scenariosMultiSat/MultiSat_test_scenario.py --path $initConfigPath --simTime $simulationTimeHours --control $turnOnController --simRate $simRate --sampleTime $dataSamplingTimeSec
 ```
-__param_1 to param_5__ are __OPTIONAL__ and can only be provided in sequence for now. 
+__initConfigPath to dataSamplingTimeSec__ are __OPTIONAL__ and can be provided in any positional sequence. 
 
 See their default values at [MultiSat_test_scenario.py](dev/MultiSatBskSim/scenariosMultiSat/MultiSat_test_scenario.py) line 596/ line 642. Here a summary is provided:
-- __param_1__: `initConfigPath`, Path to Initialization Config JSON, see default at [MultiSat_test_scenario.py](dev/MultiSatBskSim/scenariosMultiSat/MultiSat_test_scenario.py) line 596/ line 642.
-- __param_2__: `simulationTimeHours`, Simulation Time in hours, default = 0.3
-- __param_3__: `turnOnController`, Turn on Controllers or not, 1 (ON, default) or 0 (OFF)
-- __param_4__: `simRate`, Simulation rate in seconds, default = 0.1 sec
-- __param_5__: `dataSamplingTimeSec`, Data sampling rate in seconds, default = 0.1 sec
+- __--path__ with `initConfigPath`: [string] Path to Scenario Configuration File JSON, see default at [MultiSat_test_scenario.py](dev/MultiSatBskSim/scenariosMultiSat/MultiSat_test_scenario.py) line 596/ line 642.
+- __--simTime__ with `simulationTimeHours`: [float] Simulation Time in hours, default = 0.3
+- __--control__ with `turnOnController`: Turn on Controllers or not, 1 (ON, default) or 0 (OFF)
+- __--simRate__ with `simRate`: [float] Simulation rate in seconds, default = 0.1 sec
+- __--sampleTime__ with `dataSamplingTimeSec`: [float] Data sampling rate in seconds, default = 0.1 sec
 
 ### Running MULTIPLE simulations in a BATCH script (Supports Linux(Ubuntu)/MacOS/Windows[To be tested]):
 Run [runMultiSatBSKSim.sh](runMultiSatBSKSim.sh) located at the `basilisk-fork` root. 
@@ -57,19 +57,20 @@ Note that for __Windows__ an extra [runMultiSatBSKSim.bat](runMultiSatBSKSim.bat
 ./runMultiSatBSKSim.sh
 ```
 
-Specify the __param_1 to param_5__ in batch script syntax.
+Specify the __initConfigPath to dataSamplingTimeSec__ in batch script syntax.
 ```bash
 #!/bin/bash
 
 # List of input paths (common to both Linux/MacOS and Windows)
 input_paths=(
     # "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/base_case_1_xr.json"
-    # "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/base_case_2_xyr.json"
+    # "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/base_case_2_xyrdot.json"
     # "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/base_case_3_zr_zrdot.json"
     # "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/base_case_4_xyzr.json"
     "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/control_case_5_yr.json"
     "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/control_case_6_xyr.json"
     "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/control_case_7_xyzr.json"
+    "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/control_case_8_xyzr_dot.json"
 )
 
 simTimeHours=1.5 # Hours, one orbit for given orbit in each json for now.
@@ -92,9 +93,9 @@ if [[ "$OS_TYPE" == "Linux" || "$OS_TYPE" == "Darwin" ]]; then
     # Loop through the input paths and run the Python script
     for input_path in "${input_paths[@]}"
     do
-      echo "Running Python script with input: $input_path"
+      # echo "Running Python script with input: $input_path"
       # python3 $python_script "$input_path" $simTimeHours $turnOnController
-      python3 "$python_script" "$input_path" "$simTimeHours" "$turnOnController" "$simRate" "$dataSamplingTimeSec" # Opt for more options when needed.
+      python3 "$python_script" "--path" "$input_path" "--simTime" "$simTimeHours" "--control" "$turnOnController" "--simRate" "$simRate" "--sampleTime" "$dataSamplingTimeSec" # Opt for more options when needed.
     done
 
 elif [[ "$OS_TYPE" == *"MINGW"* || "$OS_TYPE" == *"CYGWIN"* ]]; then
@@ -359,10 +360,10 @@ def SetThrusterDynEffector(self):
 - Force mapping issues with the `forceTorqueThrForceMapping` module, see [test_forceTorqueThrForceMapping.py](src/fswAlgorithms/effectorInterfaces/forceTorqueThrForceMapping/_UnitTest/test_forceTorqueThrForceMapping.py) & standalone test [try_forceTorqueThrForceMapping.py](src/fswAlgorithms/effectorInterfaces/forceTorqueThrForceMapping/_UnitTest/try_forceTorqueThrForceMapping.py); link to module from [BSK net](https://hanspeterschaub.info/basilisk/Documentation/fswAlgorithms/effectorInterfaces/forceTorqueThrForceMapping/forceTorqueThrForceMapping.html?highlight=thrarraycmdforce); some thruster configurations are based on general location/unit vector definitions or scenarios like [scenarioFormationReconfig.py](dev/template-examples/scenarioFormationReconfig.py) (but without the `forceTorqueThrForceMapping` module used here) 
 - __z-component command force__ from hill frame - inertial frame conversion in the DCM to investigate, see line 146-148 in [PIDController.py](dev/PIDController.py)
 - __SRL Robot initial condition configs__ should be with inclination = 0.0 deg so that the z-components are neglects fully. (fixed in [SRL_config.json](dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/SRL_config.json))
+- __PID Tuning__ at function `SetTransController()` of [PIDController.py](dev/PIDController.py) 
 
 # Current issues:
 - __Thruster log__ giving zero values despite connecting to seemingly correct messaging structures, see line 334 in [MultiSat_test_scenario.py](dev/MultiSatBskSim/scenariosMultiSat/MultiSat_test_scenario.py), __36 thruster arrays__ created and passed on messaging `THRArrayCmdForceMsg` instead of available number of thrusters (6 or 8 thrusters); Comparing[forceTorqueThrForceMapping.c](src/fswAlgorithms/effectorInterfaces/forceTorqueThrForceMapping/forceTorqueThrForceMapping.c) & [thrForceMapping.c](src/fswAlgorithms/effectorInterfaces/thrForceMapping/thrForceMapping.c) might give insights
-- __PID Tuning__ at function `SetTransController()` (line 329) of [BSK_MultiSatFsw.py](dev/MultiSatBskSim/modelsMultiSat/BSK_MultiSatFsw.py) 
 - __Problematic configuration for spacecraft initial condition__ using cartesians inertial coordinates which gives strange visualization in terms of initial spacecraft position in Vizard (check indexing in line 114 of `setInitialCondition()` in [scConfig.py](dev/scConfig.py))
 - __Include a Disturbance Module__: New Python module for white noise generation of thruster actuation errors
 

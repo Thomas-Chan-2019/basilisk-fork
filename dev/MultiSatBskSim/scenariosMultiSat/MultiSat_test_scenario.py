@@ -618,21 +618,37 @@ def run(showPlots, relativeNavigation = False,
         relativeNavigation (bool): Determines if the formation's chief is the barycenter or the zeroth index spacecraft
 
     """ 
-    # Command Line (CLI) execution of this python file, pass CLI arguments if fed in chronological order:
-    # Add on CLI arguments are all optional, but if provided they need to be in this order for now:
-    if len(sys.argv) > 1:
-        initConfigPath = sys.argv[1] # Pass python argument from cmdline, argument position 1.
-    if len(sys.argv) > 2:
-        simulationTimeHours = float(sys.argv[2])
-    if len(sys.argv) > 3:
-        turnOnController = int(sys.argv[3])
-    if len(sys.argv) > 4:
-        simRate = float(sys.argv[4])
-    if len(sys.argv) > 5:
-        dataSamplingTimeSec = float(sys.argv[5])
+    # Command Line (CLI) execution of this python file, pass CLI arguments in NO positional order:
+    # Add on CLI arguments are all optional with help strings:
+    import argparse
+    parser = argparse.ArgumentParser()
+    # Specify 5 parameters with arguments for `MultiSat_test_scenario.py`
+    parser.add_argument("-p", "--path", type=str, 
+                        help="[string] input path to a scenario configuration file")
+    parser.add_argument("-st", "--simTime", type=float, 
+                        help="[float] simulation time in hours")
+    parser.add_argument("-c", "--control", type=int, 
+                        help="[int] turn ON/OFF relative position controllers in 1 (ON,default) or 0 (OFF)",
+                        choices=[0, 1])
+    parser.add_argument("-sr", "--simRate", type=float, 
+                        help="[float] simulation rate in seconds")
+    parser.add_argument("-sp", "--sampleTime", type=float, 
+                        help="[float] data sampling rate in seconds")
     
-    # targetOE, initConfigs = scConfig.loadInitConfig(initConfigPath)
-    # TheScenario = MultiSat_test_scenario(targetOE, initConfigs, simRate, dataSamplingTimeSec, relativeNavigation, initConfigPath)
+    args = parser.parse_args()
+    initConfigPath = args.path if args.path is not None else  initConfigPath
+    simulationTimeHours = args.simTime if args.simTime is not None else  simulationTimeHours
+    turnOnController = args.control if args.control is not None else turnOnController
+    simRate = args.simRate if args.simRate is not None else  simRate
+    dataSamplingTimeSec = args.sampleTime if args.sampleTime is not None else  dataSamplingTimeSec
+    
+    # Print arguments for verification
+    print(f"Scenario Configuration Path: {initConfigPath}")
+    print(f"Simulation Time (hours): {simulationTimeHours}")
+    print(f"Controller ON/OFF: {turnOnController}")
+    print(f"Simulation Rate (seconds): {simRate}")
+    print(f"Data Sampling Time (seconds): {dataSamplingTimeSec}")
+    
     TheScenario = MultiSat_test_scenario(initConfigPath, simRate, dataSamplingTimeSec, relativeNavigation, runRealtime=False)
     runScenario(TheScenario, relativeNavigation, simulationTimeHours, turnOnController)
     

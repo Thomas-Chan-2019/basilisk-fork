@@ -6,9 +6,9 @@ input_paths=(
     # "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/base_case_2_xyrdot.json"
     # "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/base_case_3_zr_zrdot.json"
     # "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/base_case_4_xyzr.json"
-    "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/control_case_5_yr.json"
-    "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/control_case_6_xyr.json"
-    "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/control_case_7_xyzr.json"
+    # "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/control_case_5_yr.json"
+    # "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/control_case_6_xyr.json"
+    # "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/control_case_7_xyzr.json"
     "dev/MultiSatBskSim/scenariosMultiSat/simInitConfig/control_case_8_xyzr_dot.json"
 )
 
@@ -32,9 +32,9 @@ if [[ "$OS_TYPE" == "Linux" || "$OS_TYPE" == "Darwin" ]]; then
     # Loop through the input paths and run the Python script
     for input_path in "${input_paths[@]}"
     do
-      echo "Running Python script with input: $input_path"
+      # echo "Running Python script with input: $input_path"
       # python3 $python_script "$input_path" $simTimeHours $turnOnController
-      python3 "$python_script" "$input_path" "$simTimeHours" "$turnOnController" "$simRate" "$dataSamplingTimeSec" # Opt for more options when needed.
+      python3 "$python_script" "--path" "$input_path" "--simTime" "$simTimeHours" "--control" "$turnOnController" "--simRate" "$simRate" "--sampleTime" "$dataSamplingTimeSec" # Opt for more options when needed.
     done
 
 elif [[ "$OS_TYPE" == *"MINGW"* || "$OS_TYPE" == *"CYGWIN"* ]]; then
