@@ -4,6 +4,6 @@ numpy
 colorama
 tqdm
 Pillow
-pytest
-pytest-html
-pytest-xdist
+requests
+bokeh
+protobuf

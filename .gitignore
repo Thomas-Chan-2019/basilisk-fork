@@ -13,6 +13,7 @@ docs/source/_images/Scenarios/*
 docs/source/breathe.data
 docs/source/externalTools/*
 docs/source/examples/*
+docs/source/supportData.rst
 src/tests/scenarios/data
 bsk-dev-env/
 bin/
@@ -35,13 +36,15 @@ supportData/*/__init__.py
 src/utilities/vizProtobuffer/__init__.py
 src/utilities/vizProtobuffer/vizMessage.pb.cc
 src/utilities/vizProtobuffer/vizMessage.pb.h
+src/utilities/vizProtobuffer/vizMessage_pb2.py
 externalTools/fswAuto/autosetter/sets/*
 externalTools/fswAuto/autowrapper/wraps/*
 **/outputFiles/*
 src/moduleTemplates/autoCModule/*
 src/moduleTemplates/autoCppModule/*
+src/CMakeUserPresets.json
 
-supportData/EphemerisData/de430.bsp
+supportData/EphemerisData/*.bsp
 
 *.fdb_latexmk
 *.fls

@@ -43,7 +43,7 @@ jobs:
     build-ubuntu-latest-wheels:
       name: Build ubuntu-latest wheels
       needs: wait_for_version_bump
-      runs-on: ubuntu-latest
+      runs-on: ubuntu-22.04
       strategy:
         matrix:
           python-version: ["3.9", "3.10", "3.11"]
@@ -66,7 +66,7 @@ jobs:
             pip wheel . -v --wheel-dir /tmp/wheelhouse
         - uses: actions/upload-artifact@v4
           with:
-            name: basilisk-wheels_ubuntu-latest_python${{ matrix.python-version }}
+            name: basilisk-wheels_ubuntu-22.04_python${{ matrix.python-version }}
             path: /tmp/wheelhouse/**/Basilisk*.whl
 
 
@@ -92,10 +92,10 @@ jobs:
 
         - name: "Create virtual Environment"
           run: python3 -m venv .venv
-        - name: "Install wheel and conan package"
+        - name: "Install -r requirements_dev.txt"
           run: |
             source .venv/bin/activate
-            pip3 install wheel 'conan<2.0' cmake
+            pip3 install cmake -r requirements_dev.txt
 
         - name: "Build basilisk with OpNav"
           run: source .venv/bin/activate && python3 conanfile.py --opNav True --allOptPkg

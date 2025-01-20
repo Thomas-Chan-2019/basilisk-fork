@@ -16,11 +16,12 @@ if(BUILD_VIZINTERFACE)
          get_filename_component(PROTO_TARGET "${PROTO_DEF}" NAME_WE)
 
          add_custom_command(
-             OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/${PROTO_TARGET}.pb.cc" "${CMAKE_CURRENT_SOURCE_DIR}/${PROTO_TARGET}.pb.h"
+             OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/${PROTO_TARGET}.pb.cc" "${CMAKE_CURRENT_SOURCE_DIR}/${PROTO_TARGET}.pb.h" "${CMAKE_CURRENT_SOURCE_DIR}/${PROTO_TARGET}_pb2.py"
              COMMAND "${PROTOC_EXE}" "--proto_path=${CMAKE_CURRENT_SOURCE_DIR}" "--cpp_out=${CMAKE_CURRENT_SOURCE_DIR}" "${PROTO_DEF}"
+             COMMAND "${PROTOC_EXE}" "--proto_path=${CMAKE_CURRENT_SOURCE_DIR}" "--python_out=${CMAKE_CURRENT_SOURCE_DIR}" "${PROTO_DEF}"
              DEPENDS "${PROTO_DEF}"
              WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-             COMMENT "Generating protobuf (C++): ${PROTO_TARGET}"
+             COMMENT "Generating protobuf (C++, Python): ${PROTO_TARGET}"
          )
 
          message(STATUS "Defining protobuf interface library target: ${PROTO_TARGET}")
@@ -38,11 +39,6 @@ if(BUILD_VIZINTERFACE)
          target_link_libraries(${PROTO_TARGET}
              PUBLIC
                  protobuf::protobuf
-         )
-
-         set_target_properties(${PROTO_TARGET} PROPERTIES
-             CXX_STANDARD 11
-             POSITION_INDEPENDENT_CODE ON
          )
 
          set_target_properties(${PROTO_TARGET} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/Basilisk")

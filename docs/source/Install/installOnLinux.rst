@@ -13,7 +13,7 @@ Software setup
 In order to run Basilisk, the following software will be necessary. This document outline how to install this support software.
 
 -  `Cmake <https://cmake.org/>`__ 3.14 or higher
--  `Python <https://www.python.org/>`__ 3.8 to 3.11
+-  `Python <https://www.python.org/>`__ 3.8 to 3.12
 -  `SWIG <http://www.swig.org/>`__ (version 4.x)
 -  `GCC <https://gcc.gnu.org/>`__
 -  (Optional) Get the `GitKraken <https://www.gitkraken.com>`__
@@ -109,16 +109,11 @@ Dependencies
 
         (venv) $ deactivate
 
-#. Ensure ``wheel`` is installed and install ``conan`` using pip, an example is below::
+#. Ensure all build related pip packages are installed::
 
-       (venv) $ pip3 install wheel 'conan<2.0'
+       (venv) $ pip3 install -r requirements_dev.txt
 
-   The conan repositories information is automatically setup by ``conanfile.py``.
-
-   .. warning::
-
-      If you are upgrading from a version of Basilisk prior to 1.8.0, be sure to delete the ``.conan`` folder in your
-      home directory to create a clean copy compatible with the current build system.
+   The ``conan`` repositories information is automatically setup by ``conanfile.py``.
 
 #. CMake: You can install cmake using pip3.  This makes it easy to overcome limitations of which version of ``cmake``
    the ``apt-get`` command provides::
@@ -129,7 +124,6 @@ Dependencies
    local in your user directory ``.local`` folder, be sure to add
    ``~/.local/bin`` to your ``PATH`` variable.
 
-#. `Optional Packages:` The above directions install the Basilisk base software. There are a series of :ref:`optional packages<installOptionalPackages>` that enhance this capability.
 
 Build Process via Terminal
 --------------------------

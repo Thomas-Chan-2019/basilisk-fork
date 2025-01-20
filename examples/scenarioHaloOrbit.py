@@ -180,9 +180,15 @@ def run(showPlots=True):
     scSim.AddModelToTask(simTaskName, scDataRec)
     scSim.AddModelToTask(simTaskName, MoonDataRec)
 
-    viz = vizSupport.enableUnityVisualization(scSim, simTaskName, scObject,
-                                              # saveFile=__file__
-                                              )
+    if vizSupport.vizFound:
+        viz = vizSupport.enableUnityVisualization(scSim, simTaskName, scObject,
+                                                  # saveFile=__file__
+                                                  )
+        viz.settings.showCelestialBodyLabels = 1
+        viz.settings.mainCameraTarget = "earth"
+        viz.settings.trueTrajectoryLinesOn = 4
+        viz.settings.truePathRotatingFrame = "earth moon"
+
     # Initialize simulation
     scSim.InitializeSimulation()
 
@@ -204,7 +210,7 @@ def run(showPlots=True):
     b = oe.a * np.sqrt(1 - oe.e * oe.e)
 
     # First plot: Draw orbit in inertial frame
-    fig = plt.figure(1, figsize=np.array((1.0, b / oe.a)) * 4.75, dpi=100)
+    fig = plt.figure(1, figsize=tuple(np.array((1.0, b / oe.a)) * 4.75), dpi=100)
     plt.axis(np.array([-oe.rApoap, oe.rPeriap, -b, b]) / 1000 * 1.25)
     ax = fig.gca()
     ax.ticklabel_format(style='scientific', scilimits=[-5, 3])
@@ -241,7 +247,7 @@ def run(showPlots=True):
 
     # Second plot: Draw orbit in frame rotating with the Moon (the center is L2 point)
     # x axis is moon position vector direction and y axis is moon velocity vector direction
-    fig = plt.figure(2, figsize=np.array((1.0, b / oe.a)) * 4.75, dpi=100)
+    fig = plt.figure(2, figsize=tuple(np.array((1.0, b / oe.a)) * 4.75), dpi=100)
     plt.axis(np.array([-1e5, 5e5, -3e5, 3e5])  * 1.25)
     ax = fig.gca()
     ax.ticklabel_format(style='scientific', scilimits=[-5, 3])
@@ -279,7 +285,7 @@ def run(showPlots=True):
     # Third plot: Draw orbit in frame rotating with the Moon (the center is L2 point)
     # x axis is moon position vector direction and y axis is the cross product direction of the moon position vector and
     # velocity vector
-    fig = plt.figure(3, figsize=np.array((1.0, b / oe.a)) * 4.75, dpi=100)
+    fig = plt.figure(3, figsize=tuple(np.array((1.0, b / oe.a)) * 4.75), dpi=100)
     plt.axis(np.array([-1e5, 5e5, -3e5, 3e5]) * 1.25)
     ax = fig.gca()
     ax.ticklabel_format(style='scientific', scilimits=[-5, 3])
@@ -316,5 +322,3 @@ if __name__ == "__main__":
     run(
         True    # Show plots
     )
-
-

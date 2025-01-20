@@ -54,7 +54,7 @@ GroundMapping::~GroundMapping()
 }
 
 /*! This method is used to reset the module and checks that required input messages are connect.
-    @return void
+
 */
 void GroundMapping::Reset(uint64_t CurrentSimNanos)
 {
@@ -185,7 +185,7 @@ uint64_t GroundMapping::checkInstrumentFOV(){
     double boresightNormalProj = ((this->r_LP_N - (this->r_BP_N + this->dcm_NB*cameraPos_B)).transpose())*(dcm_NB*this->nHat_B);
 
     /* Check that the normal projection is within the maximum range*/
-    if ((boresightNormalProj >= 0) && (boresightNormalProj <= this->maximumRange)){
+    if ((boresightNormalProj >= 0) && (boresightNormalProj <= this->maximumRange || this->maximumRange < 0)){
         /* Compute the radius of the instrument's cone at the projection distance */
         double coneRadius = boresightNormalProj*tan(this->halfFieldOfView);
         double orthDistance = (this->r_LP_N - (this->r_BP_N + this->dcm_NB*cameraPos_B)  - boresightNormalProj*dcm_NB*this->nHat_B).norm();
@@ -215,7 +215,7 @@ void GroundMapping::WriteMessages(uint64_t CurrentClock)
 }
 
 /*! This is the main method that gets called every time the module is updated.  Provide an appropriate description.
-    @return void
+
 */
 void GroundMapping::UpdateState(uint64_t CurrentSimNanos)
 {

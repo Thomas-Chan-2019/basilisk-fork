@@ -43,7 +43,7 @@ jobs:
         run: |
           python3 -m venv .venv
           source .venv/bin/activate
-          pip install wheel 'conan<2.0'
+          pip install -r requirements_dev.txt
       - name: Build basilisk
         run: |
           source .venv/bin/activate
@@ -78,8 +78,8 @@ jobs:
         run: sudo apt-get install python3-setuptools python3-tk python3.10-venv
       - name: "Create virtual Environment"
         run: python3 -m venv .venv
-      - name: "Install wheel and conan package"
-        run: source .venv/bin/activate && pip3 install wheel 'conan<2.0.0'
+      - name: "Install requirements_dev.txt"
+        run: source .venv/bin/activate && pip3 install -r requirements_dev.txt
       - name: "Build basilisk"
         run: source .venv/bin/activate && python3 conanfile.py
       - name: "Run Python Tests"
@@ -94,8 +94,8 @@ jobs:
 
 
   build-linux-3-11:
-    name: Linux Latest opNav
-    runs-on: ubuntu-latest
+    name: Linux 22.04 opNav
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         python-version: ["3.11"]
@@ -113,10 +113,10 @@ jobs:
         run: sudo apt-get install python3-setuptools python3-tk python3.11-venv
       - name: "Create virtual Environment"
         run: python3 -m venv .venv
-      - name: "Install wheel and conan package"
-        run: source .venv/bin/activate && pip3 install wheel 'conan<2.0.0'
+      - name: "Install requirements_dev.txt"
+        run: source .venv/bin/activate && pip3 install -r requirements_dev.txt
       - name: "Build basilisk"
-        run: source .venv/bin/activate && python3 conanfile.py --opNav True
+        run: source .venv/bin/activate && python3 conanfile.py --opNav True --allOptPkg
 
       - name: "Run Python Tests"
         run: |
@@ -152,9 +152,11 @@ jobs:
         run: |
           source .venv/bin/activate
           pip install . -v
+          bskLargeData
       - name: "Run Python Tests"
         run: |
           source .venv/bin/activate
+          pip install pytest pytest-xdist
           cd src && pytest -n auto -m "not ciSkip"
 
 
@@ -173,21 +175,21 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Choco help
-        uses: crazy-max/ghaction-chocolatey@v3
-        with:
-          args: -h
-      - name: "Install swig and cmake"
-        shell: pwsh
-        run: choco install swig cmake -y
+#      - name: Choco help
+#        uses: crazy-max/ghaction-chocolatey@v3
+#        with:
+#          args: -h
+#      - name: "Install swig and cmake"
+#        shell: pwsh
+#        run: choco install swig cmake -y
       - name: "Create python virtual env"
         shell: pwsh
         run: python -m venv venv
-      - name: "Install wheel and conan package"
+      - name: "Install requirements_dev.txt"
         shell: pwsh
         run: |
             venv\Scripts\activate
-            pip install wheel 'conan<2.0'
+            pip install -r requirements_dev.txt
       - name: "Add basilisk and cmake path to env path"
         shell: pwsh
         run: |
@@ -198,7 +200,7 @@ jobs:
         shell: pwsh
         run: |
           venv\Scripts\activate
-          python conanfile.py --opNav True
+          python conanfile.py --opNav True --allOptPkg
       - name: "Run Python Tests"
         shell: pwsh
         run: |
@@ -220,7 +222,7 @@ jobs:
     runs-on: macos-14
     strategy:
       matrix:
-        python-version: [ "3.11" ]
+        python-version: [ "3.11", "3.12" ]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -236,10 +238,10 @@ jobs:
 
       - name: "Create virtual Environment"
         run: python3 -m venv .venv
-      - name: "Install wheel and conan package"
+      - name: "Install requirements_dev.txt"
         run: |
           source .venv/bin/activate
-          pip3 install wheel 'conan<2.0' cmake
+          pip3 install cmake -r requirements_dev.txt
 
       - name: "Build basilisk with OpNav"
         run: source .venv/bin/activate && python3 conanfile.py --opNav True --allOptPkg
@@ -283,10 +285,10 @@ jobs:
 
       - name: "Create virtual Environment"
         run: python3 -m venv .venv
-      - name: "Install wheel and conan package"
+      - name: "Install requirements_dev.txt"
         run: |
           source .venv/bin/activate
-          pip3 install wheel 'conan<2.0' cmake
+          pip3 install cmake -r requirements_dev.txt
 
       - name: "Build basilisk without vizInterface"
         run: source .venv/bin/activate && python3 conanfile.py --vizInterface False
