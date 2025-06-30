@@ -16,7 +16,6 @@
 #  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 import os
-import mplfig # save plt plots like MATLAB
 from scipy.io import savemat
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
@@ -112,6 +111,7 @@ def matrices_to_dict(**matrices):
 
 
 def save_plots_to_path(figurePath, figure_filename, index_folder_string='index_0', fileNames=None):
+    import mplfig # save plt plots like MATLAB
     figurePathCase = figurePath + figure_filename + "/" + index_folder_string + "/"
     # Subfolder for particular scenarios: 
     try:
