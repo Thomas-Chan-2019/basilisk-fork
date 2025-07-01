@@ -169,7 +169,7 @@ class rwFactory(object):
 
         # populate the RW object with the type specific parameters
         try:
-            eval('self.' + rwType + '(RW)')
+            getattr(self, rwType)(RW)
         except:
             print('ERROR: RW type ' + rwType + ' is not implemented')
             exit(1)
@@ -284,7 +284,6 @@ class rwFactory(object):
             RW.u_min = 0.0
 
         # add RW to the list of RW devices
-        RW.this.disown()
         self.rwList[varLabel] = RW
         return RW
 
@@ -376,7 +375,6 @@ class rwFactory(object):
         rwConfigParams.numRW = len(self.rwList)
 
         rwConfigMsg = messaging.RWArrayConfigMsg().write(rwConfigParams)
-        rwConfigMsg.this.disown()
 
         return rwConfigMsg
 
