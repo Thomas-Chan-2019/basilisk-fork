@@ -12,7 +12,7 @@ except ImportError:
     pass
 from Basilisk.utilities import ros_bridge_handler
 
-def run(show_plots=True, liveStream=True, broadcastStream=True, timeStep=0.1, simTime=60.0):
+def run(show_plots=True, liveStream=True, broadcastStream=True, timeStep=0.1, simTime=60.0, accelFactor=1.0):
     simTaskName = "simTask"
     simProcessName = "simProcess"
     scSim = SimulationBaseClass.SimBaseClass()
@@ -36,44 +36,44 @@ def run(show_plots=True, liveStream=True, broadcastStream=True, timeStep=0.1, si
     scSim.AddModelToTask(simTaskName, ros_bridge)
 
     # Add external force/torque effector and connect to bridge handler
-    extFT = extForceTorque.ExtForceTorque()
-    extFT.ModelTag = "externalForceTorque"
-    extFT.cmdForceInMsg.subscribeTo(ros_bridge.cmdForceOutMsg)
-    extFT.cmdTorqueInMsg.subscribeTo(ros_bridge.cmdTorqueOutMsg)
-    scObject.addDynamicEffector(extFT)
-    scSim.AddModelToTask(simTaskName, extFT)
+    # extFT = extForceTorque.ExtForceTorque()
+    # extFT.ModelTag = "externalForceTorque"
+    # extFT.cmdForceInMsg.subscribeTo(ros_bridge.cmdForceOutMsg)
+    # extFT.cmdTorqueInMsg.subscribeTo(ros_bridge.cmdTorqueOutMsg)
+    # scObject.addDynamicEffector(extFT)
+    # scSim.AddModelToTask(simTaskName, extFT)
 
     # Thrusters
-    thrusterSet = thrusterDynamicEffector.ThrusterDynamicEffector()
-    scSim.AddModelToTask(simTaskName, thrusterSet)
-    thruster_defs = [
-        ([0, 0.12, 0], [1.5, 0, 0]),
-        ([0, 0.12, 0], [-1.5, 0, 0]),
-        ([0, -0.12, 0], [1.5, 0, 0]),
-        ([0, -0.12, 0], [-1.5, 0, 0]),
-        ([0, 0, 0.12], [0, -1.5, 0]),
-        ([0, 0, 0.12], [0, 1.5, 0]),
-        ([0, 0, -0.12], [0, -1.5, 0]),
-        ([0, 0, -0.12], [0, 1.5, 0]),
-        ([-0.12, 0, 0], [0, 0, -1.5]),
-        ([-0.12, 0, 0], [0, 0, 1.5]),
-        ([0.12, 0, 0], [0, 0, -1.5]),
-        ([0.12, 0, 0], [0, 0, 1.5]),
-    ]
-    for pos, force in thruster_defs:
-        thrConf = thrusterDynamicEffector.THRSimConfig()
-        thrConf.thrLoc_B = pos
-        thrConf.thrDir_B = force
-        thrConf.MaxThrust = np.linalg.norm(force)
-        thrConf.steadyIsp = 226.7  # Example value, adjust as needed
-        thrusterSet.addThruster(thrConf)
+    # thrusterSet = thrusterDynamicEffector.ThrusterDynamicEffector()
+    # scSim.AddModelToTask(simTaskName, thrusterSet)
+    # thruster_defs = [
+    #     ([0, 0.12, 0], [1.5, 0, 0]),
+    #     ([0, 0.12, 0], [-1.5, 0, 0]),
+    #     ([0, -0.12, 0], [1.5, 0, 0]),
+    #     ([0, -0.12, 0], [-1.5, 0, 0]),
+    #     ([0, 0, 0.12], [0, -1.5, 0]),
+    #     ([0, 0, 0.12], [0, 1.5, 0]),
+    #     ([0, 0, -0.12], [0, -1.5, 0]),
+    #     ([0, 0, -0.12], [0, 1.5, 0]),
+    #     ([-0.12, 0, 0], [0, 0, -1.5]),
+    #     ([-0.12, 0, 0], [0, 0, 1.5]),
+    #     ([0.12, 0, 0], [0, 0, -1.5]),
+    #     ([0.12, 0, 0], [0, 0, 1.5]),
+    # ]
+    # for pos, force in thruster_defs:
+    #     thrConf = thrusterDynamicEffector.THRSimConfig()
+    #     thrConf.thrLoc_B = pos
+    #     thrConf.thrDir_B = force
+    #     thrConf.MaxThrust = np.linalg.norm(force)
+    #     thrConf.steadyIsp = 226.7  # Example value, adjust as needed
+    #     thrusterSet.addThruster(thrConf)
 
     # Add this block to ensure the thruster command message is the correct size and is subscribed
-    thrMsgData = messaging.THRArrayOnTimeCmdMsgPayload()
-    thrMsgData.OnTimeRequest = [0.0] * len(thruster_defs)
-    thrMsg = messaging.THRArrayOnTimeCmdMsg()
-    thrMsg.write(thrMsgData)
-    thrusterSet.cmdsInMsg.subscribeTo(thrMsg)
+    # thrMsgData = messaging.THRArrayOnTimeCmdMsgPayload()
+    # thrMsgData.OnTimeRequest = [0.0] * len(thruster_defs)
+    # thrMsg = messaging.THRArrayOnTimeCmdMsg()
+    # thrMsg.write(thrMsgData)
+    # thrusterSet.cmdsInMsg.subscribeTo(thrMsg)
 
     # Data logging
     dataLog = scObject.scStateOutMsg.recorder(simulationTimeStep)
@@ -84,12 +84,11 @@ def run(show_plots=True, liveStream=True, broadcastStream=True, timeStep=0.1, si
         scData = vizInterface.VizSpacecraftData()
         scData.spacecraftName = scObject.ModelTag
         scData.scStateInMsg.subscribeTo(scObject.scStateOutMsg)
-        if liveStream:
-            clockSync = simSynch.ClockSynch()
-            clockSync.accelFactor = 1.0
-            scSim.AddModelToTask(simTaskName, clockSync)
+        clockSync = simSynch.ClockSynch()
+        clockSync.accelFactor = accelFactor
+        scSim.AddModelToTask(simTaskName, clockSync)
         viz = vizSupport.enableUnityVisualization(scSim, simTaskName, scObject,
-                                                  thrEffectorList=thrusterSet,
+                                                #   thrEffectorList=thrusterSet,
                                                   thrColors=vizSupport.toRGBA255("white"),
                                                   liveStream=liveStream,
                                                   broadcastStream=broadcastStream)
@@ -117,4 +116,11 @@ def run(show_plots=True, liveStream=True, broadcastStream=True, timeStep=0.1, si
     return
 
 if __name__ == "__main__":
-    run()
+    run(
+        show_plots=False,
+        liveStream=True,
+        broadcastStream=True,
+        timeStep=0.01,
+        simTime=60.0,
+        accelFactor=1.0
+    )

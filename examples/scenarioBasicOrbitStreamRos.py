@@ -104,10 +104,8 @@ except ImportError:
 # Import the ROS bridge handler
 from Basilisk.utilities import ros_bridge_handler
 
-def run(show_plots, liveStream, broadcastStream, timeStep, orbitCase, useSphericalHarmonics, planetCase):
+def run(show_plots, liveStream, broadcastStream, timeStep, orbitCase, useSphericalHarmonics, planetCase, accelFactor=50.0):
     """
-    At the end of the python script you can specify the following example parameters.
-
     Args:
         show_plots (bool): Determines if the script should display plots
         liveStream (bool): Determines if the script should use live data streaming
@@ -126,6 +124,7 @@ def run(show_plots, liveStream, broadcastStream, timeStep, orbitCase, useSpheric
         useSphericalHarmonics (Bool): False to use first order gravity approximation: :math:`\\frac{GMm}{r^2}`
 
         planetCase (str): {'Earth', 'Mars'}
+        accelFactor (float): Real-time acceleration factor for simulation clock (1.0 = real time, 50.0 = 50x faster)
     """
 
     # Create simulation variable names
@@ -258,10 +257,9 @@ def run(show_plots, liveStream, broadcastStream, timeStep, orbitCase, useSpheric
         scData.spacecraftName = scObject.ModelTag
         scData.scStateInMsg.subscribeTo(scObject.scStateOutMsg)
 
-        if liveStream:
-            clockSync = simSynch.ClockSynch()
-            clockSync.accelFactor = 50.0
-            scSim.AddModelToTask(simTaskName, clockSync)
+        clockSync = simSynch.ClockSynch()
+        clockSync.accelFactor = accelFactor
+        scSim.AddModelToTask(simTaskName, clockSync)
 
         # Configure Vizard, using liveStream and broadcastStream options
         viz = vizSupport.enableUnityVisualization(scSim, simTaskName, scObject
@@ -501,10 +499,11 @@ Press 'p' to pause the simulation, or 'z' to stop the simulation."""
 if __name__ == "__main__":
     run(
         False,       # show_plots
-        True,        # liveStream
+        True,       # liveStream
         True,        # broadcastStream
-        1./10,         # time step (s)
+        1./100,      # time step (s)
         'LEO',       # orbit Case (LEO, GTO, GEO)
         False,       # useSphericalHarmonics
-        'Earth'      # planetCase (Earth, Mars)
+        'Earth',     # planetCase (Earth, Mars)
+        1.0          # accelFactor (default 50x, set to 1.0 for real time)
     )
