@@ -7,14 +7,14 @@ requires = [
 
     # Requirements for building Basilisk through conanfile
     "conan>=2.0.5",
-    "cmake>=3.26",
+    "cmake>=3.26,<4.0",
     "swig>=4.2.1"  # Known to work with https://github.com/nightlark/swig-pypi/pull/120
 ]
 
 [project]
 name        = 'Basilisk'
 dynamic     = ["version", "dependencies"]
-requires-python = ">=3.8, <3.13"
+requires-python = ">=3.8, <3.14"
 
 readme      = "README.md"
 license     = {file = "LICENSE"}

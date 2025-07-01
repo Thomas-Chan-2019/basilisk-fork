@@ -610,7 +610,10 @@ def run(swirlTorque, thrMomManagement, saMomManagement, cmEstimation, showPlots)
         viz.settings.ambient = 0.7  # increase ambient light to make the shaded spacecraft more visible
         viz.settings.orbitLinesOn = -1  # turn off osculating orbit line
         current_path = os.path.dirname(os.path.abspath(__file__))
-        texture_path = os.path.join(current_path, 'dataForExamples', 'texture')
+        # Specifying relative model path is useful for sharing scenarios and resources:
+        texture_path = os.path.join('..', 'dataForExamples', 'texture')
+        # Specifying absolute model path is preferable for live-streaming:
+        # texture_path = os.path.join(current_path, 'dataForExamples', 'texture')
         vizSupport.createCustomModel(viz
                                      , simBodiesToModify=[sc_body_list[0].ModelTag]
                                      , modelPath="CUBE"
@@ -814,6 +817,7 @@ def run(swirlTorque, thrMomManagement, saMomManagement, cmEstimation, showPlots)
     thrVec_F = np.array(thrVec_F)
 
     # Plot the results
+    plt.close("all")
     figureList = {}
     plot_attitude(timeData, dataSigmaBN, dataSigmaRN, figID=1)
     pltName = fileName+"1"+str(int(thrMomManagement))+str(int(cmEstimation))

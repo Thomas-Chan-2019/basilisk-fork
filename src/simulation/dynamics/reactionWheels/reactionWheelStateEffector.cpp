@@ -19,10 +19,6 @@
 
 
 #include "reactionWheelStateEffector.h"
-#include "architecture/utilities/avsEigenSupport.h"
-#include <cstring>
-#include <iostream>
-#include <cmath>
 
 ReactionWheelStateEffector::ReactionWheelStateEffector()
 {
@@ -44,10 +40,17 @@ ReactionWheelStateEffector::ReactionWheelStateEffector()
 
 ReactionWheelStateEffector::~ReactionWheelStateEffector()
 {
-    for (long unsigned int c=0; c<this->rwOutMsgs.size(); c++) {
-        free(this->rwOutMsgs.at(c));
+    // Clear output messages vector
+    for (unsigned int i = 0; i < this->rwOutMsgs.size(); i++) {
+        if (this->rwOutMsgs[i]) {
+            delete this->rwOutMsgs[i];
+            this->rwOutMsgs[i] = nullptr;
+        }
     }
-    return;
+    rwOutMsgs.clear();
+
+    // Clear reaction wheel data vector - these are owned by SWIG
+    ReactionWheelData.clear();
 }
 
 void ReactionWheelStateEffector::linkInStates(DynParamManager& statesIn)
@@ -310,8 +313,28 @@ void ReactionWheelStateEffector::computeDerivatives(double integTime, Eigen::Vec
         }
 		if (RWIt->RWModel == BalancedWheels || RWIt->RWModel == JitterSimple) {
 			OmegasDot(RWi,0) = (RWIt->u_current + RWIt->frictionTorque)/RWIt->Js - RWIt->gsHat_B.transpose()*omegaDotBNLoc_B;
+
+            // Check for numerical instability due to excessive wheel acceleration
+            if (std::abs(OmegasDot(RWi,0)) > this->maxWheelAcceleration) {
+                bskLogger.bskLog(BSK_ERROR, "Excessive reaction wheel acceleration detected (%.2e rad/s^2). This may be caused by using unlimited torque (useMaxTorque=False) with a small spacecraft inertia. Consider using torque limits or increasing spacecraft inertia.", std::abs(OmegasDot(RWi,0)));
+
+                // Safety mechanism: limit the wheel acceleration to prevent numerical instability
+                OmegasDot(RWi,0) = std::copysign(this->maxWheelAcceleration, OmegasDot(RWi,0));
+
+                // Recalculate the effective torque for consistency
+                double effectiveTorque = OmegasDot(RWi,0) * RWIt->Js + RWIt->gsHat_B.transpose()*omegaDotBNLoc_B;
+                RWIt->u_current = effectiveTorque - RWIt->frictionTorque;
+            }
         } else if(RWIt->RWModel == JitterFullyCoupled) {
 			OmegasDot(RWi,0) = RWIt->aOmega.dot(rDDotBNLoc_B) + RWIt->bOmega.dot(omegaDotBNLoc_B) + RWIt->cOmega;
+
+            // Check for numerical instability in fully coupled model as well
+            if (std::abs(OmegasDot(RWi,0)) > this->maxWheelAcceleration) {
+                bskLogger.bskLog(BSK_ERROR, "Excessive reaction wheel acceleration detected (%.2e rad/s^2). This may be caused by using unlimited torque (useMaxTorque=False) with a small spacecraft inertia. Consider using torque limits or increasing spacecraft inertia.", std::abs(OmegasDot(RWi,0)));
+
+                // Safety mechanism: limit the wheel acceleration to prevent numerical instability
+                OmegasDot(RWi,0) = std::copysign(this->maxWheelAcceleration, OmegasDot(RWi,0));
+            }
 		}
 		RWi++;
 	}
@@ -514,7 +537,14 @@ void ReactionWheelStateEffector::ConfigureRWRequests(double CurrentTime)
 			} else if(CmdIt->u_cmd < -this->ReactionWheelData[RWIter]->u_max) {
 				CmdIt->u_cmd = -this->ReactionWheelData[RWIter]->u_max;
 			}
-		}
+		} else {
+            // Warning for unlimited torque with potentially small spacecraft
+            static bool warningIssued = false;
+            if (!warningIssued && std::abs(CmdIt->u_cmd) > this->largeTorqueThreshold) {  // Threshold for "large" torque
+                bskLogger.bskLog(BSK_WARNING, "Using unlimited reaction wheel torque (u_max <= 0). This can cause numerical instability with small spacecraft inertia. Consider setting useMaxTorque=True or increasing spacecraft inertia.");
+                warningIssued = true;
+            }
+        }
 
 		// minimum torque
 		if (std::abs(CmdIt->u_cmd) < this->ReactionWheelData[RWIter]->u_min) {

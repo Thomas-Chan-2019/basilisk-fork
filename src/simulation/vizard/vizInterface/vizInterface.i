@@ -50,8 +50,9 @@ namespace std {
     %template(LightVector) vector<Light *>;
     %template(TransceiverVector) vector<Transceiver *>;
     %template(GenericStorageVector) vector<GenericStorage *>;
-    %template(MultiSphereVector) vector<MultiSphere *>;
+    %template(MultiShapeVector) vector<MultiShape *>;
     %template(EllipsoidVector) vector<Ellipsoid *>;
+    %template(QuadMapVector) vector<QuadMap *>;
     %template(VizEventDialogVector) vector<VizEventDialog *>;
     %template(VizEventReplyVector) vector<VizEventReply>;
 }
@@ -91,5 +92,37 @@ struct EpochMsg_C;
 
 %pythoncode %{
 import sys
+
+mod = sys.modules[__name__]
+
+# ------ Deprecated variable/structure list ------ #
+# Remove from here when support is expired.
+mod.MultiShape = _DeprecatedWrapper(
+    mod.MultiShape,
+    targetName="MultiShape",
+    deprecatedFields={"radius": "dimensions"},
+    typeConversion="scalarTo3D",
+    removalDate="2026/03/07"
+)
+
+mod.MultiSphere = _DeprecatedWrapper(
+    mod.MultiShape,
+    aliasName="MultiSphere",
+    targetName="MultiShape",
+    removalDate="2026/03/07"
+)
+mod.MultiSphereInfo = _DeprecatedWrapper(
+    mod.MultiShapeInfo,
+    aliasName="MultiSphereInfo",
+    targetName="MultiShapeInfo",
+    removalDate="2026/03/07"
+)
+mod.MultiSphereVector = _DeprecatedWrapper(
+    mod.MultiShapeVector,
+    aliasName="MultiSphereVector",
+    targetName="MultiShapeVector",
+    removalDate="2026/03/07"
+)
+
 protectAllClasses(sys.modules[__name__])
 %}
