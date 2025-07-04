@@ -2,7 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from Basilisk import __path__
-from Basilisk.simulation import spacecraft, thrusterDynamicEffector
+from Basilisk.simulation import spacecraft, thrusterDynamicEffector, extForceTorque
 from Basilisk.utilities import (SimulationBaseClass, macros, unitTestSupport, vizSupport)
 from Basilisk.architecture import messaging
 from Basilisk.simulation import simSynch
@@ -10,7 +10,7 @@ try:
     from Basilisk.simulation import vizInterface
 except ImportError:
     pass
-from Basilisk.utilities import ros_bridge_handler
+from Basilisk.utilities import rosBridgeHandler
 
 def run(show_plots=True, liveStream=True, broadcastStream=True, timeStep=0.1, simTime=60.0, accelFactor=1.0):
     simTaskName = "simTask"
@@ -31,17 +31,24 @@ def run(show_plots=True, liveStream=True, broadcastStream=True, timeStep=0.1, si
     scSim.AddModelToTask(simTaskName, scObject)
 
     # ROS Bridge Handler
-    ros_bridge = ros_bridge_handler.RosBridgeHandler(namespace="bskSat")
+    ros_bridge = rosBridgeHandler.RosBridgeHandler(namespace="bskSat")
+    scstate_reader = ros_bridge.add_bsk_msg_reader('SCStatesMsgPayload', 'scStateInMsg', 'sc_states')
+    force_reader = ros_bridge.add_bsk_msg_reader('CmdForceBodyMsgPayload', 'cmdForceBodyInMsg', 'cmd_force_body')
+    torque_reader = ros_bridge.add_bsk_msg_reader('CmdTorqueBodyMsgPayload', 'cmdTorqueBodyInMsg', 'cmd_torque_body')
+    force_writer = ros_bridge.add_bsk_msg_writer('CmdForceBodyMsgPayload', 'cmdForceBodyOutMsg', 'cmd_force_body')
+    torque_writer = ros_bridge.add_bsk_msg_writer('CmdTorqueBodyMsgPayload', 'cmdTorqueBodyOutMsg', 'cmd_torque_body')
     ros_bridge.scStateInMsg.subscribeTo(scObject.scStateOutMsg)
+    ros_bridge.cmdForceBodyInMsg.subscribeTo(ros_bridge.cmdForceBodyOutMsg)
+    ros_bridge.cmdTorqueBodyInMsg.subscribeTo(ros_bridge.cmdTorqueBodyOutMsg)
     scSim.AddModelToTask(simTaskName, ros_bridge)
 
     # Add external force/torque effector and connect to bridge handler
-    # extFT = extForceTorque.ExtForceTorque()
-    # extFT.ModelTag = "externalForceTorque"
-    # extFT.cmdForceInMsg.subscribeTo(ros_bridge.cmdForceOutMsg)
-    # extFT.cmdTorqueInMsg.subscribeTo(ros_bridge.cmdTorqueOutMsg)
-    # scObject.addDynamicEffector(extFT)
-    # scSim.AddModelToTask(simTaskName, extFT)
+    extFT = extForceTorque.ExtForceTorque()
+    extFT.ModelTag = "externalForceTorque"
+    extFT.cmdForceBodyInMsg.subscribeTo(ros_bridge.cmdForceBodyOutMsg)
+    extFT.cmdTorqueInMsg.subscribeTo(ros_bridge.cmdTorqueBodyOutMsg)
+    scObject.addDynamicEffector(extFT)
+    scSim.AddModelToTask(simTaskName, extFT)
 
     # Thrusters
     # thrusterSet = thrusterDynamicEffector.ThrusterDynamicEffector()

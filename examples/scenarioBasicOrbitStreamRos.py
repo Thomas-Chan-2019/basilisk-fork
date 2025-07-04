@@ -102,7 +102,7 @@ except ImportError:
     pass
 
 # Import the ROS bridge handler
-from Basilisk.utilities import ros_bridge_handler
+from Basilisk.utilities import rosBridgeHandler
 
 def run(show_plots, liveStream, broadcastStream, timeStep, orbitCase, useSphericalHarmonics, planetCase, accelFactor=50.0):
     """
@@ -160,7 +160,7 @@ def run(show_plots, liveStream, broadcastStream, timeStep, orbitCase, useSpheric
     scSim.AddModelToTask(simTaskName, scObject)
 
     # --- Add ROS Bridge Handler ---
-    ros_bridge = ros_bridge_handler.RosBridgeHandler(namespace="bskSat")
+    ros_bridge = rosBridgeHandler.RosBridgeHandler(namespace="bskSat")
     # Subscribe to spacecraft state output
     ros_bridge.scStateInMsg.subscribeTo(scObject.scStateOutMsg)
     # Add to simulation task
@@ -501,9 +501,9 @@ if __name__ == "__main__":
         False,       # show_plots
         True,       # liveStream
         True,        # broadcastStream
-        1./100,      # time step (s)
+        1./10,      # time step (s)
         'LEO',       # orbit Case (LEO, GTO, GEO)
         False,       # useSphericalHarmonics
         'Earth',     # planetCase (Earth, Mars)
-        1.0          # accelFactor (default 50x, set to 1.0 for real time)
+        50.0          # accelFactor (default 50x, set to 1.0 for real time)
     )
