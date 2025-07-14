@@ -20,6 +20,8 @@
 
 #include "fswAlgorithms/effectorInterfaces/forceTorqueThrForceMapping/forceTorqueThrForceMapping.h"
 #include "string.h"
+#include "math.h"
+#include "stdbool.h"
 #include "architecture/utilities/linearAlgebra.h"
 
 /*!
@@ -93,84 +95,115 @@ void Reset_forceTorqueThrForceMapping(forceTorqueThrForceMappingConfig *configDa
  @param force_B_mod The modified thruster input vector (non-negative values)
 */
 void reallocate_thrusters(double DG[][MAX_EFF_CNT], size_t rows, size_t cols, double *force_B, double *forceTorque_B, double *force_B_mod) {
-    double adjustment = 0.0;
-
+    const double tolerance = 1e-6;
+    const int max_iterations = 100;
+    
     // Initialize force_B_mod to be the same as force_B
     for (uint32_t i = 0; i < cols; i++) {
         force_B_mod[i] = force_B[i];
     }
 
-    // Identify and accumulate the negative values
-    for (uint32_t i = 0; i < cols; i++) {
-        if (force_B_mod[i] < 1e-6) {
-            adjustment += -force_B_mod[i];
-            force_B_mod[i] = 0;  // Set negative values to zero
-        }
-    }
-
-    // Redistribute the accumulated adjustment to non-negative values proportionally
-    uint32_t num_positive = 0;
-    for (uint32_t i = 0; i < cols; i++) {
-        if (force_B_mod[i] > 0) {
-            num_positive++;
-        }
-    }
-
-    if (num_positive > 0) {
+    // Iterative approach to handle negative thrusters
+    for (int iter = 0; iter < max_iterations; iter++) {
+        bool has_negative = false;
+        
+        // Find the most negative thruster
+        int worst_thruster = -1;
+        double min_force = 0.0;
         for (uint32_t i = 0; i < cols; i++) {
-            if (force_B_mod[i] > 0) {
-                force_B_mod[i] += adjustment / num_positive;
+            if (force_B_mod[i] < min_force) {
+                min_force = force_B_mod[i];
+                worst_thruster = i;
+                has_negative = true;
+            }
+        }
+        
+        if (!has_negative) {
+            break; // All thrusters are non-negative
+        }
+        
+        // Zero out the worst thruster and redistribute its contribution
+        double deficit = -force_B_mod[worst_thruster];
+        force_B_mod[worst_thruster] = 0.0;
+        
+        // Calculate the force/torque deficit caused by zeroing this thruster
+        double deficit_wrench[6] = {0};
+        for (uint32_t i = 0; i < rows; i++) {
+            deficit_wrench[i] = DG[i][worst_thruster] * deficit;
+        }
+        
+        // Find available thrusters to compensate
+        uint32_t available_thrusters[MAX_EFF_CNT];
+        uint32_t num_available = 0;
+        for (uint32_t i = 0; i < cols; i++) {
+            if (i != worst_thruster && force_B_mod[i] > tolerance) {
+                available_thrusters[num_available] = i;
+                num_available++;
+            }
+        }
+        
+        if (num_available == 0) {
+            // No available thrusters to redistribute - this is a degenerate case
+            break;
+        }
+        
+        // Redistribute the deficit proportionally among available thrusters
+        // Use a simple weighted distribution based on current force levels
+        double total_weight = 0.0;
+        for (uint32_t i = 0; i < num_available; i++) {
+            total_weight += force_B_mod[available_thrusters[i]];
+        }
+        
+        if (total_weight > tolerance) {
+            for (uint32_t i = 0; i < num_available; i++) {
+                uint32_t thruster_idx = available_thrusters[i];
+                double weight = force_B_mod[thruster_idx] / total_weight;
+                
+                // Redistribute the deficit proportionally
+                for (uint32_t j = 0; j < rows; j++) {
+                    if (fabs(DG[j][thruster_idx]) > tolerance) {
+                        force_B_mod[thruster_idx] += weight * deficit_wrench[j] / DG[j][thruster_idx];
+                        break; // Use the first non-zero row for this thruster
+                    }
+                }
             }
         }
     }
-
-    // Verify the adjusted values satisfy the system equation
-    double result[MAX_EFF_CNT] = {0};
+    
+    // Final check: ensure we still satisfy the force/torque requirements
+    // If not, scale all thrusters proportionally to meet requirements
+    double actual_wrench[6] = {0};
     for (uint32_t i = 0; i < rows; i++) {
         for (uint32_t j = 0; j < cols; j++) {
-            result[i] += DG[i][j] * force_B_mod[j];
+            actual_wrench[i] += DG[i][j] * force_B_mod[j];
         }
     }
-
-    // Array to store the indices sorted by descending order of force_B_mod
-    uint32_t idx[MAX_EFF_CNT];
-    for (uint32_t i = 0; i < cols; i++) {
-        idx[i] = i;
+    
+    // Check if we need to scale to meet requirements
+    double max_error = 0.0;
+    for (uint32_t i = 0; i < rows; i++) {
+        double error = fabs(actual_wrench[i] - forceTorque_B[i]);
+        if (error > max_error) {
+            max_error = error;
+        }
     }
-    for (uint32_t i = 0; i < cols - 1; i++) {
-        for (uint32_t j = 0; j < cols - 1 - i; j++) {
-            if (force_B_mod[idx[j]] < force_B_mod[idx[j + 1]]) {
-                // Swap indices
-                uint32_t temp = idx[j];
-                idx[j] = idx[j + 1];
-                idx[j + 1] = temp;
+    
+    // If error is significant, apply a correction
+    if (max_error > tolerance) {
+        // Simple correction: find the largest thruster and adjust it
+        uint32_t largest_thruster = 0;
+        for (uint32_t i = 1; i < cols; i++) {
+            if (force_B_mod[i] > force_B_mod[largest_thruster]) {
+                largest_thruster = i;
             }
         }
-    }
-
-    // Adjust manually to match the exact desired output
-    uint32_t len_idx = cols;
-    for (uint32_t i = 0; i < rows; i++) {
-        double discrepancy = forceTorque_B[i] - result[i];
-        if (discrepancy != 0) {
-            // Try to find thrusters that can adjust to match the discrepancy
-            for (uint32_t j = 0; j < len_idx; j++) {
-                uint32_t index = idx[j];
-                if (DG[i][index] != 0 && force_B_mod[index] + discrepancy / DG[i][index] >= 0) {
-                    force_B_mod[index] += discrepancy / DG[i][index];
-                    // Recalculate the result
-                    for (uint32_t k = 0; k < rows; k++) {
-                        result[k] = 0;
-                        for (uint32_t l = 0; l < cols; l++) {
-                            result[k] += DG[k][l] * force_B_mod[l];
-                        }
-                    }
-
-                    // Remove element j from idx
-                    for (size_t k = j; k < len_idx; k++) {
-                        idx[k] = idx[k + 1];
-                    }
-                    len_idx--;
+        
+        // Apply correction to the largest thruster (if possible)
+        for (uint32_t i = 0; i < rows; i++) {
+            if (fabs(DG[i][largest_thruster]) > tolerance) {
+                double correction = (forceTorque_B[i] - actual_wrench[i]) / DG[i][largest_thruster];
+                if (force_B_mod[largest_thruster] + correction >= 0) {
+                    force_B_mod[largest_thruster] += correction;
                     break;
                 }
             }
@@ -296,21 +329,31 @@ void Update_forceTorqueThrForceMapping(forceTorqueThrForceMappingConfig *configD
     mMinimumNormInverse(DG_full, (size_t) 6-numZeroes, (size_t) MAX_EFF_CNT, DGT_DGDGT_inv);
 
     /* Add the computed pseudoinverse values back into the correct positions*/
-    double DG_inv_full[6 * MAX_EFF_CNT];
-    vSetZero(DG_inv_full, (size_t) 6*MAX_EFF_CNT);
-    uint32_t colIndex = 0;
+    double DG_inv_full[MAX_EFF_CNT * 6];
+    vSetZero(DG_inv_full, (size_t) MAX_EFF_CNT*6);
+    uint32_t rowIndex = 0;
     for (uint32_t i = 0; i < 6; ++i) {
         if (!zeroRows[i]) {
-            for (uint32_t j = 0; j < 6; ++j) {
-                DG_inv_full[j * configData->numThrusters + i] = DGT_DGDGT_inv[j * (configData->numThrusters - numZeroes) + colIndex];
+            for (uint32_t j = 0; j < configData->numThrusters; ++j) {
+                DG_inv_full[j * 6 + i] = DGT_DGDGT_inv[j * (6 - numZeroes) + rowIndex];
             }
-            colIndex++;
+            rowIndex++;
         }
     }
 
     /* Compute the force for each thruster */
-    // mMultV(DGT_DGDGT_inv, (size_t) configData->numThrusters, (size_t) 6-numZeroes, forceTorque_B, force_B);
-    mMultV(DG_inv_full, (size_t) configData->numThrusters, (size_t) 6, forceTorque_B, force_B);
+    // First create the reduced force/torque vector (without zero rows)
+    double forceTorque_reduced[6];
+    uint32_t reducedIndex = 0;
+    for (uint32_t i = 0; i < 6; ++i) {
+        if (!zeroRows[i]) {
+            forceTorque_reduced[reducedIndex] = forceTorque_B[i];
+            reducedIndex++;
+        }
+    }
+    
+    // Now multiply with the correct dimensions
+    mMultV(DGT_DGDGT_inv, (size_t) configData->numThrusters, (size_t) 6-numZeroes, forceTorque_reduced, force_B);
 
     // /* Subtract the minimum force */
     // for(uint32_t i = 0; i < configData->numThrusters; i++) {
