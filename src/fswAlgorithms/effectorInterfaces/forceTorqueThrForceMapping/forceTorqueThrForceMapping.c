@@ -17,10 +17,9 @@
 
 */
 
-
 #include "fswAlgorithms/effectorInterfaces/forceTorqueThrForceMapping/forceTorqueThrForceMapping.h"
-#include "string.h"
 #include "architecture/utilities/linearAlgebra.h"
+#include "string.h"
 
 /*!
     This method initializes the output messages for this module.
@@ -28,11 +27,10 @@
  @param configData The configuration data associated with this module
  @param moduleID The module identifier
  */
-void SelfInit_forceTorqueThrForceMapping(forceTorqueThrForceMappingConfig  *configData, int64_t moduleID)
+void SelfInit_forceTorqueThrForceMapping(forceTorqueThrForceMappingConfig* configData, int64_t moduleID)
 {
     THRArrayCmdForceMsg_C_init(&configData->thrForceCmdOutMsg);
 }
-
 
 /*! This method performs a complete reset of the module.  Local module variables that retain
     time varying states between function calls are reset to their default values.
@@ -51,9 +49,9 @@ void Reset_forceTorqueThrForceMapping(forceTorqueThrForceMappingConfig *configDa
         _bskLog(configData->bskLogger, BSK_ERROR, "Error: forceTorqueThrForceMapping.vehConfigInMsg was not connected.");
     }
 
-    VehicleConfigMsgPayload vehConfigInMsgBuffer;  //!< local copy of message buffer
-    THRArrayConfigMsgPayload thrConfigInMsgBuffer;  //!< local copy of message buffer
-    THRArrayCmdForceMsgPayload thrForceCmdOutMsgBuffer;  //!< local copy of message buffer
+    VehicleConfigMsgPayload vehConfigInMsgBuffer;       //!< local copy of message buffer
+    THRArrayConfigMsgPayload thrConfigInMsgBuffer;      //!< local copy of message buffer
+    THRArrayCmdForceMsgPayload thrForceCmdOutMsgBuffer; //!< local copy of message buffer
 
     //!< read the rest of the input messages
     thrConfigInMsgBuffer = THRArrayConfigMsg_C_read(&configData->thrConfigInMsg);
@@ -81,7 +79,6 @@ void Reset_forceTorqueThrForceMapping(forceTorqueThrForceMappingConfig *configDa
     THRArrayCmdForceMsg_C_write(&thrForceCmdOutMsgBuffer, &configData->thrForceCmdOutMsg, moduleID, callTime);
 }
 
-
 /*! Add a description of what this main Update() routine does for this module
 
  @param configData The configuration data associated with the module
@@ -90,9 +87,9 @@ void Reset_forceTorqueThrForceMapping(forceTorqueThrForceMappingConfig *configDa
 */
 void Update_forceTorqueThrForceMapping(forceTorqueThrForceMappingConfig *configData, uint64_t callTime, int64_t moduleID)
 {
-    CmdTorqueBodyMsgPayload cmdTorqueInMsgBuffer;  //!< local copy of message buffer
-    CmdForceBodyMsgPayload cmdForceInMsgBuffer;  //!< local copy of message buffer
-    THRArrayCmdForceMsgPayload thrForceCmdOutMsgBuffer;  //!< local copy of message buffer
+    CmdTorqueBodyMsgPayload cmdTorqueInMsgBuffer;       //!< local copy of message buffer
+    CmdForceBodyMsgPayload cmdForceInMsgBuffer;         //!< local copy of message buffer
+    THRArrayCmdForceMsgPayload thrForceCmdOutMsgBuffer; //!< local copy of message buffer
 
     // always zero the output message buffers before assigning values
     thrForceCmdOutMsgBuffer = THRArrayCmdForceMsg_C_zeroMsgPayload();
@@ -121,8 +118,7 @@ void Update_forceTorqueThrForceMapping(forceTorqueThrForceMappingConfig *configD
     double force_B[MAX_EFF_CNT];
     double forceTorque_B[6];
     double forceSubtracted_B[MAX_EFF_CNT];
-    vSetZero(force_B, (size_t) MAX_EFF_CNT);
-    vSetZero(forceSubtracted_B, (size_t) MAX_EFF_CNT);
+    vSetZero(force_B, (size_t)MAX_EFF_CNT);
 
     for (uint32_t i = 0; i < 6; i++) {
         for (uint32_t j = 0; j < MAX_EFF_CNT; j++) {
@@ -167,37 +163,102 @@ void Update_forceTorqueThrForceMapping(forceTorqueThrForceMappingConfig *configD
         }
     }
 
-    /* Create the DG w/ zero rows removed */
-    double DG_full[6*MAX_EFF_CNT];
-    vSetZero(DG_full, (size_t) 6*MAX_EFF_CNT);
-    uint32_t row_idx = 0;
+    /* Create reduced force/torque vector (remove elements corresponding to zero rows) */
+    double forceTorque_reduced[6];
+    uint32_t targetElement = 0;
     for(uint32_t i = 0; i < 6; i++) {
         if (!zeroRows[i]) {
-            for(uint32_t j = 0; j < MAX_EFF_CNT; j++) {
-                DG_full[MXINDEX(MAX_EFF_CNT, row_idx, j)] = DG[i][j];
+            forceTorque_reduced[targetElement] = forceTorque_B[i];
+            targetElement++;
+        }
+    }
+
+    /* Iterative algorithm to handle negative forces by removing columns */
+    uint32_t activeThrusterMask[MAX_EFF_CNT];
+    uint32_t numActiveThrusters = configData->numThrusters;
+    double mostNegativeForce;
+    uint32_t mostNegativeIndex;
+
+    /* Declare arrays with fixed size for MSVC compatibility */
+    double DG_reduced[6 * MAX_EFF_CNT];
+    double DG_reduced_inv[MAX_EFF_CNT * 6];
+    double activeForces[MAX_EFF_CNT];
+
+    /* Initialize all thrusters as active */
+    for (uint32_t i = 0; i < configData->numThrusters; i++) {
+        activeThrusterMask[i] = 1;
+    }
+
+    for (uint32_t iteration = 0; iteration < configData->numThrusters; iteration++) {
+
+        /* Create reduced DG matrix with only active thrusters and non-zero rows */
+        vSetZero(DG_reduced, (size_t)(6 - numZeroes) * numActiveThrusters);
+
+        uint32_t activeColIndex = 0;
+        for (uint32_t j = 0; j < configData->numThrusters; j++) {
+            if (activeThrusterMask[j]) {
+                uint32_t reducedRowIndex = 0;
+                for (uint32_t i = 0; i < 6; i++) {
+                    if (!zeroRows[i]) {
+                        DG_reduced[MXINDEX(numActiveThrusters, reducedRowIndex, activeColIndex)] = DG[i][j];
+                        reducedRowIndex++;
+                    }
+                }
+                activeColIndex++;
             }
-            row_idx++;
+        }
+
+        /* Compute pseudoinverse of reduced matrix */
+        mMinimumNormInverse(DG_reduced, (size_t)(6 - numZeroes), (size_t)numActiveThrusters, DG_reduced_inv);
+
+        /* Solve for active thruster forces */
+        mMultV(DG_reduced_inv, (size_t)numActiveThrusters, (size_t)(6 - numZeroes), forceTorque_reduced, activeForces);
+
+        /* Map back to full thruster array */
+        activeColIndex = 0;
+        uint32_t hasNegativeForces = 0;
+        for (uint32_t j = 0; j < configData->numThrusters; j++) {
+            if (activeThrusterMask[j]) {
+                force_B[j] = activeForces[activeColIndex];
+                if (force_B[j] < -1e-10) {
+                    hasNegativeForces = 1;
+                }
+                activeColIndex++;
+            } else {
+                force_B[j] = 0.0;
+            }
+        }
+
+        /* End iteration when solution has no negative forces */
+        if (!hasNegativeForces) {
+            break;
+        }
+
+        /* Deactivate the thruster with most negative force */
+        mostNegativeForce = 0.0;
+        mostNegativeIndex = 0;
+        for (uint32_t j = 0; j < configData->numThrusters; j++) {
+            if (activeThrusterMask[j] && force_B[j] < mostNegativeForce) {
+                mostNegativeForce = force_B[j];
+                mostNegativeIndex = j;
+            }
+        }
+
+        if (mostNegativeForce < -1e-10) {
+            activeThrusterMask[mostNegativeIndex] = 0;
+            numActiveThrusters--;
+
+            /* If all thrusters are deactivated, set forces to zero, no solution found */
+            if (numActiveThrusters <= 0) {
+                vSetZero(force_B, configData->numThrusters);
+                break;
+            }
         }
     }
 
-    /* Compute the minimum norm inverse of DG*/
-    double DGT_DGDGT_inv[6*MAX_EFF_CNT];
-    mMinimumNormInverse(DG_full, (size_t) 6-numZeroes, (size_t) MAX_EFF_CNT, DGT_DGDGT_inv);
-
-    /* Compute the force for each thruster */
-    mMultV(DGT_DGDGT_inv, (size_t) configData->numThrusters, (size_t) 6-numZeroes, forceTorque_B, force_B);
-
-    /* Find the minimum force */
-    double min_force = force_B[0];
-    for(uint32_t i = 1; i < configData->numThrusters; i++) {
-        if (force_B[i] < min_force){
-            min_force = force_B[i];
-        }
-    }
-
-    /* Subtract the minimum force */
-    for(uint32_t i = 0; i < configData->numThrusters; i++) {
-        forceSubtracted_B[i] = force_B[i] - min_force;
+    /* Ensure non-negative thrust */
+    for (uint32_t i = 0; i < configData->numThrusters; i++) {
+        forceSubtracted_B[i] = (force_B[i] > 0.0) ? force_B[i] : 0.0;
     }
 
     /* Write to the output messages */
